@@ -5,26 +5,26 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Eine Seite, auf der sich alles ausprobieren lässt, was Schritt D können muss.
+ * A page on which everything that step D must be able to do can be tried out.
  *
- * <p>Kein Monaco, keine Bibliothek, nichts Geladenes — nur gewöhnliches HTML.
- * Genau das ist der Punkt: Was hier nicht funktioniert, funktioniert auch in
- * einem Editor nicht, und ein Fehler ist hier in einer Zeile zu finden statt
- * in einer fremden Codebasis.
+ * <p>No Monaco, no library, nothing loaded — only ordinary HTML. That is
+ * exactly the point: what does not work here does not work in an editor
+ * either, and a fault is to be found here in a single line rather than in a
+ * foreign codebase.
  *
- * <p>Was sie enthält und warum:
+ * <p>What it contains and why:
  *
  * <ul>
- *   <li><b>Ein Textfeld</b> — für Umlaute, ß, Klammern, Backspace, Home und
- *       Ende, Strg+A und Strg+Z.</li>
- *   <li><b>Ein Auswahlfeld</b> — der einzige einfache Weg, ein echtes
- *       Chromium-Popup auszulösen.</li>
- *   <li><b>Eine lange Liste</b> — zum Scrollen, und um zu sehen, wie groß die
- *       geänderten Bereiche dabei werden.</li>
- *   <li><b>Vier Ecken-Marker</b> — damit sich beim Klicken sofort zeigt, ob
- *       Zeigen und Treffen dieselbe Stelle meinen.</li>
- *   <li><b>Eine halbdurchsichtige Fläche</b> — die Mischung, die beim
- *       Zeichnen entschieden wird, hier im Betrieb.</li>
+ *   <li><b>A text field</b> — for umlauts, ß, brackets, backspace, Home and
+ *       End, Ctrl+A and Ctrl+Z.</li>
+ *   <li><b>A select box</b> — the only simple way to trigger a real Chromium
+ *       popup.</li>
+ *   <li><b>A long list</b> — for scrolling, and to see how large the dirty
+ *       regions become while doing so.</li>
+ *   <li><b>Four corner markers</b> — so that clicking shows at once whether
+ *       pointing and hitting mean the same spot.</li>
+ *   <li><b>A semi-transparent surface</b> — the blending that is decided at
+ *       drawing time, here in operation.</li>
  * </ul>
  */
 public final class ProbePage {
@@ -129,11 +129,11 @@ public final class ProbePage {
             """;
 
     /**
-     * Legt die Seite ab und gibt ihre Adresse zurück.
+     * Writes the page out and returns its address.
      *
-     * <p>Als Datei und nicht als {@code data:}-Adresse: Chromium verweigert
-     * die seit Version 60 als Hauptdokument, und der Browser lädt dann gar
-     * nichts.
+     * <p>As a file and not as a {@code data:} address: Chromium has refused
+     * those as the main document since version 60, and the browser then loads
+     * nothing at all.
      */
     public static String url() throws Exception {
         Path file = Files.createTempFile("fn-probe", ".html");

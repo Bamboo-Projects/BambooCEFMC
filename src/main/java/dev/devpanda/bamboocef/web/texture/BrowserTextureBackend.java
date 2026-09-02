@@ -3,31 +3,30 @@ package dev.devpanda.bamboocef.web.texture;
 import dev.devpanda.bamboocef.web.frame.BrowserFrame;
 
 /**
- * Wohin Bilder gehen.
+ * Where images go.
  *
- * <p><b>Was hier fehlt, ist Absicht:</b> kein Texturname, kein
- * {@code ByteBuffer}, kein Handle. Ein Unterbau, der ein Bild entgegennimmt,
- * ist austauschbar; einer, der einen OpenGL-Namen herausgibt, legt den
- * ganzen Weg fest.
+ * <p><b>What is missing here is intentional:</b> no texture name, no
+ * {@code ByteBuffer}, no handle. A backend that accepts an image is
+ * interchangeable; one that hands out an OpenGL name fixes the whole path.
  *
- * <p>Wie das Bild sichtbar wird, entscheidet der, der das Backend gebaut hat —
- * er kennt beide Enden. Diese Schnittstelle kennt nur, dass es eines gibt.
+ * <p>How the image becomes visible is decided by whoever built the backend —
+ * that party knows both ends. This interface only knows that there is one.
  */
 public interface BrowserTextureBackend extends AutoCloseable {
 
     /**
-     * Übernimmt ein Bild.
+     * Takes over an image.
      *
-     * <p>Das Bild gehört danach weiterhin dem Aufrufer: Das Backend kopiert,
-     * was es braucht, und hält nichts fest. So kann der Aufrufer es
-     * unmittelbar danach wiederverwenden.
+     * <p>The image still belongs to the caller afterwards: the backend copies
+     * what it needs and holds on to nothing. The caller can therefore reuse it
+     * immediately afterwards.
      *
-     * <p>Muss dort gerufen werden, wo der Zeichenkontext gilt — bei Minecraft
-     * ist das der Render-Thread. Ein Backend darf sich darauf verlassen.
+     * <p>Must be called where the draw context is valid — for Minecraft that is
+     * the render thread. A backend may rely on it.
      */
     void upload(BrowserFrame frame);
 
-    /** Gibt alles frei. Mehrfaches Schließen ist erlaubt. */
+    /** Releases everything. Closing more than once is allowed. */
     @Override
     void close();
 }

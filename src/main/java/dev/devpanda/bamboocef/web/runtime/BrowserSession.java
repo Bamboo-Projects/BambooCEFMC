@@ -10,23 +10,23 @@ import dev.devpanda.bamboocef.web.texture.GlTextureBackend;
 import java.util.function.IntConsumer;
 
 /**
- * Ein Browser samt seiner Texturen, seiner Eingabe und seines Zustands.
+ * A browser together with its textures, its input and its state.
  *
- * <p>Der ganze Bildweg an einer Stelle: Chromium malt, wir laden hoch,
- * Minecraft zeichnet. Nichts dazwischen — <b>kein Postfach, keine Kopie</b>.
+ * <p>The whole frame path in one place: Chromium paints, we upload, Minecraft
+ * draws. Nothing in between — <b>no mailbox, no copy</b>.
  *
- * <p><b>Warum das hier richtig ist und nicht faul.</b> MCEF pumpt Chromiums
- * Nachrichtenschleife per Mixin in {@code GameRenderer.render}. Damit kommt
- * {@code onPaint} im Render-Thread an, der Zeichenkontext gilt, und der
- * geliehene Puffer ist genau in diesem Moment gültig. Eine Kopie in ein
- * eigenes Bild und ein Postfach dazwischen kosteten bei 1080p achteinhalb
- * Megabyte je Bild und lösten ein Problem, das es hier nicht gibt.
+ * <p><b>Why this is right here and not lazy.</b> MCEF pumps Chromium's message
+ * loop via a mixin in {@code GameRenderer.render}. With that, {@code onPaint}
+ * arrives on the render thread, the drawing context is valid, and the borrowed
+ * buffer is valid at exactly this moment. A copy into a separate image and a
+ * mailbox in between would cost eight and a half megabytes per frame at 1080p
+ * and would solve a problem that does not exist here.
  *
- * <p><b>Alle Koordinaten hier sind Browser-Pixel.</b> Wo die Fläche auf dem
- * Schirm liegt, weiß diese Klasse nicht und soll sie nicht wissen — das
- * rechnet {@code BrowserView} um, und zwar für das Zeichnen und die Maus mit
- * derselben Formel. Nur so kann später eine Fläche in der Welt dieselbe
- * Sitzung mit ihren eigenen Koordinaten füttern.
+ * <p><b>All coordinates here are browser pixels.</b> Where the surface lies on
+ * the screen this class does not know and is not supposed to know — that is
+ * converted by {@code BrowserView}, and for drawing and the mouse with the same
+ * formula. Only that way can a surface in the world later feed the same session
+ * with its own coordinates.
  */
 public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
         dev.devpanda.bamboocef.web.ManagedBrowser {
@@ -35,16 +35,16 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
     private final GlTextureBackend texture = new GlTextureBackend();
 
     /**
-     * Die zweite Textur, für aufgeklappte Felder.
+     * The second texture, for expanded fields.
      *
-     * <p><b>Und nicht ein Zurückkopieren in die erste.</b> MCEF hält den
-     * Inhalt eines Auswahlfeldes in einem eigenen Puffer und malt ihn bei
-     * jedem Bild der Hauptansicht erneut in deren Textur — weil Chromium den
-     * Popup-Inhalt zwischen zwei Aufrufen nicht aufbewahrt. Das kostet je Bild
-     * eine Kopie und eine zusätzliche Übertragung, solange das Feld offen ist.
+     * <p><b>And not a copy-back into the first.</b> MCEF holds the content of a
+     * dropdown field in its own buffer and paints it anew into the main view's
+     * texture on every frame — because Chromium does not retain the popup
+     * content between two calls. That costs one copy and one extra transfer per
+     * frame for as long as the field is open.
      *
-     * <p>Eine eigene Textur kostet nichts davon: Sie behält ihren Inhalt, bis
-     * ein neues Bild kommt, und wird beim Zeichnen einfach darübergelegt.
+     * <p>A separate texture costs none of that: it keeps its content until a new
+     * frame comes, and is simply laid over the top when drawing.
      */
     private final GlTextureBackend popupTexture = new GlTextureBackend();
 
@@ -62,47 +62,47 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
     private volatile java.util.function.Consumer<String> messageSink;
 
     /**
-     * Wann zuletzt eine Eingabe hineinging, auf die noch kein Bild kam.
+     * When input last went in for which no frame has yet come.
      *
-     * <p><b>Die Zahl, die ein Editor entscheidet.</b> Bilder je Sekunde sagen
-     * wenig darüber, ob sich das Tippen unmittelbar anfühlt; was zählt, ist
-     * die Spanne zwischen einem Tastendruck und dem Bild, das ihn zeigt. Genau
-     * die wird hier gemessen — ohne Rückkanal aus der Seite, allein aus dem,
-     * was ohnehin durch diese Klasse geht.
+     * <p><b>The number that decides an editor.</b> Frames per second say little
+     * about whether the typing feels immediate; what counts is the span between
+     * a keystroke and the frame that shows it. That is exactly what is measured
+     * here — without a return channel from the page, solely from what passes
+     * through this class anyway.
      *
-     * <p>Null heißt: Es steht keine Eingabe aus, das nächste Bild gehört zu
-     * nichts, was jemand getan hat.
+     * <p>Zero means: no input is outstanding, the next frame belongs to nothing
+     * anyone did.
      */
     private long pendingInputNanos;
 
     /**
-     * Die Eingabe, deren Bild schon hochgeladen ist und nur noch gezeichnet
-     * werden muss.
+     * The input whose frame is already uploaded and only still needs to be
+     * drawn.
      */
     private long paintedForInputNanos;
 
-    /** Wann der letzte Upload fertig war. */
+    /** When the last upload finished. */
     private long uploadEndNanos;
 
-    /** A: von der Eingabe bis Chromium ein Bild liefert. */
+    /** A: from the input until Chromium delivers a frame. */
     private final dev.devpanda.bamboocef.web.measure.DurationSamples toPaint =
             new dev.devpanda.bamboocef.web.measure.DurationSamples();
 
-    /** C: vom Ende des Uploads bis Minecraft das nächste Mal zeichnet. */
+    /** C: from the end of the upload until Minecraft draws the next time. */
     private final dev.devpanda.bamboocef.web.measure.DurationSamples toScreen =
             new dev.devpanda.bamboocef.web.measure.DurationSamples();
 
-    /** Die ganze Strecke, von der Eingabe bis zum gezeichneten Bild. */
+    /** The whole span, from the input to the drawn frame. */
     private final dev.devpanda.bamboocef.web.measure.DurationSamples totalLatency =
             new dev.devpanda.bamboocef.web.measure.DurationSamples();
 
     /**
-     * Der Abstand zwischen zwei Bildern, die Chromium liefert.
+     * The gap between two frames that Chromium delivers.
      *
-     * <p>Das ist der Takt des fensterlosen Betriebs, und er ist eine andere
-     * Größe als alles daneben: Die drei Abschnitte oben messen, wie lange
-     * etwas dauert. Dieser misst, wie oft überhaupt jemand drankommt. Wer
-     * beides verwechselt, hält Wartezeit für Rechenzeit.
+     * <p>This is the cadence of windowless mode, and it is a different quantity
+     * from everything beside it: the three sections above measure how long
+     * something takes. This one measures how often anyone gets a turn at all.
+     * Whoever confuses the two takes waiting time for compute time.
      */
     private final dev.devpanda.bamboocef.web.measure.DurationSamples paintGaps =
             new dev.devpanda.bamboocef.web.measure.DurationSamples();
@@ -116,11 +116,11 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
     private boolean closed;
 
     /**
-     * Eine laufende Nummer je Sitzung.
+     * A running number per session.
      *
-     * <p>Sie steht in jeder Protokollzeile über diese Sitzung. Ohne sie sind
-     * zwei gleichzeitig offene Browser im Protokoll nicht auseinanderzuhalten,
-     * und genau dann braucht man es.
+     * <p>It stands in every log line about this session. Without it two browsers
+     * open at once cannot be told apart in the log, and that is exactly when one
+     * needs to.
      */
     private static final java.util.concurrent.atomic.AtomicInteger COUNTER =
             new java.util.concurrent.atomic.AtomicInteger();
@@ -128,11 +128,11 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
     private final int id = COUNTER.incrementAndGet();
 
     /**
-     * Wie diese Sitzung heißt.
+     * What this session is called.
      *
-     * <p>Leer heißt: Sie hat keinen, dann steht ihre Nummer im Protokoll. Wer
-     * mehrere Browser gleichzeitig laufen lässt, will sie unterscheiden können
-     * — im Protokoll und in Chromiums Liste unter dem Fernwartungsport.
+     * <p>Empty means: it has none, then its number stands in the log. Whoever
+     * runs several browsers at once wants to be able to tell them apart — in the
+     * log and in Chromium's list under the remote-debugging port.
      */
     private final String name;
 
@@ -141,48 +141,48 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
         this.name = name == null ? "" : name;
         this.pacer = new FramePacer(visibility);
         this.browser = FnBrowser.open(url, transparent, this);
-        // <b>Die Reihenfolge ist nicht beliebig.</b> Erst darf der Browser
-        // geschlossen werden, dann entsteht er, und erst danach bekommt er
-        // seine Größe. Andersherum geht die Größenmeldung an einen Browser,
-        // den es noch nicht gibt — sie verpufft, und weil das Rechteck danach
-        // schon stimmt, versucht es niemand ein zweites Mal. Ergebnis: ein
-        // Browser, der nie malt. Genau so ist es hier zuerst passiert.
+        // <b>The order is not arbitrary.</b> First the browser is allowed to be
+        // closed, then it is created, and only after that does it get its size.
+        // The other way round, the resize goes to a browser that does not yet
+        // exist — it fizzles, and because the rectangle is then already correct,
+        // no one tries a second time. Result: a browser that never paints. That
+        // is exactly what happened here first.
         browser.setCloseAllowed();
         browser.createImmediately();
         browser.resize(width, height);
-        // Erst jetzt anmelden: Ein Browser, der beim Erzeugen scheitert, soll
-        // nicht als offen gelten.
+        // Only now register: a browser that fails on creation should not count
+        // as open.
         dev.devpanda.bamboocef.web.BrowserManager.register(this);
     }
 
-    /** Wie diese Sitzung im Protokoll heißt. */
+    /** How this session is named in the log. */
     @Override
     public String describe() {
         String was = name.isEmpty() ? "Sitzung " + id : "\"" + name + "\" (Sitzung " + id + ")";
         return was + " (" + width() + "x" + height() + ")";
     }
 
-    /** Der vergebene Name, oder leer. */
+    /** The assigned name, or empty. */
     public String name() {
         return name;
     }
 
     /**
-     * Ist die Sitzung noch offen?
+     * Is the session still open?
      *
-     * <p>Falsch ab dem Augenblick, in dem jemand {@link #close()} rief —
-     * auch der Verwalter beim Verlassen der Welt. Wer eine Textur dieser
-     * Sitzung zeichnet, fragt das vor jedem Bild.
+     * <p>False from the moment someone called {@link #close()} — including the
+     * manager when leaving the world. Whoever draws a texture of this session
+     * asks this before every frame.
      */
     public boolean isOpen() {
         return !closed;
     }
 
     /**
-     * Chromium hat das Schließen bestätigt.
+     * Chromium has acknowledged the close.
      *
-     * <p>Kommt nach {@code close(true)} und aus der Nachrichtenschleife, also
-     * später und aus dem Pumpthread. Erst damit ist die Sitzung wirklich weg.
+     * <p>Comes after {@code close(true)} and out of the message loop, so later
+     * and from the pump thread. Only with it is the session really gone.
      */
     @Override
     public void browserClosed() {
@@ -190,10 +190,10 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
     }
 
     /**
-     * Öffnet einen Browser.
+     * Opens a browser.
      *
-     * <p>Nur zu rufen, wenn die Runtime bereit ist — sonst gibt es keinen
-     * {@code CefClient}, an den man ihn hängen könnte.
+     * <p>Only to be called when the runtime is ready — otherwise there is no
+     * {@code CefClient} to hang it on.
      */
     public static BrowserSession open(String url, boolean transparent,
                                       int width, int height,
@@ -202,11 +202,11 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
     }
 
     /**
-     * Öffnet einen Browser unter einem Namen.
+     * Opens a browser under a name.
      *
-     * <p>Der Name steht im Protokoll und in Chromiums Liste. Er ändert nichts
-     * am Verhalten — er beantwortet die Frage, welche von fünf Seiten die
-     * gemeinte ist.
+     * <p>The name stands in the log and in Chromium's list. It changes nothing
+     * about the behavior — it answers the question of which of five pages is the
+     * one meant.
      */
     public static BrowserSession open(String url, boolean transparent,
                                       int width, int height,
@@ -214,7 +214,7 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
         return new BrowserSession(url, transparent, width, height, visibility, name);
     }
 
-    // ---- Was der Browser meldet -------------------------------------------
+    // ---- What the browser reports -----------------------------------------
 
     @Override
     public void frame(BorrowedFrame frame) {
@@ -224,12 +224,12 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
         if (paints == 0) {
             firstPaintNanos = System.nanoTime();
         }
-        // Der Abstand zweier Bilder — die Zahl, die den Takt zeigt.
+        // The gap between two frames — the number that shows the cadence.
         //
-        // <p><b>Warum sie hier steht und nicht im Bildschirm.</b> Was Minecraft
-        // zeichnet, hat mit dem, was Chromium liefert, nichts zu tun; der
-        // Bildschirm sieht nur, wann er selbst dran war. Der Takt des Browsers
-        // ist genau hier zu haben, an der Stelle, wo sein Bild ankommt.
+        // <p><b>Why it stands here and not in the screen.</b> What Minecraft
+        // draws has nothing to do with what Chromium delivers; the screen only
+        // sees when it itself had a turn. The browser's cadence is to be had
+        // exactly here, at the point where its frame arrives.
         long paintNow = System.nanoTime();
         if (lastPaintNanos != 0) {
             paintGaps.record(paintNow - lastPaintNanos);
@@ -260,9 +260,9 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
     public void popupShown(boolean shown) {
         popupShown = shown;
         if (!shown) {
-            // Die verdeckte Fläche malt Chromium von selbst neu — es kommt als
-            // gewöhnliches Bild der Hauptansicht. Hier ist nichts
-            // wiederherzustellen, nur etwas zu verstecken.
+            // Chromium repaints the uncovered surface itself — it comes as an
+            // ordinary frame of the main view. There is nothing to restore here,
+            // only something to hide.
             popupWidth = 0;
             popupHeight = 0;
         }
@@ -284,16 +284,16 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
         }
     }
 
-    /** Wer die Zeigerwünsche bekommt — der Screen, solange er offen ist. */
+    /** Who gets the cursor requests — the screen, as long as it is open. */
     public void onCursor(IntConsumer sink) {
         this.cursorSink = sink;
     }
 
     /**
-     * Der Empfänger für Nachrichten aus der Seite ({@code window.fnSend}).
+     * The receiver for messages from the page ({@code window.fnSend}).
      *
-     * <p>Ein Empfänger je Sitzung; er läuft im Renderthread. {@code null}
-     * meldet ihn wieder ab.
+     * <p>One receiver per session; it runs on the render thread. {@code null}
+     * deregisters it again.
      */
     public void onMessage(java.util.function.Consumer<String> sink) {
         this.messageSink = sink;
@@ -311,14 +311,14 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
         }
     }
 
-    // ---- Eingabe -----------------------------------------------------------
+    // ---- Input -------------------------------------------------------------
 
     /**
-     * Der Zeiger bewegt sich, in Browser-Pixeln.
+     * The pointer moves, in browser pixels.
      *
-     * <p>Gedrückte Maustasten gehen mit: Ohne sie sieht Chromium eine Bewegung
-     * mit losgelassener Taste, und jedes Markieren bricht nach dem ersten
-     * Pixel ab.
+     * <p>Pressed mouse buttons go along: without them Chromium sees a move with
+     * the button released, and every selection breaks off after the first
+     * pixel.
      */
     public void mouseMoved(int x, int y, int keyboardModifiers) {
         if (!closed) {
@@ -328,10 +328,10 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
     }
 
     /**
-     * Der Zeiger verlässt die Fläche.
+     * The pointer leaves the surface.
      *
-     * <p>Ohne diese Meldung bleibt der zuletzt berührte Knopf hell, und ein
-     * Schwebehinweis steht, bis jemand die Fläche wieder betritt.
+     * <p>Without this notification the last button touched stays highlighted,
+     * and a hover hint remains until someone enters the surface again.
      */
     public void mouseLeft(int x, int y) {
         if (closed) {
@@ -366,20 +366,20 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
             return;
         }
         int count = clicks.released();
-        // Erst die Flagge löschen, dann melden: Beim Loslassen ist die Taste
-        // schon oben, und Chromium liest den Zustand danach.
+        // Clear the flag first, then report: on release the button is already
+        // up, and Chromium reads the state afterwards.
         buttons.release(minecraftButton);
         browser.clickMouse(x, y, false, cefButton, count,
                 buttons.modifiersWith(keyboardModifiers));
     }
 
     /**
-     * Das Rad dreht sich.
+     * The wheel turns.
      *
-     * <p>Der Faktor drei und das Runden auf ganze Rasten sind von MCEF
-     * übernommen und dort erprobt: Minecraft meldet gebrochene Werte, und
-     * ungerundet fühlt sich das Scrollen zäh an. Unter macOS bleibt es
-     * ungerundet, weil Trackpads dort feine Werte liefern, die etwas bedeuten.
+     * <p>The factor of three and the rounding to whole notches are taken from
+     * MCEF and proven there: Minecraft reports fractional values, and unrounded
+     * the scrolling feels sluggish. On macOS it stays unrounded, because
+     * trackpads there deliver fine values that mean something.
      */
     public void mouseScrolled(int x, int y, double amount, int keyboardModifiers) {
         if (closed) {
@@ -391,7 +391,7 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
                 buttons.modifiersWith(keyboardModifiers));
     }
 
-    /** Eine Taste geht herunter. Der Tastencode ist GLFWs, nicht Minecrafts. */
+    /** A key goes down. The key code is GLFW's, not Minecraft's. */
     public void keyPressed(int glfwKeyCode, int scanCode, int modifiers) {
         if (!closed) {
             noteInput();
@@ -406,12 +406,12 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
     }
 
     /**
-     * Ein Zeichen wurde getippt.
+     * A character was typed.
      *
-     * <p>Das kommt aus Minecrafts eigenem Texteingabeweg und ist bereits das
-     * fertige Zeichen — mit Tastaturbelegung, Umschalttaste und allem, was das
-     * Betriebssystem dazu beiträgt. Es aus Tastencodes nachzubauen, hieße, die
-     * Tastaturbelegung des Spielers zu erraten.
+     * <p>This comes from Minecraft's own text-input path and is already the
+     * finished character — with keyboard layout, shift key and everything the
+     * operating system contributes to it. Rebuilding it from key codes would
+     * mean guessing the player's keyboard layout.
      */
     public void charTyped(char typed, int modifiers) {
         if (!closed) {
@@ -421,12 +421,12 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
     }
 
     /**
-     * Ob die Seite noch lädt.
+     * Whether the page is still loading.
      *
-     * <p>Wichtig für alles, was in die Seite hineinruft: Vor dem Ende des
-     * Ladens gibt es das Dokument noch nicht, und ein Aufruf verpufft — ohne
-     * Fehler, ohne Spur. Genau das ist hier zuerst passiert: Der Hintergrund
-     * wurde einmal gesetzt, zu früh, und blieb für immer leer.
+     * <p>Important for everything that calls into the page: before loading ends,
+     * the document does not yet exist, and a call fizzles — without an error,
+     * without a trace. That is exactly what happened here first: the background
+     * was set once, too early, and stayed empty forever.
      */
     public boolean loading() {
         try {
@@ -437,21 +437,21 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
     }
 
     /**
-     * Führt eine Zeile JavaScript in der Seite aus.
+     * Runs one line of JavaScript in the page.
      *
-     * <p><b>Das ist keine Brücke.</b> Es geht nur in eine Richtung, die Seite
-     * kann nichts zurückgeben, und es gibt keine Schnittstelle, die sie
-     * anbieten müsste. Gebraucht wird es für genau eine Sache: die Adresse
-     * eines Bildes auszutauschen, ohne die Seite neu zu laden — und damit,
-     * ohne alles zu verlieren, was jemand darauf getippt hat.
+     * <p><b>This is not a bridge.</b> It goes only in one direction, the page
+     * can return nothing, and there is no interface it would have to offer. It
+     * is needed for exactly one thing: to swap the address of an image without
+     * reloading the page — and thereby without losing everything anyone has
+     * typed onto it.
      */
     public void runScript(String code) {
         if (closed) {
             return;
         }
-        // Über den Hauptrahmen und nicht über den Browser: Der Browser reicht
-        // den Aufruf an denselben Rahmen weiter, aber nur wenn er einen hat —
-        // und er hat keinen, solange nichts geladen ist.
+        // Via the main frame and not via the browser: the browser passes the
+        // call on to the same frame, but only if it has one — and it has none as
+        // long as nothing is loaded.
         org.cef.browser.CefFrame frame = browser.getMainFrame();
         if (frame == null) {
             return;
@@ -460,11 +460,11 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
     }
 
     /**
-     * Merkt sich, dass gerade etwas hineinging.
+     * Remembers that something just went in.
      *
-     * <p>Nur der <b>erste</b> Anschlag einer Folge zählt: Wer zehnmal tippt,
-     * bevor ein Bild kommt, wartet einmal — und diese eine Wartezeit ist, was
-     * er merkt.
+     * <p>Only the <b>first</b> keystroke of a sequence counts: whoever types ten
+     * times before a frame comes waits once — and that one wait is what they
+     * notice.
      */
     private void noteInput() {
         if (pendingInputNanos == 0) {
@@ -473,16 +473,15 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
     }
 
     /**
-     * Meldet, dass Minecraft jetzt zeichnet.
+     * Reports that Minecraft is now drawing.
      *
-     * <p>Der letzte fehlende Abschnitt: Zwischen dem fertigen Upload und dem
-     * Bild, das der Spieler sieht, liegt die Wartezeit auf den nächsten
-     * Durchgang von Minecraft. Ohne diesen Aufruf endete jede Messung an der
-     * Grafikkarte statt am Auge.
+     * <p>The last missing section: between the finished upload and the frame the
+     * player sees lies the wait for Minecraft's next pass. Without this call
+     * every measurement would end at the graphics card instead of at the eye.
      *
-     * <p><b>Und eine Ehrlichkeit dazu:</b> Gemessen wird bis zum <i>Beginn</i>
-     * des Zeichnens, nicht bis das Bild auf dem Schirm steht. Was danach noch
-     * kommt — Zeichnen, Puffertausch, Bildwiederholung — ist hier nicht drin.
+     * <p><b>And an honesty about it:</b> what is measured is up to the
+     * <i>beginning</i> of the drawing, not until the frame stands on the screen.
+     * What still comes after — drawing, buffer swap, refresh — is not in here.
      */
     public void noteScreenFrame() {
         if (uploadEndNanos == 0) {
@@ -497,27 +496,27 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
         uploadEndNanos = 0;
     }
 
-    /** A — von der Eingabe bis Chromium ein Bild liefert. */
+    /** A — from the input until Chromium delivers a frame. */
     public dev.devpanda.bamboocef.web.measure.DurationSamples toPaint() {
         return toPaint;
     }
 
-    /** C — vom Ende des Uploads bis Minecraft zeichnet. */
+    /** C — from the end of the upload until Minecraft draws. */
     public dev.devpanda.bamboocef.web.measure.DurationSamples toScreen() {
         return toScreen;
     }
 
-    /** Die ganze Strecke. Muss ungefähr A + B + C sein. */
+    /** The whole span. Must be roughly A + B + C. */
     public dev.devpanda.bamboocef.web.measure.DurationSamples totalLatency() {
         return totalLatency;
     }
 
-    /** Wie lange es von einer Eingabe bis zum Bild dauert (A). */
+    /** How long it takes from an input to the frame (A). */
     public dev.devpanda.bamboocef.web.measure.DurationSamples inputLatency() {
         return toPaint;
     }
 
-    /** Setzt alle drei Abschnitte zurück. */
+    /** Resets all three sections. */
     public void resetLatency() {
         toPaint.reset();
         toScreen.reset();
@@ -529,25 +528,25 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
         uploadEndNanos = 0;
     }
 
-    /** Der Takt: Abstände zwischen zwei Bildern aus Chromium. */
+    /** The cadence: gaps between two frames from Chromium. */
     public dev.devpanda.bamboocef.web.measure.DurationSamples paintGaps() {
         return paintGaps;
     }
 
-    /** Sagt Chromium, ob es die Tastatur hat. */
+    /** Tells Chromium whether it has the keyboard. */
     public void setFocused(boolean focused) {
         if (closed) {
             return;
         }
         browser.setFocus(focused);
         if (!focused) {
-            // Was beim Fokusverlust gedrückt war, bleibt es sonst für immer.
+            // What was pressed at focus loss would otherwise stay so forever.
             buttons.forget();
             clicks.forget();
         }
     }
 
-    // ---- Größe, Sichtbarkeit, Zustand -------------------------------------
+    // ---- Size, visibility, state ------------------------------------------
 
     public void resize(int width, int height) {
         if (!closed) {
@@ -557,10 +556,10 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
 
     public void setVisibility(BrowserVisibility visibility) {
         pacer.setVisibility(visibility);
-        // Chromium selbst mitteilen, dass niemand hinsieht. In dieser
-        // JCEF-Fassung heißt das setWindowVisibility und nicht wasHidden —
-        // nachgesehen im Jar, nicht im aktuellen Quelltext von JCEF, der
-        // neuer ist als das, was MCEF mitbringt.
+        // Tell Chromium itself that no one is looking. In this JCEF version
+        // that is setWindowVisibility and not wasHidden — looked up in the jar,
+        // not in the current JCEF source, which is newer than what MCEF brings
+        // along.
         browser.setWindowVisibility(visibility.drawing());
     }
 
@@ -616,7 +615,7 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
         return popupPaints;
     }
 
-    /** Was der Browser gerade geladen hat — für die Fehlersuche. */
+    /** What the browser has currently loaded — for debugging. */
     public String currentUrl() {
         try {
             return browser.getURL();
@@ -625,7 +624,7 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
         }
     }
 
-    /** Wie lange es vom Öffnen bis zum ersten Bild dauerte, in Millisekunden. */
+    /** How long it took from opening to the first frame, in milliseconds. */
     public double millisToFirstPaint() {
         return firstPaintNanos == 0 ? -1.0
                 : (firstPaintNanos - createdNanos) / 1_000_000.0;
@@ -640,14 +639,14 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
         cursorSink = null;
         messageSink = null;
         WebMessages.unregister(browser);
-        // Ab hier gilt sie nicht mehr als offen, ist aber noch nicht fertig:
-        // close(true) ist eine Bitte, die Bestätigung kommt später.
+        // From here on it no longer counts as open, but it is not yet finished:
+        // close(true) is a request, the acknowledgement comes later.
         dev.devpanda.bamboocef.web.BrowserManager.closing(this);
         try {
             browser.close(true);
         } catch (Throwable broken) {
-            // Ein Browser, der beim Schließen zickt, darf den Rest nicht
-            // aufhalten — die Texturen müssen trotzdem weg.
+            // A browser that acts up while closing must not hold up the rest —
+            // the textures have to go all the same.
         }
         texture.close();
         popupTexture.close();

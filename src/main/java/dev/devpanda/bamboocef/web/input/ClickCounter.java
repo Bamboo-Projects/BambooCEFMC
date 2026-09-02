@@ -1,35 +1,35 @@
 package dev.devpanda.bamboocef.web.input;
 
 /**
- * Zählt, der wievielte Klick in Folge das gerade war.
+ * Counts which click in a row this just was.
  *
- * <p><b>Warum das selbst gezählt werden muss.</b> CEF leitet Doppelklicks
- * nicht aus Zeitstempeln ab — es glaubt der Zahl, die im Ereignis steht. Wer
- * dort immer eine Eins schickt, bekommt nie einen Doppelklick: Kein Wort lässt
- * sich markieren, kein Feld durch Doppelklick auswählen. In einem Texteditor
- * ist das nicht eine fehlende Feinheit, sondern eine fehlende Grundfunktion.
+ * <p><b>Why this has to be counted ourselves.</b> CEF does not derive double
+ * clicks from timestamps — it trusts the number in the event. Whoever always
+ * sends a one there never gets a double click: no word can be selected, no
+ * field chosen by double click. In a text editor that is not a missing nicety
+ * but a missing basic function.
  *
- * <p>MCEF schickt immer eine Eins. Das ist eine der Stellen, an denen wir
- * bewusst etwas anderes tun.
+ * <p>MCEF always sends a one. This is one of the places where we deliberately
+ * do something else.
  *
- * <p><b>Zwei Bedingungen, beide nötig.</b> Zeit allein reicht nicht: Wer
- * zweimal schnell an weit entfernte Stellen klickt, meint zwei Klicks. Nähe
- * allein reicht auch nicht: Zwei Klicks im Abstand einer Minute sind keine
- * Doppelklicks, egal wie genau sie treffen.
+ * <p><b>Two conditions, both required.</b> Time alone is not enough: whoever
+ * clicks twice quickly at far-apart spots means two clicks. Proximity alone is
+ * not enough either: two clicks a minute apart are not a double click, however
+ * precisely they land.
  *
- * <p>Reine Rechnung — die Zeit kommt herein, damit sich der Ablauf prüfen
- * lässt, ohne zu warten.
+ * <p>Pure computation — time comes in as a parameter so the process can be
+ * checked without waiting.
  */
 public final class ClickCounter {
 
-    /** Was Windows und die meisten Oberflächen als Doppelklick durchgehen lassen. */
+    /** What Windows and most interfaces let pass as a double click. */
     public static final long DEFAULT_WINDOW_MILLIS = 500L;
 
     /**
-     * Wie weit der zweite Klick daneben liegen darf, in Browser-Pixeln.
+     * How far off the second click may land, in browser pixels.
      *
-     * <p>Nicht null: Eine Maus wandert beim Doppelklicken immer ein wenig, und
-     * bei hoher Auflösung sind ein paar Pixel weniger als ein Buchstabe.
+     * <p>Not zero: a mouse always wanders a little when double clicking, and at
+     * high resolution a few pixels are less than a letter.
      */
     public static final int DEFAULT_SLOP_PIXELS = 4;
 
@@ -52,11 +52,11 @@ public final class ClickCounter {
     }
 
     /**
-     * Meldet einen Tastendruck und sagt, der wievielte er war.
+     * Reports a button press and says which one in sequence it was.
      *
-     * @return 1 für einen einfachen Klick, 2 für einen Doppelklick, 3 für
-     *         einen Dreifachklick — danach beginnt die Zählung von vorn, weil
-     *         keine Oberfläche mehr als drei unterscheidet
+     * @return 1 for a single click, 2 for a double click, 3 for a triple click
+     *         — after that the count starts over, because no interface
+     *         distinguishes more than three
      */
     public int pressed(int button, int x, int y, long nowMillis) {
         boolean continues = button == this.button
@@ -76,23 +76,21 @@ public final class ClickCounter {
     }
 
     /**
-     * Die Zahl für das Loslassen zum letzten Druck.
+     * The count for the release matching the last press.
      *
-     * <p>CEF erwartet dieselbe Zahl bei Druck und Loslassen. Wer beim
-     * Loslassen wieder eine Eins schickt, macht den Doppelklick auf halbem Weg
-     * wieder kaputt.
+     * <p>CEF expects the same number on press and release. Whoever sends a one
+     * again on release breaks the double click halfway through.
      */
     public int released() {
         return Math.max(1, count);
     }
 
     /**
-     * Vergisst, was war.
+     * Forgets what was.
      *
-     * <p>Nötig, wenn der Zeiger die Fläche verlässt oder der Browser den Fokus
-     * verliert: Ein Klick vor dem Verlassen und einer nach der Rückkehr sind
-     * keine zwei Teile derselben Geste, auch wenn dazwischen weniger als eine
-     * halbe Sekunde liegt.
+     * <p>Needed when the pointer leaves the surface or the browser loses focus:
+     * a click before leaving and one after returning are not two parts of the
+     * same gesture, even if less than half a second lies between them.
      */
     public void forget() {
         button = -1;

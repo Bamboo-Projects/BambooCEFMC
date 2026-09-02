@@ -13,11 +13,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Das Bild besitzt seine Bildpunkte — geprüft, nicht behauptet.
+ * The frame owns its pixels — tested, not asserted.
  *
- * <p>Der Fall, um den es geht, ist genau der von JCEF: Ein fremder Puffer
- * kommt herein, wird gleich danach überschrieben, und das Bild muss trotzdem
- * zeigen, was zum Zeitpunkt des Aufrufs darin stand.
+ * <p>The case at hand is exactly that of JCEF: a foreign buffer
+ * comes in, is overwritten right afterwards, and the frame must still
+ * show what was in it at the time of the call.
  */
 class CpuBrowserFrameTest {
 
@@ -32,14 +32,14 @@ class CpuBrowserFrameTest {
     }
 
     @Test
-    @DisplayName("Was der fremde Puffer nach dem Aufruf tut, geht das Bild nichts an")
+    @DisplayName("What the foreign buffer does after the call is no concern of the frame")
     void theFrameSurvivesTheSourceBeingOverwritten() {
         ByteBuffer chromium = bufferOf(2, 2, (byte) 0x11);
         CpuBrowserFrame frame = CpuBrowserFrame.allocate(2, 2);
         frame.copyFrom(chromium, 2, 2, List.of());
 
-        // Chromium verwendet seinen Puffer wieder — genau das darf es nach der
-        // Rückkehr aus onPaint.
+        // Chromium reuses its buffer — exactly what it may do after
+        // returning from onPaint.
         chromium.clear();
         while (chromium.hasRemaining()) {
             chromium.put((byte) 0x77);
@@ -52,7 +52,7 @@ class CpuBrowserFrameTest {
     }
 
     @Test
-    @DisplayName("Der fremde Puffer wird nicht angefasst")
+    @DisplayName("The foreign buffer is not touched")
     void theSourceIsLeftAlone() {
         ByteBuffer chromium = bufferOf(2, 2, (byte) 0x11);
         int positionBefore = chromium.position();
@@ -66,7 +66,7 @@ class CpuBrowserFrameTest {
     }
 
     @Test
-    @DisplayName("Ohne Angabe gilt das ganze Bild als geändert")
+    @DisplayName("With no value given the whole frame counts as changed")
     void noRegionsMeansEverything() {
         CpuBrowserFrame frame = CpuBrowserFrame.allocate(8, 4);
         frame.copyFrom(bufferOf(8, 4, (byte) 1), 8, 4, List.of());
@@ -76,7 +76,7 @@ class CpuBrowserFrameTest {
     }
 
     @Test
-    @DisplayName("Angegebene Bereiche bleiben erhalten")
+    @DisplayName("Given regions are preserved")
     void regionsAreKept() {
         CpuBrowserFrame frame = CpuBrowserFrame.allocate(8, 4);
         DirtyRegion cursor = new DirtyRegion(2, 1, 1, 1);
@@ -88,7 +88,7 @@ class CpuBrowserFrameTest {
     }
 
     @Test
-    @DisplayName("Eine zu kleine Quelle wird abgewiesen statt halb gelesen")
+    @DisplayName("A source that is too small is rejected instead of half-read")
     void aShortSourceIsRefused() {
         CpuBrowserFrame frame = CpuBrowserFrame.allocate(4, 4);
         ByteBuffer tooSmall = bufferOf(2, 2, (byte) 1);
@@ -98,7 +98,7 @@ class CpuBrowserFrameTest {
     }
 
     @Test
-    @DisplayName("Wächst das Fenster, wächst der Puffer mit")
+    @DisplayName("When the window grows, the buffer grows with it")
     void growingReallocates() {
         CpuBrowserFrame frame = CpuBrowserFrame.allocate(2, 2);
         frame.copyFrom(bufferOf(2, 2, (byte) 1), 2, 2, List.of());
@@ -111,7 +111,7 @@ class CpuBrowserFrameTest {
     }
 
     @Test
-    @DisplayName("Wiederverwenden behält den Puffer und vergisst die Bereiche")
+    @DisplayName("Reuse keeps the buffer and forgets the regions")
     void reuseKeepsTheBufferAndForgetsTheRegions() {
         CpuBrowserFrame frame = CpuBrowserFrame.allocate(4, 4);
         frame.copyFrom(bufferOf(4, 4, (byte) 5), 4, 4, List.of(new DirtyRegion(0, 0, 1, 1)));
@@ -125,7 +125,7 @@ class CpuBrowserFrameTest {
     }
 
     @Test
-    @DisplayName("Ein geschlossenes Bild gibt nichts mehr her")
+    @DisplayName("A closed frame yields nothing more")
     void aClosedFrameIsDone() {
         CpuBrowserFrame frame = CpuBrowserFrame.allocate(2, 2);
         frame.copyFrom(bufferOf(2, 2, (byte) 1), 2, 2, List.of());
@@ -140,7 +140,7 @@ class CpuBrowserFrameTest {
     }
 
     @Test
-    @DisplayName("Die Sicht auf die Bildpunkte ist schreibgeschützt und teilt keine Position")
+    @DisplayName("The view of the pixels is read-only and shares no position")
     void theViewIsReadOnlyAndIndependent() {
         CpuBrowserFrame frame = CpuBrowserFrame.allocate(2, 2);
         frame.copyFrom(bufferOf(2, 2, (byte) 3), 2, 2, List.of());
@@ -156,7 +156,7 @@ class CpuBrowserFrameTest {
     }
 
     @Test
-    @DisplayName("Kein Bild ohne Maße")
+    @DisplayName("No frame without dimensions")
     void sizeMustMakeSense() {
         assertThrows(IllegalArgumentException.class, () -> CpuBrowserFrame.allocate(0, 4));
         assertThrows(IllegalArgumentException.class, () -> new DirtyRegion(0, 0, 0, 1));

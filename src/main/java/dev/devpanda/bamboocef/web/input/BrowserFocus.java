@@ -1,50 +1,50 @@
 package dev.devpanda.bamboocef.web.input;
 
 /**
- * Wer die Tastatur bekommt: Minecraft oder der Browser.
+ * Who gets the keyboard: Minecraft or the browser.
  *
- * <p><b>Ohne diese Unterscheidung ist ein Editor unbenutzbar.</b> Wer in einem
- * Programmtext ein {@code e} tippt, will kein Inventar. Wer eine {@code 1}
- * tippt, will keinen Werkzeugwechsel. Und wer {@code w} tippt, will nicht
- * loslaufen. Ein Screen fängt zwar schon vieles ab — aber sobald eine Fläche
- * in der Welt Text annehmen soll, gibt es keinen Screen mehr, der das für uns
- * täte. Deshalb steht der Zustand hier und nicht im Screen.
+ * <p><b>Without this distinction an editor is unusable.</b> Whoever types an
+ * {@code e} in program text does not want the inventory. Whoever types a
+ * {@code 1} does not want to switch tools. And whoever types {@code w} does not
+ * want to start walking. A screen does intercept much already — but as soon as
+ * a surface in the world is meant to accept text, there is no longer a screen
+ * that would do it for us. That is why the state lives here and not in the
+ * screen.
  *
- * <p><b>Zur Escape-Taste.</b> Die naheliegende Annahme, Escape gehöre immer
- * Minecraft, ist falsch: Ein Auswahlfeld schließt sich damit, ein Menü ebenso,
- * und ein Editor bricht damit die Vervollständigung ab. Wer Escape abfängt,
- * nimmt der Weboberfläche eine Taste, die sie selbst braucht.
+ * <p><b>On the Escape key.</b> The obvious assumption that Escape always
+ * belongs to Minecraft is wrong: a dropdown closes with it, a menu likewise,
+ * and an editor cancels its autocompletion with it. Whoever intercepts Escape
+ * takes from the web interface a key it needs itself.
  *
- * <p>Die Entscheidung für den ersten Screen: <b>Escape geht an den Browser</b>,
- * und für den Rückweg gibt es eine eigene Taste. Das ist die
- * unwahrscheinlichere von zwei Unbequemlichkeiten — eine Taste lernen ist
- * leichter, als in einem Editor ohne Abbrechen zu arbeiten. Sobald die
- * Oberfläche selbst sagen kann „diese Escape habe ich nicht gebraucht", kann
- * die Taste zurückwandern.
+ * <p>The decision for the first screen: <b>Escape goes to the browser</b>, and
+ * for the way back there is a key of its own. That is the less likely of two
+ * inconveniences — learning one key is easier than working in an editor with no
+ * cancel. As soon as the interface itself can say "I did not need this Escape",
+ * the key can move back.
  */
 public enum BrowserFocus {
 
-    /** Alles geht den gewohnten Weg. Der Browser sieht keine Taste. */
+    /** Everything takes the usual path. The browser sees no key. */
     MINECRAFT,
 
     /**
-     * Der Browser bekommt Tasten und Text; Minecraft sieht nichts davon.
+     * The browser gets keys and text; Minecraft sees nothing of it.
      *
-     * <p>Auch nicht als Zweitverwertung: Ein Ereignis, das der Browser
-     * bekommt, darf danach nicht noch einmal als Spielsteuerung gelten.
+     * <p>Not even as a second use: an event the browser gets must not then
+     * count once more as game control.
      */
     BROWSER;
 
-    /** Soll dieser Tastendruck an den Browser gehen? */
+    /** Should this key press go to the browser? */
     public boolean routesKeyboard() {
         return this == BROWSER;
     }
 
     /**
-     * Darf Minecraft diesen Tastendruck noch sehen?
+     * May Minecraft still see this key press?
      *
-     * <p>Immer das Gegenteil von {@link #routesKeyboard()} — beide Antworten
-     * stehen hier zusammen, damit niemand versehentlich beides zulässt.
+     * <p>Always the opposite of {@link #routesKeyboard()} — both answers live
+     * here together so that nobody accidentally permits both.
      */
     public boolean routesGameplay() {
         return this == MINECRAFT;

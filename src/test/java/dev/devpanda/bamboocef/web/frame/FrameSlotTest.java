@@ -16,15 +16,15 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Das Postfach: das neueste Bild gewinnt, und der Besitz ist sichtbar.
+ * The mailbox: the newest frame wins, and ownership is visible.
  *
- * <p>Beides lässt sich ohne Minecraft prüfen, und beides ist der Grund, warum
- * es das Postfach gibt. Ein verdrängtes Bild, das niemand zurückbekommt, ist
- * ein Speicherleck von achteinhalb Megabyte je Bild.
+ * <p>Both are testable without Minecraft, and both are the reason why
+ * the mailbox exists. A displaced frame that no one gets back is
+ * a memory leak of eight and a half megabytes per frame.
  */
 class FrameSlotTest {
 
-    /** Ein Bild, das nur zählt, ob es geschlossen wurde. */
+    /** A frame that only counts whether it was closed. */
     private static final class CountingFrame implements BrowserFrame {
         private final int mark;
         private int closes;
@@ -55,7 +55,7 @@ class FrameSlotTest {
     }
 
     @Test
-    @DisplayName("Ein leeres Postfach gibt nichts heraus")
+    @DisplayName("An empty mailbox yields nothing")
     void emptySlotYieldsNothing() {
         try (FrameSlot slot = new FrameSlot()) {
             assertNull(slot.poll());
@@ -64,7 +64,7 @@ class FrameSlotTest {
     }
 
     @Test
-    @DisplayName("Was abgelegt wurde, kommt heraus — genau einmal")
+    @DisplayName("What was deposited comes out — exactly once")
     void whatGoesInComesOutOnce() {
         CountingFrame frame = new CountingFrame(1);
         try (FrameSlot slot = new FrameSlot()) {
@@ -76,7 +76,7 @@ class FrameSlotTest {
     }
 
     @Test
-    @DisplayName("Das neueste Bild gewinnt, und das alte kommt zurück")
+    @DisplayName("The newest frame wins, and the old one comes back")
     void theNewestFrameWins() {
         CountingFrame first = new CountingFrame(1);
         CountingFrame second = new CountingFrame(2);
@@ -94,7 +94,7 @@ class FrameSlotTest {
     }
 
     @Test
-    @DisplayName("Drei Bilder ohne Abholung: zwei werden verdrängt")
+    @DisplayName("Three frames without pickup: two are displaced")
     void everySkippedFrameIsCounted() {
         try (FrameSlot slot = new FrameSlot()) {
             slot.offer(new CountingFrame(1));
@@ -108,7 +108,7 @@ class FrameSlotTest {
     }
 
     @Test
-    @DisplayName("Schließen räumt das wartende Bild ab")
+    @DisplayName("Closing clears the waiting frame")
     void closingReleasesThePendingFrame() {
         CountingFrame waiting = new CountingFrame(1);
         FrameSlot slot = new FrameSlot();
@@ -121,7 +121,7 @@ class FrameSlotTest {
     }
 
     @Test
-    @DisplayName("Nach dem Schließen behält der Aufrufer sein Bild")
+    @DisplayName("After closing the caller keeps its frame")
     void afterClosingTheCallerKeepsOwnership() {
         FrameSlot slot = new FrameSlot();
         slot.close();
@@ -134,7 +134,7 @@ class FrameSlotTest {
     }
 
     @Test
-    @DisplayName("Zweimal schließen tut nichts Zweites")
+    @DisplayName("Closing twice does nothing a second time")
     void closingTwiceIsHarmless() {
         CountingFrame frame = new CountingFrame(1);
         FrameSlot slot = new FrameSlot();
@@ -146,11 +146,11 @@ class FrameSlotTest {
     }
 
     @Test
-    @DisplayName("Unter Nebenläufigkeit geht kein Bild verloren und keines doppelt heraus")
+    @DisplayName("Under concurrency no frame is lost and none comes out twice")
     void nothingIsLostOrDuplicatedUnderConcurrency() throws Exception {
-        // Nicht als Beweis der Nebenläufigkeit — den führt kein Test —, sondern
-        // gegen den groben Fehler: ein Bild, das zweimal herauskommt, oder eins,
-        // das weder ausgegeben noch verdrängt wurde. Beides wäre ein Leck.
+        // Not as proof of concurrency — no test provides that —, but
+        // against the gross fault: a frame that comes out twice, or one
+        // that was neither handed out nor displaced. Both would be a leak.
         final int rounds = 2_000;
         FrameSlot slot = new FrameSlot();
         AtomicInteger consumed = new AtomicInteger();
@@ -181,7 +181,7 @@ class FrameSlotTest {
     }
 
     @Test
-    @DisplayName("Ohne Bild kein Ablegen")
+    @DisplayName("No depositing without a frame")
     void nullIsNotAFrame() {
         try (FrameSlot slot = new FrameSlot()) {
             assertNotNull(org.junit.jupiter.api.Assertions.assertThrows(

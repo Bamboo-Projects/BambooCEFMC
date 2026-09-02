@@ -10,43 +10,43 @@ import org.slf4j.LoggerFactory;
 import java.util.Locale;
 
 /**
- * Beantwortet die eine Frage, die nach Schritt F offen blieb: Wie fühlt sich
- * Tippen bei voller Auflösung an?
+ * Answers the one question that stayed open after Step F: how does typing
+ * feel at full resolution?
  *
- * <p><b>Gemessen, nicht hochgerechnet.</b> Die Fenstergröße kommt beim Start
- * über {@code --width} und {@code --height}, und der Browser bekommt genau so
- * viele Bildpunkte. Was hier steht, gilt für die Auflösung, in der das Fenster
- * gerade läuft — sie steht in jeder Zeile mit dabei.
+ * <p><b>Measured, not extrapolated.</b> The window size comes at startup
+ * via {@code --width} and {@code --height}, and the browser gets exactly as
+ * many pixels. What stands here holds for the resolution in which the window
+ * is currently running — it is included in every line.
  *
- * <p><b>Lange Abschnitte statt vieler.</b> In Schritt F liefen die
- * Tippszenarien vier Sekunden und lieferten vierzig Messungen; ein p95 daraus
- * ist eine Behauptung. Hier tippt jeder Abschnitt eine Dreiviertelminute, und
- * die Verteilung trägt.
+ * <p><b>Long sections instead of many.</b> In Step F the
+ * typing scenarios ran four seconds and delivered forty measurements; a p95 from that
+ * is a claim. Here each section types for three quarters of a minute, and
+ * the distribution holds.
  *
- * <p><b>Die Verzögerung wird zerlegt.</b> Zwischen Tastendruck und Bild liegen
- * drei Strecken, und nur eine davon gehört uns:
+ * <p><b>The delay is broken down.</b> Between key press and frame lie
+ * three stretches, and only one of them is ours:
  *
  * <pre>
- *   A   Eingabe → Chromium liefert ein Bild     (Chromium und Monaco)
- *   B   das Bild in die Textur schieben          (unser Weg)
- *   C   bis Minecraft das nächste Mal zeichnet   (Wartezeit)
+ *   A   input → Chromium delivers a frame        (Chromium and Monaco)
+ *   B   push the frame into the texture           (our path)
+ *   C   until Minecraft next draws                (waiting time)
  * </pre>
  *
- * <p>Ob wir am Upload hängen oder an Chromium, entscheidet sich an diesen drei
- * Zahlen — und daran, ob ihre Summe die gemessene Gesamtstrecke trifft. Tut
- * sie das nicht, ist die Zerlegung falsch, und das steht dann im Protokoll.
+ * <p>Whether we are stuck on the upload or on Chromium is decided by these three
+ * numbers — and by whether their sum matches the measured total stretch. If
+ * it does not, the breakdown is wrong, and that then goes into the log.
  */
 public final class TypingBenchmark extends IdeScreen {
 
     private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/TypingBench");
 
-    /** Lange genug, dass ein p95 etwas bedeutet. */
+    /** Long enough that a p95 means something. */
     private static final long TYPING_NANOS = 45_000_000_000L;
 
-    /** Für alles, was nur der Vollständigkeit halber mitläuft. */
+    /** For everything that only runs along for the sake of completeness. */
     private static final long SHORT_NANOS = 8_000_000_000L;
 
-    /** Ruhe nach einem Wechsel, bevor gezählt wird. */
+    /** Calm after a switch, before counting begins. */
     private static final int SETTLE_FRAMES = 30;
 
     private static boolean finished;
@@ -71,12 +71,12 @@ public final class TypingBenchmark extends IdeScreen {
     }
 
     /**
-     * Was getippt wird.
+     * What is typed.
      *
-     * <p>Ohne Zeilenumbruch wächst dieselbe Zeile über eine Dreiviertelminute
-     * auf mehrere tausend Zeichen — und Monacos Umgang mit Monsterzeilen ist
-     * ein eigener Kostenfaktor, der hier nichts zu suchen hat. Deshalb kommt
-     * alle vierzig Zeichen eine echte Eingabetaste.
+     * <p>Without a line break the same line grows over three quarters of a minute
+     * to several thousand characters — and Monaco's handling of monster lines is
+     * a cost factor of its own that has no business here. That is why every
+     * forty characters a real enter key comes.
      */
     private static final String TIPPTEXT =
             "    let vorrat = storage.count(\"eisenbarren\")";
@@ -112,8 +112,8 @@ public final class TypingBenchmark extends IdeScreen {
     protected void init() {
         super.init();
         if (stepStartedNanos == 0) {
-            // Ein Zeitstempel als Anker, damit sich ein Lauf im Protokoll von
-            // allen vorigen unterscheiden lässt.
+            // A timestamp as an anchor, so that a run can be told apart in the
+            // log from all previous ones.
             LOG.info("=== LAUF {} — Fenster {}x{}, Browser {}x{} ===",
                     System.currentTimeMillis() / 1000,
                     minecraft.getWindow().getWidth(), minecraft.getWindow().getHeight(),
@@ -184,16 +184,16 @@ public final class TypingBenchmark extends IdeScreen {
                 }
             }
             case TYPING_FAST -> {
-                // <b>Zwanzig Zeichen je Sekunde, nicht hundert.</b> Beim
-                // ersten Versuch kam bei jedem Bild ein Zeichen — gegen
-                // hundertfünfzehn Bilder in der Sekunde also schneller, als
-                // ein Mensch je tippt. Chromium kam bei voller Auflösung nicht
-                // mehr hinterher: zehn Bilder in fünfundvierzig Sekunden, ein
-                // Rückstau von fünfzehn Sekunden, und die beiden folgenden
-                // Abschnitte maßen nur noch dessen Abarbeitung.
+                // <b>Twenty characters per second, not a hundred.</b> On the
+                // first attempt a character came on every frame — against
+                // one hundred fifteen frames per second, thus faster than
+                // a human ever types. Chromium at full resolution could
+                // no longer keep up: ten frames in forty-five seconds, a
+                // backlog of fifteen seconds, and the two following
+                // sections measured only the clearing of it.
                 //
-                // Zwanzig je Sekunde ist schnelles menschliches Tippen und
-                // damit die Zahl, die etwas bedeutet.
+                // Twenty per second is fast human typing and
+                // thus the number that means something.
                 if (frameInStep % 6 == 0) {
                     typeNext();
                 }
@@ -207,8 +207,8 @@ public final class TypingBenchmark extends IdeScreen {
     private void typeNext() {
         int at = typedIndex++ % (TIPPTEXT.length() + 1);
         if (at == TIPPTEXT.length()) {
-            // Eine echte Eingabetaste, kein Zeichen. Sie geht über den
-            // Tastenweg und hält die Zeilen kurz.
+            // A real enter key, not a character. It goes over the
+            // key path and keeps the lines short.
             sendKeyCombination(GLFW.GLFW_KEY_ENTER, 0);
         } else {
             charTyped(TIPPTEXT.charAt(at), 0);
@@ -217,12 +217,12 @@ public final class TypingBenchmark extends IdeScreen {
 
     private void begin() {
         switch (step) {
-            // <b>Vor jedem Tippabschnitt ein frisches Dokument.</b> Sonst
-            // schreibt jede Phase in das, was die vorigen hinterlassen haben —
-            // nach drei Abschnitten sind das zweieinviertel Minuten Text, und
-            // die Messung zeigt das Wachsen des Dokuments statt des
-            // Unterschieds, um den es geht. Genau so ist der erste
-            // Glas-Vergleich zustande gekommen, und er war damit wertlos.
+            // <b>A fresh document before every typing section.</b> Otherwise
+            // each phase writes into what the previous ones left behind —
+            // after three sections that is two and a quarter minutes of text, and
+            // the measurement shows the growth of the document instead of the
+            // difference that is the point. Exactly this is how the first
+            // glass comparison came about, and it was worthless because of it.
             case TYPING_GLASS, TYPING_FAST -> {
                 runScript("window.fnIde && fnIde.glas(true)");
                 runScript("window.fnIde && fnIde.thema('fn-glas')");
@@ -246,10 +246,10 @@ public final class TypingBenchmark extends IdeScreen {
                 runScript("window.fnIde && fnIde.springe(1)");
             }
             case REOPEN -> {
-                // Der Bildschirm bleibt, aber die Seite wird neu geladen: Das
-                // ist das zweite Öffnen, wie es ein Spieler erlebt, der die
-                // Oberfläche schließt und gleich wieder aufmacht. CEF läuft
-                // dann, und die Dateien liegen ausgepackt bereit.
+                // The screen stays, but the page is reloaded: this
+                // is the second open, as a player experiences it who
+                // closes the interface and immediately opens it again. CEF is
+                // then running, and the files lie unpacked and ready.
                 LOG.info("Zweites Öffnen beginnt — Zeitmessung bis „IDE bereit"
                         + " im Protokoll der Seite");
                 runScript("location.reload()");
@@ -291,7 +291,7 @@ public final class TypingBenchmark extends IdeScreen {
                 texture.uploadedBytes() / seconds / (1024.0 * 1024.0),
                 texture.fullUploads(), texture.uploads()));
 
-        // Die Zerlegung. B kommt aus der Uploadmessung, die es ohnehin gibt.
+        // The breakdown. B comes from the upload measurement, which exists anyway.
         double a = toPaint.percentile(50) / 1000.0;
         double b = texture.uploadTimes().percentile(50) / 1000.0;
         double c = toScreen.percentile(50) / 1000.0;
@@ -300,8 +300,8 @@ public final class TypingBenchmark extends IdeScreen {
                 "%s: A bis Bild %.1f ms | B Upload %.1f ms | C bis Zeichnen %.1f ms "
                         + "| Summe %.1f ms | gemessen gesamt %.1f ms",
                 step.label, a, b, c, a + b + c, gesamt));
-        // Wenn die Summe die Gesamtstrecke verfehlt, ist die Zerlegung kaputt
-        // — und das soll auffallen, nicht im Bericht landen.
+        // If the sum misses the total stretch, the breakdown is broken
+        // — and that should stand out, not land in the report.
         if (gesamt > 0 && Math.abs(a + b + c - gesamt) > gesamt * 0.35) {
             LOG.warn("{}: Die Zerlegung geht nicht auf — Summe {} ms gegen {} ms gemessen. "
                             + "Die Einzelwerte sind dann mit Vorsicht zu lesen.",

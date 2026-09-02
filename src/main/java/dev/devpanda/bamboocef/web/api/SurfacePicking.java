@@ -5,18 +5,18 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 /**
- * Wohin auf einer Fläche ein Strahl zeigt.
+ * Where on a surface a ray points.
  *
- * <p>Reine Geometrie, ohne Chromium und ohne Welt: aus dem Mittelpunkt, der
- * Ausrichtung und der Größe einer Fläche und einem Strahl (Ursprung und
- * Richtung) wird der getroffene Pixel. Genau die Rechnung, die im Spiel
- * darüber entscheidet, ob ein Klick dort landet, wo man hinsieht.
+ * <p>Pure geometry, without Chromium and without the world: from the center,
+ * the orientation, and the size of a surface and a ray (origin and direction)
+ * comes the pixel that is hit. Exactly the computation that, in the game,
+ * decides whether a click lands where you are looking.
  *
- * <p><b>Dieselbe Kette wie beim Zeichnen, nur rückwärts.</b> {@link WorldSurfaceImpl}
- * dreht die Fläche mit {@code YP(-yaw)} und {@code XP(pitch)}; hier wird
- * dieselbe Matrix gebaut und umgekehrt, damit der Weltpunkt in das lokale
- * Maß der Fläche fällt. Lokales {@code +Z} zeigt zum Betrachter — die
- * Vorderseite ist die Seite, von der der Strahl kommt.
+ * <p><b>The same chain as when drawing, only backward.</b> {@link WorldSurfaceImpl}
+ * rotates the surface with {@code YP(-yaw)} and {@code XP(pitch)}; here the
+ * same matrix is built and inverted, so that the world point falls into the
+ * surface's local measure. Local {@code +Z} points toward the viewer — the
+ * front is the side the ray comes from.
  */
 final class SurfacePicking {
 
@@ -24,9 +24,8 @@ final class SurfacePicking {
     }
 
     /**
-     * @return {@code {pixelX, pixelY, entfernung}} oder {@code null}, wenn der
-     *         Strahl die Vorderseite der Fläche nicht innerhalb ihrer Ränder
-     *         trifft
+     * @return {@code {pixelX, pixelY, distance}} or {@code null} if the ray
+     *         does not hit the front of the surface within its bounds
      */
     static double[] hit(double centerX, double centerY, double centerZ,
                         float yaw, float pitch, float widthBlocks, float heightBlocks,
@@ -41,20 +40,20 @@ final class SurfacePicking {
 
         Vector3f origin = inverse.transformPosition(
                 new Vector3f((float) originX, (float) originY, (float) originZ));
-        // Eine Richtung, kein Ort: ohne die Verschiebung, deshalb transformDirection.
+        // A direction, not a location: without the translation, hence transformDirection.
         Vector3f dir = inverse.transformDirection(
                 new Vector3f((float) dirX, (float) dirY, (float) dirZ));
 
-        // Die Ebene ist lokal z = 0. Ein Strahl parallel dazu trifft sie nie.
+        // The plane is locally z = 0. A ray parallel to it never hits.
         if (Math.abs(dir.z) < 1e-7f) {
             return null;
         }
         float t = -origin.z / dir.z;
         if (t <= 0) {
-            return null;      // hinter dem Betrachter
+            return null;      // behind the viewer
         }
-        // Die Vorderseite ist die, von der der Strahl kommt: lokal muss der
-        // Ursprung vor der Ebene liegen (z > 0).
+        // The front is the one the ray comes from: locally the origin must
+        // lie in front of the plane (z > 0).
         if (origin.z <= 0) {
             return null;
         }
@@ -67,8 +66,8 @@ final class SurfacePicking {
             return null;
         }
 
-        // u von links (0) nach rechts (1), v von oben (0) nach unten (1) —
-        // wie die Textur liegt.
+        // u from left (0) to right (1), v from top (0) to bottom (1) —
+        // the way the texture lies.
         double u = (localX + halfW) / widthBlocks;
         double v = (halfH - localY) / heightBlocks;
         double distance = t * Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);

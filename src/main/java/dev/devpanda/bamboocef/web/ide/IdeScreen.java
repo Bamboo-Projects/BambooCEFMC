@@ -11,36 +11,36 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Path;
 
 /**
- * Die Entwicklungsumgebung als Bildschirm.
+ * The development environment as a screen.
  *
- * <p>Sie erbt alles Bisherige: den Bildweg aus Schritt A bis C, Eingabe und
- * Fokus aus D, Minecrafts Bild als Hintergrund aus E. Neu ist nur, was darauf
- * läuft — und das ist diesmal kein Prüfbild, sondern ein Editor.
+ * <p>It inherits everything so far: the image path from Steps A to C, input and
+ * focus from D, Minecraft's image as the background from E. New is only what
+ * runs on it — and this time that is not a test pattern but an editor.
  *
- * <p><b>Der Hintergrund steht fest auf Standbild, halbe Kantenlänge, rohes
- * Format.</b> Das ist das Ergebnis von Schritt E, und es ist hier keine
- * Einstellung: Gemessen werden soll Monaco, nicht der bereits bekannte
- * schlimmste Fall des Hintergrunds.
+ * <p><b>The background is fixed to still image, half edge length, raw
+ * format.</b> That is the result of Step E, and here it is not a
+ * setting: what should be measured is Monaco, not the already known
+ * worst case of the background.
  *
- * <p><b>Warum eine Datei-Adresse und kein eigenes Schema.</b> Monacos
- * Ladeprogramm holt Dutzende Dateien mit relativen Adressen nach. Bei einem
- * selbst angemeldeten Schema hat die Seite keine Herkunft, und relative
- * Adressen lösen sich nicht auf. Eine Datei-Adresse macht daraus gewöhnliches
- * Web — mit einer Einschränkung, die dazugehört: Arbeitsfäden verweigert
- * Chromium von dort. Monaco kommt damit zurecht, weil unsere Sprache ihre
- * Einfärbung im Hauptfaden bekommt.
+ * <p><b>Why a file address and not a scheme of our own.</b> Monaco's
+ * loader fetches dozens of files via relative addresses. With a
+ * self-registered scheme the page has no origin, and relative
+ * addresses do not resolve. A file address turns this into ordinary
+ * web — with one caveat that comes with it: worker threads are refused by
+ * Chromium from there. Monaco copes with that because our language gets its
+ * highlighting on the main thread.
  */
 public class IdeScreen extends BackdropScreen {
 
     private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/IDE");
 
-    /** Wo das Verzeichnis der Weboberfläche im Klassenpfad liegt. */
+    /** Where the web interface's file manifest lives in the classpath. */
     private static final String MANIFEST = "assets/factorynetwork/web/ide/files.txt";
 
-    /** Und wo die Seite selbst. */
+    /** And where the page itself. */
     private static final String PAGE = "assets/factorynetwork/web/ide/index.html";
 
-    /** Der Ordner unter dem Spielordner, in den ausgepackt wird. */
+    /** The folder under the game folder into which things are unpacked. */
     private static final String UNPACKED = "factorynetwork-web";
 
     protected IdeScreen(String url) {
@@ -49,9 +49,9 @@ public class IdeScreen extends BackdropScreen {
     }
 
     /**
-     * Packt aus, falls nötig, und öffnet die Oberfläche.
+     * Unpacks if needed and opens the interface.
      *
-     * @return ob es geklappt hat
+     * @return whether it worked
      */
     public static boolean open(Minecraft client) {
         String url = prepare(client);
@@ -63,12 +63,12 @@ public class IdeScreen extends BackdropScreen {
     }
 
     /**
-     * Packt aus und gibt die Adresse der Seite zurück.
+     * Unpacks and returns the address of the page.
      *
-     * <p>Getrennt vom Öffnen, damit die Messung dieselbe Vorbereitung nutzt
-     * und nicht ihre eigene daneben hat.
+     * <p>Separated from opening so that the benchmark uses the same preparation
+     * and does not keep its own alongside.
      *
-     * @return die Adresse, oder {@code null}, wenn etwas fehlte
+     * @return the address, or {@code null} if something was missing
      */
     protected static String prepare(Minecraft client) {
         Path into = client.gameDirectory.toPath().resolve(UNPACKED).resolve("ide");
@@ -77,8 +77,8 @@ public class IdeScreen extends BackdropScreen {
         if (folder == null) {
             return null;
         }
-        // Die Seite selbst liegt neben dem Verzeichnis und steht nicht darin —
-        // sie ist unser Werk, nicht Teil des Bündels.
+        // The page itself lies next to the manifest and is not listed in it —
+        // it is our work, not part of the bundle.
         Path page = folder.resolve("index.html");
         try {
             java.nio.file.Files.createDirectories(folder);

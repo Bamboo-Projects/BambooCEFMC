@@ -10,19 +10,19 @@ import org.slf4j.LoggerFactory;
 import java.util.Locale;
 
 /**
- * Fährt einen Editor durch das, was ein Mensch mit ihm tut — und misst dabei.
+ * Drives an editor through what a human does with it — and measures along the way.
  *
- * <p><b>Die Frage ist nicht mehr, ob der Bildweg trägt.</b> Das ist gemessen.
- * Die Frage ist, ob <i>dieser</i> Arbeitsanfall ihn überfordert: Ein Editor mit
- * Zeilennummern, Übersicht, Faltung und Vervollständigung malt viel mehr als
- * eine Prüfseite mit vier Kästen.
+ * <p><b>The question is no longer whether the image path holds.</b> That is measured.
+ * The question is whether <i>this</i> workload overwhelms it: an editor with
+ * line numbers, minimap, folding and completion draws far more than
+ * a test page with four boxes.
  *
- * <p><b>Alles geht durch den Bildschirm, nichts daran vorbei.</b> Tasten,
- * Klicks und Rad nehmen denselben Weg wie bei einem Menschen — samt
- * Umrechnung, Fokusprüfung und Klickzählung. Was die Oberfläche selbst
- * einstellen muss (Übersicht an, Thema wechseln, Datei wählen), geht über
- * einzelne Aufrufe in die Seite: dieselbe Art wie der Hintergrundwechsel, ohne
- * Rückrichtung.
+ * <p><b>Everything goes through the screen, nothing past it.</b> Keys,
+ * clicks and wheel take the same path as for a human — including
+ * conversion, focus check and click counting. What the interface itself
+ * must set (minimap on, switch theme, choose file) goes through
+ * single calls into the page: the same way as the background switch, without
+ * a return direction.
  */
 public final class MonacoBenchmark extends IdeScreen {
 
@@ -33,7 +33,7 @@ public final class MonacoBenchmark extends IdeScreen {
 
     private static boolean finished;
 
-    /** Was der Reihe nach durchgespielt wird. */
+    /** What is played through in order. */
     private enum Step {
         SETTLE("Aufbau"),
         IDLE("Ruhe — nichts tun"),
@@ -91,7 +91,7 @@ public final class MonacoBenchmark extends IdeScreen {
         return finished;
     }
 
-    /** Öffnet die Messung. Packt bei Bedarf aus, wie die Oberfläche selbst. */
+    /** Opens the benchmark. Unpacks if needed, like the interface itself. */
     public static boolean open(Minecraft client) {
         String url = prepare(client);
         if (url == null) {
@@ -143,12 +143,12 @@ public final class MonacoBenchmark extends IdeScreen {
         }
     }
 
-    /** Was in diesem Abschnitt bei jedem Bild geschieht. */
+    /** What happens in this section on every frame. */
     private void act() {
         switch (step) {
             case TYPING -> {
-                // Etwa acht Zeichen je Sekunde — zügiges, aber menschliches
-                // Tippen.
+                // About eight characters per second — brisk but human
+                // typing.
                 if (frameInStep % 8 == 0) {
                     type(TIPPTEXT.charAt(typedIndex++ % TIPPTEXT.length()));
                 }
@@ -159,11 +159,11 @@ public final class MonacoBenchmark extends IdeScreen {
                 }
             }
             case FAST_TYPING -> {
-                // Jedes Bild ein Zeichen: schneller, als jemand tippen kann.
+                // One character per frame: faster than anyone can type.
                 type(TIPPTEXT.charAt(typedIndex++ % TIPPTEXT.length()));
             }
             case HOVER -> {
-                // Über den Text wandern, nicht über die Ränder.
+                // Wander over the text, not over the edges.
                 double angle = frameInStep * 0.07;
                 mouseMoved(width * (0.45 + 0.22 * Math.cos(angle)),
                         height * (0.45 + 0.18 * Math.sin(angle)));
@@ -186,7 +186,7 @@ public final class MonacoBenchmark extends IdeScreen {
         }
     }
 
-    /** Was zu Beginn eines Abschnitts einmal geschieht. */
+    /** What happens once at the start of a section. */
     private void begin() {
         switch (step) {
             case IDLE -> click(0.45, 0.30);
@@ -196,16 +196,16 @@ public final class MonacoBenchmark extends IdeScreen {
                 click(0.45, 0.30);
             }
             case TYPING_NO_GLASS -> {
-                // Dasselbe Tippen, nur ohne Weichzeichner. Der Unterschied ist
-                // der Preis des Glases — und der ist sonst nicht zu trennen
-                // von dem, was Monaco selbst malt.
+                // The same typing, only without the blur. The difference is
+                // the price of the glass — and that is otherwise not separable
+                // from what Monaco itself draws.
                 runScript("window.fnIde && fnIde.glas(false)");
                 click(0.45, 0.30);
             }
             case TYPING_OPAQUE -> {
-                // Glas bleibt aus, aber jetzt ist auch der Editor selbst
-                // deckend. Bleibt die Fläche trotzdem bei neunzig Prozent,
-                // liegt es an Monaco; fällt sie, an der Durchsichtigkeit.
+                // Glass stays off, but now the editor itself is
+                // opaque too. If the area still stays at ninety percent,
+                // it is due to Monaco; if it drops, to the transparency.
                 runScript("window.fnIde && fnIde.thema('fn-deckend')");
                 click(0.45, 0.30);
             }
@@ -213,8 +213,8 @@ public final class MonacoBenchmark extends IdeScreen {
                 runScript("window.fnIde && fnIde.thema('fn-glas')");
                 runScript("window.fnIde && fnIde.glas(true)");
                 click(0.45, 0.30);
-                // Alles bis U+FFFF geht als ein Zeichen. Das Emoji ist ein
-                // Ersatzpaar und kommt als zwei — genau das soll sich zeigen.
+                // Everything up to U+FFFF goes as one character. The emoji is a
+                // surrogate pair and comes as two — exactly that should show.
                 for (char each : "äöüÄÖÜß €{}[]<> ".toCharArray()) {
                     type(each);
                 }
@@ -253,10 +253,10 @@ public final class MonacoBenchmark extends IdeScreen {
                 runScript("window.fnIde && fnIde.glas(false)");
                 runScript("window.fnIde && fnIde.springe(1)");
             }
-            // Diese beiden messen die Ruhe danach, nicht das Umschalten
-            // selbst: Ein Wechsel malt einmal alles neu, und diese eine Spitze
-            // hätte die ganze Messung beherrscht. Beim ersten Versuch stand
-            // deshalb „Übersicht aus" mit dem Fünffachen von „Übersicht an" da.
+            // These two measure the calm afterwards, not the switching
+            // itself: a switch redraws everything once, and that one spike
+            // would have dominated the whole measurement. On the first attempt,
+            // „Übersicht aus" therefore stood there at five times „Übersicht an".
             case MINIMAP_OFF -> {
                 runScript("window.fnIde && fnIde.glas(true)");
                 runScript("window.fnIde && fnIde.minimap(false)");
@@ -278,17 +278,17 @@ public final class MonacoBenchmark extends IdeScreen {
     }
 
     /**
-     * Wie viele Bilder nach dem Umschalten verworfen werden.
+     * How many frames are discarded after switching.
      *
-     * <p>Fast jeder Abschnitt beginnt mit einer Einstellung, und fast jede
-     * Einstellung lässt Monaco einmal alles neu malen. Wer sofort zu zählen
-     * anfängt, misst diesen einen Wechsel statt des Zustands danach.
+     * <p>Almost every section begins with a setting, and almost every
+     * setting makes Monaco redraw everything once. Whoever starts counting
+     * immediately measures that one switch instead of the state after it.
      */
     private static final int SETTLE_FRAMES_PER_STEP = 20;
 
     private int settleFrames;
 
-    /** Setzt die Zähler zurück, sobald sich der Abschnitt beruhigt hat. */
+    /** Resets the counters once the section has settled. */
     private void settle() {
         if (settleFrames <= 0) {
             return;
@@ -305,7 +305,7 @@ public final class MonacoBenchmark extends IdeScreen {
         }
     }
 
-    /** Die Abschnitte, die aus einer Reihe von Einzelschritten bestehen. */
+    /** The sections that consist of a series of individual steps. */
     private void actOnce() {
         switch (step) {
             case TABS -> {
@@ -317,8 +317,8 @@ public final class MonacoBenchmark extends IdeScreen {
                 }
             }
             case KEYS -> {
-                // Reale Editor-Kürzel, eines je zehn Bilder. Was Minecraft
-                // abfinge, käme hier nicht an — und Monaco täte nichts.
+                // Real editor shortcuts, one per ten frames. What Minecraft
+                // would intercept would not arrive here — and Monaco would do nothing.
                 int[][] kuerzel = {
                         {GLFW.GLFW_KEY_A, GLFW.GLFW_MOD_CONTROL},
                         {GLFW.GLFW_KEY_C, GLFW.GLFW_MOD_CONTROL},

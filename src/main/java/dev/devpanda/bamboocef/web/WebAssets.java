@@ -14,45 +14,46 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Packt die Weboberfläche aus der Mod in einen Ordner, den ein Browser lesen
- * kann.
+ * Unpacks the web interface from the mod into a folder that a browser can
+ * read.
  *
- * <p><b>Warum überhaupt auspacken.</b> Die Dateien liegen im Klassenpfad — in
- * der Entwicklung als Ordner, ausgeliefert in einem Jar. Chromium kann weder
- * das eine noch das andere lesen; es braucht eine Adresse. Ein eigenes Schema
- * wäre eine, aber dann müsste jede relative Adresse innerhalb der Seite durch
- * unseren Handler, und ein Ladeprogramm wie das von Monaco erzeugt Dutzende
- * davon. Eine Datei-Adresse macht daraus wieder gewöhnliches Web.
+ * <p><b>Why unpack at all.</b> The files sit in the class path — in development
+ * as a folder, shipped in a jar. Chromium can read neither one nor the other;
+ * it needs an address. A custom scheme would be one, but then every relative
+ * address inside the page would have to go through our handler, and a loader
+ * like Monaco's produces dozens of them. A file address turns that back into
+ * ordinary web.
  *
- * <p><b>Und warum das kein Herunterladen ist.</b> Alles, was hier bewegt wird,
- * kommt aus der Mod selbst. Eine Oberfläche, die beim ersten Öffnen ins Netz
- * greift, funktioniert im Zug nicht und in einem gesperrten Netz nie.
+ * <p><b>And why this is not a download.</b> Everything moved here comes from
+ * the mod itself. An interface that reaches out to the network on first open
+ * does not work on a train and never in a locked-down network.
  *
- * <p><b>Ein Verzeichnis statt einer Suche.</b> Ein Ordner im Klassenpfad lässt
- * sich nicht zuverlässig auflisten — im Jar gibt es keine Ordner, nur Einträge
- * mit Schrägstrichen im Namen. Deshalb legt das Bündelskript eine Datei mit
- * allen Namen daneben, und hier wird sie gelesen.
+ * <p><b>A directory instead of a search.</b> A folder in the class path cannot
+ * be listed reliably — in the jar there are no folders, only entries with
+ * slashes in the name. That is why the bundle script writes a file with all the
+ * names next to it, and here it is read.
  *
- * <p>Ausgepackt wird einmal je Fassung. Die erste Zeile des Verzeichnisses
- * trägt die Fassung; steht dieselbe schon im Zielordner, bleibt alles liegen.
+ * <p>Unpacking happens once per version. The first line of the directory
+ * carries the version; if the same one already sits in the target folder,
+ * everything stays put.
  */
 public final class WebAssets {
 
     private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/WebAssets");
 
-    /** Woran der Zielordner erkennt, was in ihm liegt. */
+    /** How the target folder tells what sits in it. */
     private static final String STAMP = ".fassung";
 
     private WebAssets() {
     }
 
     /**
-     * Packt aus, falls nötig, und gibt den Zielordner zurück.
+     * Unpacks if necessary and returns the target folder.
      *
-     * @param loader       woher die Dateien kommen
-     * @param manifestPath der Pfad des Verzeichnisses im Klassenpfad
-     * @param into         wohin — ein Ordner, der angelegt werden darf
-     * @return der Ordner, oder {@code null}, wenn etwas fehlte
+     * @param loader       where the files come from
+     * @param manifestPath the path of the directory in the class path
+     * @param into         where to — a folder that may be created
+     * @return the folder, or {@code null} if something was missing
      */
     public static Path unpack(ClassLoader loader, String manifestPath, Path into) {
         List<String> names;
@@ -101,7 +102,7 @@ public final class WebAssets {
         return into;
     }
 
-    /** Ob dieselbe Fassung schon dort liegt. */
+    /** Whether the same version already sits there. */
     private static boolean alreadyThere(Path into, String version) {
         Path stamp = into.resolve(STAMP);
         try {

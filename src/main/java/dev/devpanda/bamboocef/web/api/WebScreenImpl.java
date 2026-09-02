@@ -11,21 +11,21 @@ import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Ein Web-Bildschirm über das ganze Bild — der Weg, wie eine Mod ihre
- * Oberfläche als Vollbild öffnet.
+ * A web screen over the whole image — the way a mod opens its interface as
+ * fullscreen.
  *
- * <p><b>Aus Teilen, die es schon gibt.</b> Zeichnen über {@link BrowserCompositor},
- * Umrechnung über {@link BrowserView}, Zeiger über {@link BrowserCursor} —
- * dieselben wie im Overlay, nur füllt die Fläche hier den Bildschirm und die
- * Maus ist frei, weil es ein Bildschirm ist.
+ * <p><b>From parts that already exist.</b> Drawing via {@link BrowserCompositor},
+ * conversion via {@link BrowserView}, the pointer via {@link BrowserCursor} —
+ * the same as in the overlay, only here the surface fills the screen and the
+ * mouse is free, because it is a screen.
  *
- * <p><b>Kein Messwerkzeug.</b> Was der alte {@code BrowserScreen} an Bildzahl,
- * Uploadzeit und Tipplatenz kann, bleibt drüben bei den Prüfläufen. Hier steht
- * nur, was eine Mod für ihre Oberfläche braucht.
+ * <p><b>Not a measuring tool.</b> What the old {@code BrowserScreen} can do in
+ * terms of frame rate, upload time, and typing latency stays over there with
+ * the test runs. Here there is only what a mod needs for its interface.
  *
- * <p><b>Zweimal Escape schließt.</b> Ein Editor wie Monaco fängt das erste
- * Escape selbst ab (er schließt damit seine Vorschläge); das zweite, das er
- * durchlässt, beendet den Bildschirm. F10 beendet ihn in jedem Fall.
+ * <p><b>Two presses of Escape close it.</b> An editor like Monaco catches the
+ * first Escape itself (dismissing its suggestions with it); the second one,
+ * which it lets through, ends the screen. F10 ends it in any case.
  */
 final class WebScreenImpl extends Screen {
 
@@ -48,8 +48,8 @@ final class WebScreenImpl extends Screen {
     @Override
     protected void init() {
         super.init();
-        // Bei jeder Größen- oder Skalierungsänderung ruft Minecraft init erneut;
-        // die Fläche bekommt dann das neue Maß.
+        // On every size or scale change Minecraft calls init again;
+        // the surface then gets the new measure.
         view = BrowserView.fullscreen(width, height, minecraft.getWindow().getGuiScale());
         surface.resize(view.browserWidth(), view.browserHeight());
         surface.onCursor(type -> wantedCursor = type);
@@ -58,8 +58,8 @@ final class WebScreenImpl extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // Der Hintergrund bleibt Minecrafts unscharfe Welt; eine durchsichtige
-        // Seite lässt sie durchscheinen.
+        // The background stays Minecraft's blurred world; a transparent page
+        // lets it show through.
         renderBackground(graphics, mouseX, mouseY, partialTick);
         int wanted = wantedCursor;
         if (wanted != appliedCursor) {
@@ -88,10 +88,10 @@ final class WebScreenImpl extends Screen {
 
     @Override
     public boolean shouldCloseOnEsc() {
-        return false;      // Escape geht erst an die Seite, siehe unten.
+        return false;      // Escape goes to the page first, see below.
     }
 
-    // ---- Maus -------------------------------------------------------------------
+    // ---- Mouse ------------------------------------------------------------------
 
     @Override
     public void mouseMoved(double mouseX, double mouseY) {
@@ -123,7 +123,7 @@ final class WebScreenImpl extends Screen {
         return true;
     }
 
-    // ---- Tasten -----------------------------------------------------------------
+    // ---- Keys -------------------------------------------------------------------
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
@@ -132,7 +132,7 @@ final class WebScreenImpl extends Screen {
             return true;
         }
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-            // Erst an die Seite; erst das zweite Escape schließt.
+            // To the page first; only the second Escape closes.
             if (escapePending) {
                 onClose();
                 return true;
@@ -174,7 +174,7 @@ final class WebScreenImpl extends Screen {
         return modifiers;
     }
 
-    // ---- Ende -------------------------------------------------------------------
+    // ---- End --------------------------------------------------------------------
 
     @Override
     public void removed() {

@@ -10,50 +10,49 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Die eine Stelle, die alle offenen Browser kennt.
+ * The one place that knows all open browsers.
  *
- * <p><b>Warum es sie braucht.</b> Bisher wusste jeder Bildschirm von seinem
- * eigenen Browser und sonst niemand von irgendeinem. Beim Beenden des Spiels
- * hieß das: Was gerade offen war, schloss sich, wenn sein Bildschirm es tat —
- * und was keinen Bildschirm mehr hatte, blieb stehen, bis Chromium selbst
- * aufräumte. Für ein geordnetes Herunterfahren muss jemand die Liste haben.
+ * <p><b>Why it is needed.</b> Until now each screen knew about its own browser
+ * and no one knew about any. When the game quit, that meant: what was open
+ * closed when its screen did — and what no longer had a screen stayed put until
+ * Chromium cleaned it up itself. For an orderly shutdown, someone has to hold
+ * the list.
  *
- * <p><b>Zwei Listen, nicht eine.</b> Eine Sitzung ist nicht schon zu, wenn
- * jemand {@code close()} gerufen hat: {@code CefBrowser.close(true)} ist eine
- * Bitte, und die Bestätigung — {@code onBeforeClose} — kommt später und aus
- * Chromiums Nachrichtenschleife. Wer nur eine Liste führt, hält beim
- * Herunterfahren entweder zu früh für fertig oder wartet auf etwas, das er
- * gerade selbst weggeworfen hat. Deshalb wandert eine Sitzung von
- * {@code offen} nach {@code wartet} und verschwindet erst mit der
- * Bestätigung.
+ * <p><b>Two lists, not one.</b> A session is not yet closed just because
+ * someone called {@code close()}: {@code CefBrowser.close(true)} is a request,
+ * and the acknowledgement — {@code onBeforeClose} — comes later and out of
+ * Chromium's message loop. Whoever keeps only one list, on shutdown, either
+ * treats it as finished too early or waits for something it just threw away
+ * itself. That is why a session moves from {@code offen} to {@code wartet} and
+ * only disappears with the acknowledgement.
  *
- * <p><b>Der {@code CefClient} gehört nicht hierher.</b> Er gehört der Runtime
- * und wird von allen Browsern geteilt; ihn je Browser freizugeben nähme dem
- * nächsten den Boden weg.
+ * <p><b>The {@code CefClient} does not belong here.</b> It belongs to the
+ * runtime and is shared by all browsers; releasing it per browser would pull
+ * the ground out from under the next one.
  *
- * <p><b>Thread:</b> Alles hier läuft im Renderthread — dort entstehen die
- * Sitzungen, dort wird gepumpt, dort kommen die Bestätigungen an. Die
- * Sammlungen sind trotzdem synchronisiert, weil {@code onBeforeClose} bei
- * einem Fehler auch aus einem fremden Thread kommen könnte und ein Verwalter,
- * der dabei die Liste zerreißt, den Fehler verdoppelte.
+ * <p><b>Thread:</b> Everything here runs on the render thread — that is where
+ * the sessions arise, where the pump runs, where the acknowledgements arrive.
+ * The collections are synchronized all the same, because {@code onBeforeClose}
+ * could, on an error, also come from a foreign thread, and a manager that tore
+ * the list apart in the process would double the error.
  */
 public final class BrowserManager {
 
     private static final Logger LOG = LogUtils.getLogger();
 
-    /** Was offen ist. */
+    /** What is open. */
     private static final Set<ManagedBrowser> open =
             Collections.synchronizedSet(new LinkedHashSet<>());
 
-    /** Was geschlossen wurde und noch auf Chromiums Bestätigung wartet. */
+    /** What was closed and is still waiting for Chromium's acknowledgement. */
     private static final Set<ManagedBrowser> awaiting =
             Collections.synchronizedSet(new LinkedHashSet<>());
 
     /**
-     * Eine Sitzung ist entstanden.
+     * A session has come into being.
      *
-     * <p>Zu rufen, sobald der Browser da ist — nicht davor: Ein Browser, der
-     * beim Erzeugen scheitert, soll nicht als offen gelten.
+     * <p>To be called as soon as the browser is there — not before: a browser
+     * that fails on creation should not count as open.
      */
     public static void register(ManagedBrowser session) {
         open.add(session);
@@ -61,10 +60,10 @@ public final class BrowserManager {
     }
 
     /**
-     * Eine Sitzung will zugehen.
+     * A session wants to close.
      *
-     * <p>Sie gilt ab jetzt nicht mehr als offen, ist aber noch nicht fertig:
-     * Chromium bestätigt das Schließen erst später.
+     * <p>From now on it no longer counts as open, but it is not yet finished:
+     * Chromium acknowledges the close only later.
      */
     public static void closing(ManagedBrowser session) {
         if (open.remove(session)) {
@@ -75,10 +74,10 @@ public final class BrowserManager {
     }
 
     /**
-     * Chromium hat das Schließen bestätigt.
+     * Chromium has acknowledged the close.
      *
-     * <p>Das ist {@code onBeforeClose}, und erst damit ist die Sitzung
-     * wirklich weg.
+     * <p>This is {@code onBeforeClose}, and only with it is the session really
+     * gone.
      */
     public static void closed(ManagedBrowser session) {
         boolean waited = awaiting.remove(session);
@@ -90,10 +89,10 @@ public final class BrowserManager {
     }
 
     /**
-     * Nimmt eine Sitzung aus beiden Listen, ohne auf etwas zu warten.
+     * Takes a session out of both lists, without waiting for anything.
      *
-     * <p>Für den Fall, dass eine Sitzung auf einem anderen Weg verschwindet
-     * als über {@code close()} — etwa weil ihre Erzeugung scheiterte.
+     * <p>For the case that a session disappears by a route other than
+     * {@code close()} — for instance because its creation failed.
      */
     public static void unregister(ManagedBrowser session) {
         boolean removed = open.remove(session) | awaiting.remove(session);
@@ -102,17 +101,17 @@ public final class BrowserManager {
         }
     }
 
-    /** Wie viele Sitzungen offen sind. */
+    /** How many sessions are open. */
     public static int count() {
         return open.size();
     }
 
-    /** Wie viele auf Chromiums Bestätigung warten. */
+    /** How many are waiting for Chromium's acknowledgement. */
     public static int pending() {
         return awaiting.size();
     }
 
-    /** Was gerade offen ist und was wartet — für Messungen und Fehlersuche. */
+    /** What is currently open and what is waiting — for measurements and debugging. */
     public static List<String> snapshot() {
         List<String> lines = new ArrayList<>();
         synchronized (open) {
@@ -129,14 +128,14 @@ public final class BrowserManager {
     }
 
     /**
-     * Schließt alles, was offen ist.
+     * Closes everything that is open.
      *
-     * <p><b>Über eine Kopie.</b> Jedes {@code close()} meldet die Sitzung
-     * mitten in der Schleife ab; wer über die lebende Sammlung liefe, bekäme
-     * eine {@code ConcurrentModificationException} — und zwar erst dann, wenn
-     * es beim Herunterfahren am wenigsten hilft.
+     * <p><b>Over a copy.</b> Every {@code close()} deregisters the session in
+     * the middle of the loop; whoever ran over the live collection would get a
+     * {@code ConcurrentModificationException} — and precisely when it helps
+     * least, during shutdown.
      *
-     * <p>Mehrfach zu rufen ist erlaubt und tut beim zweiten Mal nichts.
+     * <p>Calling it more than once is allowed and does nothing the second time.
      */
     public static void closeAll() {
         List<ManagedBrowser> victims;
@@ -151,9 +150,8 @@ public final class BrowserManager {
             try {
                 session.close();
             } catch (Throwable broken) {
-                // Eine Sitzung, die beim Schließen zickt, darf die anderen
-                // nicht aufhalten — beim Beenden ist das die einzige Regel,
-                // die zählt.
+                // A session that acts up while closing must not hold up the
+                // others — during shutdown that is the only rule that counts.
                 LOG.warn("Beim Schließen von {} ging etwas schief",
                         session.describe(), broken);
                 unregister(session);
@@ -162,17 +160,16 @@ public final class BrowserManager {
     }
 
     /**
-     * Wartet, bis Chromium alle Schließungen bestätigt hat.
+     * Waits until Chromium has acknowledged all closes.
      *
-     * <p><b>Aus dem Thread zu rufen, der pumpt.</b> {@code onBeforeClose} kommt
-     * aus Chromiums Nachrichtenschleife, und die dreht sich nur, solange
-     * jemand sie dreht. Wer von woanders wartet, wartet auf ein Ereignis, das
-     * allein er selbst auslösen könnte — und das ist kein Warten, sondern ein
-     * Hängen.
+     * <p><b>To be called from the thread that pumps.</b> {@code onBeforeClose}
+     * comes out of Chromium's message loop, and that turns only as long as
+     * someone turns it. Whoever waits from elsewhere waits for an event that
+     * only they themselves could trigger — and that is not waiting but hanging.
      *
-     * @param timeoutMillis wie lange höchstens
-     * @param pump          eine Runde der Nachrichtenschleife
-     * @return wahr, wenn alle bestätigt haben
+     * @param timeoutMillis how long at most
+     * @param pump          one round of the message loop
+     * @return true if all have acknowledged
      */
     public static boolean awaitClosed(long timeoutMillis, Runnable pump) {
         LOG.info("Warte auf {} Bestätigungen, höchstens {} ms — im Thread {}",
@@ -194,14 +191,14 @@ public final class BrowserManager {
             LOG.info("Alle Schließungen bestätigt");
             return true;
         }
-        // Die Frist ist abgelaufen. Wer fehlt, gehört ins Protokoll: Beim
-        // nächsten Mal ist das der einzige Anhaltspunkt.
+        // The deadline has expired. Whoever is missing belongs in the log: next
+        // time that is the only clue.
         LOG.warn("Frist abgelaufen — {} Sitzungen ohne Bestätigung: {}",
                 pending(), snapshot());
         return false;
     }
 
-    /** Vergisst alles. Nur für Prüfläufe. */
+    /** Forgets everything. For test runs only. */
     static void forgetAll() {
         open.clear();
         awaiting.clear();

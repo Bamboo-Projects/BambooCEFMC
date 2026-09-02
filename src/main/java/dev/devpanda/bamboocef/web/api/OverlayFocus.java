@@ -1,42 +1,42 @@
 package dev.devpanda.bamboocef.web.api;
 
 /**
- * Wem die Eingaben gehören, solange ein Overlay offen ist.
+ * Whom the input belongs to while an overlay is open.
  *
- * <p><b>Drei Stufen und nicht zwei.</b> „Fokus ja oder nein“ kennt den
- * häufigsten Fall nicht: ein Schnellmenü, das Escape und die Pfeiltasten
- * nimmt, während der Spieler weiterläuft und sich umsieht. Dafür muss die
- * Maus beim Spiel bleiben und nur ein Teil der Tastatur zur Seite gehen.
+ * <p><b>Three levels, not two.</b> "Focus, yes or no" does not know the most
+ * common case: a quick menu that takes Escape and the arrow keys while the
+ * player keeps walking and looking around. For that the mouse has to stay
+ * with the game and only part of the keyboard go to the page.
  */
 public enum OverlayFocus {
 
-    /** Nur zu sehen. Jede Eingabe gehört dem Spiel. */
+    /** Only to be seen. Every input belongs to the game. */
     NONE,
 
     /**
-     * Tasten nach dem Filter der Fläche; die Maus bleibt beim Spiel.
+     * Keys according to the surface's filter; the mouse stays with the game.
      *
-     * <p>Der Spieler sieht sich weiter um, läuft weiter, und was der Filter
-     * nicht nimmt, kommt beim Spiel an, als gäbe es das Overlay nicht.
+     * <p>The player keeps looking around, keeps walking, and what the filter
+     * does not take reaches the game as if the overlay were not there.
      */
     KEYBOARD,
 
     /**
-     * Maus und Tasten. Der Zeiger ist frei und zeigt auf die Fläche.
+     * Mouse and keys. The pointer is free and points at the surface.
      *
-     * <p>Der Spieler steht derweil — wie in jeder Oberfläche mit freiem
-     * Zeiger; NeoForge schaltet die Belegungen des Spiels ab, sobald ein
-     * Bildschirm offen ist. Ein Klick neben die Fläche, Escape ohne Filter
-     * oder F10 geben die Maus zurück.
+     * <p>The player stands still meanwhile — as in every interface with a free
+     * pointer; NeoForge disables the game's key bindings as soon as a screen
+     * is open. A click beside the surface, Escape without a filter, or F10
+     * give the mouse back.
      */
     MOUSE;
 
-    /** Bekommt die Fläche in dieser Stufe Tasten? */
+    /** Does the surface get keys at this level? */
     public boolean takesKeys() {
         return this != NONE;
     }
 
-    /** Bekommt die Fläche in dieser Stufe die Maus? */
+    /** Does the surface get the mouse at this level? */
     public boolean takesMouse() {
         return this == MOUSE;
     }

@@ -6,23 +6,22 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import java.util.function.IntSupplier;
 
 /**
- * Eine Minecraft-Textur, die auf Chromiums Textur zeigt.
+ * A Minecraft texture that points at Chromium's texture.
  *
- * <p><b>Wozu der Umweg.</b> Im Bildschirm lässt sich eine rohe GL-Kennung
- * direkt binden. In der Welt nicht: Dort läuft alles über {@code RenderType},
- * und der verlangt eine {@code ResourceLocation}. Diese Klasse ist die
- * Übersetzung dazwischen — angemeldet beim Texturverwalter, gefragt wird sie
- * bei jedem Binden.
+ * <p><b>What the detour is for.</b> On a screen a raw GL identifier can be
+ * bound directly. In the world it cannot: there everything runs through
+ * {@code RenderType}, and that requires a {@code ResourceLocation}. This class
+ * is the translation in between — registered with the texture manager, and
+ * queried on every bind.
  *
- * <p><b>Die Kennung wird nicht gemerkt, sondern geholt.</b> Ein
- * {@code this.id}, einmal gesetzt, wäre nach der ersten Größenänderung falsch
- * — Chromium legt dann eine neue Textur an. {@code getId()} fragt deshalb
- * jedes Mal nach.
+ * <p><b>The identifier is not remembered but fetched.</b> A {@code this.id},
+ * once set, would be wrong after the first resize — Chromium then creates a new
+ * texture. {@code getId()} therefore asks again every time.
  *
- * <p><b>Und sie wird nie gelöscht.</b> Die Textur gehört der Sitzung, nicht
- * dem Texturverwalter. Weil das geerbte Feld {@code id} unberührt auf minus
- * eins bleibt, räumt Minecraft ohnehin nichts ab; die beiden leeren Methoden
- * stehen trotzdem hier, damit die Absicht nicht von einem Zufall abhängt.
+ * <p><b>And it is never deleted.</b> The texture belongs to the session, not
+ * to the texture manager. Because the inherited {@code id} field stays
+ * untouched at minus one, Minecraft reclaims nothing anyway; the two empty
+ * methods are here regardless, so that the intent does not depend on chance.
  */
 public final class ManagedTexture extends AbstractTexture {
 
@@ -39,17 +38,17 @@ public final class ManagedTexture extends AbstractTexture {
 
     @Override
     public void load(ResourceManager manager) {
-        // Es gibt nichts zu laden: Die Bilder kommen aus Chromium. Damit
-        // übersteht die Textur auch ein Neuladen der Ressourcen (F3+T).
+        // There is nothing to load: the images come from Chromium. That way
+        // the texture also survives a resource reload (F3+T).
     }
 
     @Override
     public void close() {
-        // Sie gehört uns nicht.
+        // It is not ours.
     }
 
     @Override
     public void releaseId() {
-        // Ebenso wenig.
+        // Neither is it.
     }
 }

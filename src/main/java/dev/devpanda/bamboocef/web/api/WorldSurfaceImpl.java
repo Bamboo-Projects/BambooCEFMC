@@ -9,17 +9,17 @@ import net.minecraft.client.renderer.RenderType;
 import org.joml.Matrix4f;
 
 /**
- * Eine Fläche in der Welt: eine {@link SessionSurface} und ihre Lage.
+ * A surface in the world: a {@link SessionSurface} and its placement.
  *
- * <p>Gezeichnet wird ein Rechteck mit der Textur der Sitzung, beide Seiten,
- * voll beleuchtet — eine Seite leuchtet selbst, sie braucht kein Licht aus
- * der Welt. Die Geometrie ist die des Tafel-Renderers: erst zum Mittelpunkt,
- * dann um die Hochachse gegen den Gierwinkel drehen, dann das Rechteck um
- * den Ursprung. Lokales +Z zeigt danach in Blickrichtung der Fläche.
+ * <p>A rectangle is drawn with the session's texture, both faces, fully lit —
+ * a page glows on its own, it needs no light from the world. The geometry is
+ * that of the board renderer: first to the center, then rotate about the
+ * vertical axis against the yaw, then the rectangle about the origin. Local
+ * +Z then points in the surface's viewing direction.
  */
 final class WorldSurfaceImpl implements WorldSurface {
 
-    /** Bis hierhin, in Blöcken, malt die Seite mit mittlerem Takt. */
+    /** Up to here, in blocks, the page draws at a medium cadence. */
     private static final double NEARBY_RANGE = 12.0;
     private static final int FULL_BRIGHT = 0xF000F0;
 
@@ -47,7 +47,7 @@ final class WorldSurfaceImpl implements WorldSurface {
         this.height = Math.max(0.01F, height);
     }
 
-    // ---- Lage -----------------------------------------------------------------
+    // ---- Position -------------------------------------------------------------
 
     @Override
     public WebSurface surface() {
@@ -131,14 +131,13 @@ final class WorldSurfaceImpl implements WorldSurface {
         }
     }
 
-    // ---- Zeichnen ---------------------------------------------------------------
+    // ---- Drawing ----------------------------------------------------------------
 
     /**
-     * Ein Bild, mit der Kamera als Ursprung.
+     * One frame, with the camera as the origin.
      *
-     * <p>Die Entfernung entscheidet über den Takt der Seite, bevor über das
-     * Zeichnen entschieden wird: Eine ferne Seite ruht, ob sie nun im Bild
-     * wäre oder nicht.
+     * <p>The distance decides the page's cadence before the drawing is
+     * decided: a distant page rests, whether it would be in view or not.
      */
     void draw(PoseStack pose, MultiBufferSource.BufferSource buffers,
               double cameraX, double cameraY, double cameraZ) {
@@ -172,19 +171,19 @@ final class WorldSurfaceImpl implements WorldSurface {
         VertexConsumer quad = buffers.getBuffer(type);
         float hw = width / 2f;
         float hh = height / 2f;
-        // Vorderseite, gegen den Uhrzeigersinn von vorn gesehen.
+        // Front face, counter-clockwise as seen from the front.
         vertex(quad, matrix, -hw, -hh, 0f, 1f);
         vertex(quad, matrix, hw, -hh, 1f, 1f);
         vertex(quad, matrix, hw, hh, 1f, 0f);
         vertex(quad, matrix, -hw, hh, 0f, 0f);
-        // Rückseite: dieselben Ecken andersherum — von hinten das Spiegelbild.
+        // Back face: the same corners the other way around — the mirror image from behind.
         vertex(quad, matrix, -hw, hh, 0f, 0f);
         vertex(quad, matrix, hw, hh, 1f, 0f);
         vertex(quad, matrix, hw, -hh, 1f, 1f);
         vertex(quad, matrix, -hw, -hh, 0f, 1f);
         pose.popPose();
-        // Selbst abschließen: Nichts garantiert, dass der Weltrenderer
-        // unseren Typ in dieser Stufe noch leert.
+        // Flush it ourselves: nothing guarantees that the world renderer
+        // still flushes our type at this stage.
         buffers.endBatch(type);
     }
 
@@ -203,13 +202,13 @@ final class WorldSurfaceImpl implements WorldSurface {
         }
     }
 
-    // ---- Ende -------------------------------------------------------------------
+    // ---- End --------------------------------------------------------------------
 
     /**
-     * Wohin ein Strahl auf dieser Fläche zeigt.
+     * Where a ray points on this surface.
      *
-     * @return {@code {pixelX, pixelY, entfernung}} oder {@code null}, wenn er
-     *         sie nicht trifft; nur eine sichtbare, lebende Fläche trifft
+     * @return {@code {pixelX, pixelY, distance}} or {@code null} if it does
+     *         not hit; only a visible, living surface is hit
      */
     double[] pick(double ox, double oy, double oz, double dx, double dy, double dz) {
         if (!visible || !alive()) {

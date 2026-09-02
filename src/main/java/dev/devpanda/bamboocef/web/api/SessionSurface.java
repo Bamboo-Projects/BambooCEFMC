@@ -10,17 +10,17 @@ import org.slf4j.Logger;
 import java.util.function.IntConsumer;
 
 /**
- * Die Umsetzung einer Fläche auf eine Sitzung.
+ * The mapping of a surface onto a session.
  *
- * <p><b>Paketprivat, und das ist der Punkt.</b> Nach außen gibt es
- * {@link WebSurface} — eine Schnittstelle ohne einen einzigen Typ aus
- * {@code org.cef}. Was darunter liegt, darf sich ändern, ohne dass fremder
- * Code neu übersetzt werden muss.
+ * <p><b>Package-private, and that is the point.</b> To the outside there is
+ * {@link WebSurface} — an interface without a single type from
+ * {@code org.cef}. What lies beneath may change without foreign code having
+ * to be recompiled.
  *
- * <p><b>Der Tastenfilter sitzt hier und nicht beim Aufrufer.</b> Eine Fläche,
- * die selbst weiß, welche Tasten sie nimmt, kann eine ehrliche Antwort geben:
- * Wahr heißt genommen, falsch heißt „gehört dem Spiel". Läge die Entscheidung
- * beim Aufrufer, müsste jeder sie neu treffen — und jeder anders.
+ * <p><b>The key filter sits here and not with the caller.</b> A surface that
+ * itself knows which keys it takes can give an honest answer: true means
+ * taken, false means "belongs to the game". If the decision lay with the
+ * caller, everyone would have to make it anew — and everyone differently.
  */
 final class SessionSurface implements WebSurface {
 
@@ -79,18 +79,18 @@ final class SessionSurface implements WebSurface {
 
     @Override
     public boolean alive() {
-        // Beides: Wer die Fläche selbst schloss, und wer den Browser darunter
-        // verlor — beim Verlassen der Welt schließt der Verwalter alle
-        // Sitzungen, und die Fläche erfährt es nur auf diesem Weg.
+        // Both: whoever closed the surface itself, and whoever lost the
+        // browser beneath — on leaving the world the manager closes all
+        // sessions, and the surface learns of it only this way.
         return !closed && session.isOpen();
     }
 
-    /** Für die Zeichner im selben Paket: die Sitzung samt Popup-Angaben. */
+    /** For the renderers in the same package: the session along with its popup details. */
     BrowserSession session() {
         return session;
     }
 
-    // ---- Eingaben -----------------------------------------------------------
+    // ---- Input --------------------------------------------------------------
 
     @Override
     public void mouseMoved(int x, int y, int modifiers) {
@@ -127,8 +127,8 @@ final class SessionSurface implements WebSurface {
         }
     }
 
-    // Der Filter entscheidet beim Drücken; Zeichen, Wiederholung und
-    // Loslassen folgen dieser Entscheidung — siehe KeyRouting.
+    // The filter decides on the press; character, repeat, and release follow
+    // this decision — see KeyRouting.
 
     @Override
     public boolean keyPressed(int glfwKey, int scanCode, int modifiers) {
@@ -163,8 +163,8 @@ final class SessionSurface implements WebSurface {
             return;
         }
         if (!focused) {
-            // Wer den Fokus verliert, hält nichts mehr: Ein Loslassen, das
-            // danach noch kommt, gehört dann dem Spiel.
+            // Whoever loses focus holds nothing anymore: a release that still
+            // comes afterward then belongs to the game.
             routing.releaseAll();
         }
         session.setFocused(focused);
@@ -188,8 +188,8 @@ final class SessionSurface implements WebSurface {
             return;
         }
         closed = true;
-        // Erst abmelden, dann schließen: Andersherum bliebe eine Textur
-        // angemeldet, deren Kennung ins Leere zeigt.
+        // Unregister first, then close: the other way around would leave a
+        // texture registered whose id points into the void.
         Minecraft.getInstance().getTextureManager().release(location);
         try {
             session.close();

@@ -9,21 +9,21 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Die Eingabelogik, geprüft ohne Chromium und ohne Warten.
+ * The input logic, tested without Chromium and without waiting.
  *
- * <p>Alles hier sind Fehler, die im Spiel nicht wie Fehler aussehen: Ein
- * Doppelklick, der kein Wort markiert. Eine rechte Maustaste, die Text
- * einfügt. Ein Ziehen, das nach dem ersten Pixel abbricht. Man sucht sie in
- * der Weboberfläche und findet sie nicht, weil sie hier liegen.
+ * <p>Everything here are faults that do not look like faults in the game: a
+ * double click that selects no word. A right mouse button that inserts
+ * text. A drag that breaks off after the first pixel. You search for them in
+ * the web interface and do not find them, because they lie here.
  */
 class InputLogicTest {
 
     @Nested
-    @DisplayName("Klicks zählen")
+    @DisplayName("Counting clicks")
     class Clicks {
 
         @Test
-        @DisplayName("Zwei Klicks kurz hintereinander an derselben Stelle sind ein Doppelklick")
+        @DisplayName("Two clicks in quick succession at the same spot are a double click")
         void twoQuickClicksAreADouble() {
             ClickCounter counter = new ClickCounter();
 
@@ -33,7 +33,7 @@ class InputLogicTest {
         }
 
         @Test
-        @DisplayName("Nach dem dritten beginnt die Zählung von vorn")
+        @DisplayName("After the third the count starts over")
         void afterTripleItStartsOver() {
             ClickCounter counter = new ClickCounter();
             counter.pressed(0, 10, 10, 0);
@@ -45,7 +45,7 @@ class InputLogicTest {
         }
 
         @Test
-        @DisplayName("Zu langsam ist kein Doppelklick")
+        @DisplayName("Too slow is not a double click")
         void tooSlowIsTwoSingles() {
             ClickCounter counter = new ClickCounter();
 
@@ -54,7 +54,7 @@ class InputLogicTest {
         }
 
         @Test
-        @DisplayName("Zu weit daneben ist kein Doppelklick")
+        @DisplayName("Too far off is not a double click")
         void tooFarIsTwoSingles() {
             ClickCounter counter = new ClickCounter();
 
@@ -64,7 +64,7 @@ class InputLogicTest {
         }
 
         @Test
-        @DisplayName("Ein Pixel Wandern ist erlaubt")
+        @DisplayName("One pixel of drift is allowed")
         void aPixelOfDriftIsFine() {
             ClickCounter counter = new ClickCounter();
             counter.pressed(0, 100, 100, 1000);
@@ -74,7 +74,7 @@ class InputLogicTest {
         }
 
         @Test
-        @DisplayName("Eine andere Taste beginnt neu")
+        @DisplayName("Another button starts over")
         void anotherButtonStartsOver() {
             ClickCounter counter = new ClickCounter();
             counter.pressed(0, 100, 100, 1000);
@@ -83,7 +83,7 @@ class InputLogicTest {
         }
 
         @Test
-        @DisplayName("Das Loslassen trägt dieselbe Zahl wie der Druck")
+        @DisplayName("The release carries the same count as the press")
         void releaseCarriesTheSameCount() {
             ClickCounter counter = new ClickCounter();
             counter.pressed(0, 5, 5, 0);
@@ -94,7 +94,7 @@ class InputLogicTest {
         }
 
         @Test
-        @DisplayName("Wer die Fläche verlässt, fängt neu an")
+        @DisplayName("Whoever leaves the surface starts over")
         void leavingTheAreaStartsOver() {
             ClickCounter counter = new ClickCounter();
             counter.pressed(0, 5, 5, 0);
@@ -106,11 +106,11 @@ class InputLogicTest {
     }
 
     @Nested
-    @DisplayName("Maustasten umsetzen")
+    @DisplayName("Translating mouse buttons")
     class Buttons {
 
         @Test
-        @DisplayName("Mitte und rechts sind vertauscht")
+        @DisplayName("Middle and right are swapped")
         void middleAndRightAreSwapped() {
             assertEquals(0, MouseButtons.toBrowserButton(MouseButtons.MINECRAFT_LEFT));
             assertEquals(1, MouseButtons.toBrowserButton(MouseButtons.MINECRAFT_MIDDLE),
@@ -120,14 +120,14 @@ class InputLogicTest {
         }
 
         @Test
-        @DisplayName("Eine vierte Maustaste wird abgelehnt statt geraten")
+        @DisplayName("A fourth mouse button is rejected instead of guessed")
         void unknownButtonsAreRefused() {
             assertEquals(-1, MouseButtons.toBrowserButton(3));
             assertEquals(0, MouseButtons.maskOf(3));
         }
 
         @Test
-        @DisplayName("Gedrückte Tasten stehen in denselben Flaggen wie Strg und Umschalt")
+        @DisplayName("Pressed buttons sit in the same flags as Ctrl and Shift")
         void pressedButtonsShareTheModifierField() {
             MouseButtons buttons = new MouseButtons();
             buttons.press(MouseButtons.MINECRAFT_LEFT);
@@ -141,7 +141,7 @@ class InputLogicTest {
         }
 
         @Test
-        @DisplayName("Eine losgelassene Taste hängt nicht im Ziehen fest")
+        @DisplayName("A released button does not stick in the drag")
         void aReleasedButtonDoesNotStick() {
             MouseButtons buttons = new MouseButtons();
             buttons.press(MouseButtons.MINECRAFT_LEFT);
@@ -158,11 +158,11 @@ class InputLogicTest {
     }
 
     @Nested
-    @DisplayName("Fokus")
+    @DisplayName("Focus")
     class Focus {
 
         @Test
-        @DisplayName("Genau einer bekommt die Taste, nie beide")
+        @DisplayName("Exactly one gets the key, never both")
         void exactlyOneGetsTheKey() {
             for (BrowserFocus focus : BrowserFocus.values()) {
                 assertTrue(focus.routesKeyboard() ^ focus.routesGameplay(),
@@ -171,7 +171,7 @@ class InputLogicTest {
         }
 
         @Test
-        @DisplayName("Der Browser bekommt die Tastatur, Minecraft die Spielsteuerung")
+        @DisplayName("The browser gets the keyboard, Minecraft the game controls")
         void eachSideGetsItsOwn() {
             assertTrue(BrowserFocus.BROWSER.routesKeyboard());
             assertFalse(BrowserFocus.BROWSER.routesGameplay());

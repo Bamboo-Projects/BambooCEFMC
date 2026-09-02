@@ -5,19 +5,19 @@ import dev.devpanda.bamboocef.web.WebRuntimeState;
 import dev.devpanda.bamboocef.web.WebRuntimeUnavailable;
 
 /**
- * Der Unterbau auf der eigenen Laufzeitumgebung.
+ * The backend on our own runtime.
  *
- * <p><b>Der Gegenpart zu {@code McefBackend}, und bewusst schmaler.</b> MCEF
- * fährt sich nebenher selbst hoch; hier fahren wir selbst. Das ist ein
- * Unterschied, der sich bis in die Fehlermeldungen zieht: MCEF meldet mit
- * einem einzigen boolean, ob es hochkam, und nennt keinen Grund — unser Weg
- * kann sagen, was fehlt.
+ * <p><b>The counterpart to {@code McefBackend}, and deliberately slimmer.</b>
+ * MCEF starts itself up on the side; here we start it ourselves. That is a
+ * difference that reaches all the way into the error messages: MCEF reports
+ * with a single boolean whether it came up, and names no reason — our route
+ * can say what is missing.
  *
- * <p><b>Für den Prüflauf, nicht für die Auslieferung.</b> Es gibt keinen
- * Download, keine Prüfsummen und keinen Wächter über stehengebliebene
- * Hilfsprozesse. Der Ordner muss dasein, sonst hört es hier auf. Was daraus
- * einmal wird — Verteilung, geordnetes Abschalten, ein Wächter —, ist ein
- * eigener Schritt und nicht dieser.
+ * <p><b>For the test run, not for shipping.</b> There is no download, no
+ * checksums and no watchdog over helper processes left standing. The directory
+ * must be present, otherwise it stops here. What this once becomes —
+ * distribution, an orderly shutdown, a watchdog — is a step of its own and not
+ * this one.
  */
 public final class FnRuntimeBackend implements WebBackend {
 
@@ -25,32 +25,30 @@ public final class FnRuntimeBackend implements WebBackend {
     }
 
     /**
-     * Fährt die Laufzeitumgebung hoch.
+     * Starts the runtime up.
      *
-     * <p><b>Aus dem Renderthread zu rufen.</b> CEF verlangt, dass
-     * Initialisierung, Nachrichtenschleife und Herunterfahren in demselben
-     * Thread liegen, und unser Renderpfad verlangt, dass es der Renderthread
-     * ist.
+     * <p><b>To be called from the render thread.</b> CEF demands that
+     * initialization, message loop and shutdown lie on the same thread, and
+     * our render path demands that it be the render thread.
      *
-     * @throws WebRuntimeUnavailable mit dem Grund, wenn es nicht geht
+     * @throws WebRuntimeUnavailable with the reason, when it does not work
      */
     public static WebBackend create() {
         try {
             FnCefRuntime.ensureStarted();
         } catch (WebRuntimeUnavailable known) {
-            // <b>Unverändert weiter.</b> Der Griff nach der Laufzeitumgebung
-            // sagt, was fehlt — liegt nicht da, wird geladen, keine
-            // Binärdateien, schon heruntergefahren. In FAILED umgepackt käme
-            // davon nur der Text an, und der Zustand, an dem Oberfläche und
-            // Wiederholung hängen, wäre weg.
+            // <b>Onward unchanged.</b> Reaching for the runtime tells what is
+            // missing — not present, being downloaded, no binaries, already
+            // shut down. Repacked into FAILED only the text would survive, and
+            // the state that the UI and the retry hang off would be gone.
             throw known;
         } catch (Throwable broken) {
             String reason = broken.getMessage() == null ? broken.toString() : broken.getMessage();
             throw new WebRuntimeUnavailable(WebRuntimeState.FAILED, reason);
         }
-        // Chromiums Konsole ins Protokoll — für jede Seite, nicht nur für die
-        // mit Hintergrund. Vorher hing das am Anmelden des Bildschemas, und
-        // Overlays und Tafeln liefen stumm.
+        // Chromium's console into the log — for every page, not only the ones
+        // with a backdrop. Previously that hung off registering the image
+        // scheme, and overlays and panels ran silent.
         WebConsole.attach();
         WebMessages.attach();
         return new FnRuntimeBackend();
@@ -64,10 +62,10 @@ public final class FnRuntimeBackend implements WebBackend {
 
     @Override
     public void close() {
-        // <b>Anders als bei MCEF gehört uns dieser Unterbau.</b> Dort war das
-        // Nichtstun richtig, weil andere Mods denselben Browser mitbenutzen.
-        // Hier gibt es niemanden sonst — und ein nicht heruntergefahrenes CEF
-        // lässt Hilfsprozesse stehen.
+        // <b>Unlike with MCEF, this backend belongs to us.</b> There, doing
+        // nothing was right, because other mods share the same browser. Here
+        // there is no one else — and a CEF that is not shut down leaves helper
+        // processes standing.
         FnCefRuntime.shutdown();
     }
 }

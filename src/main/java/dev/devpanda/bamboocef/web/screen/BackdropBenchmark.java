@@ -15,21 +15,20 @@ import java.nio.file.Path;
 import java.util.Locale;
 
 /**
- * Misst, was ein Minecraft-Hintergrund kostet — in jeder Stufe.
+ * Measures what a Minecraft backdrop costs — at every level.
  *
- * <p><b>Die Frage, die dahintersteht.</b> Aus Schritt D ist bekannt, was die
- * Richtung <i>Browser → Minecraft</i> kostet. Hier kommt die Gegenrichtung
- * dazu, und sie ist die unbekanntere: Ein Bild von der Grafikkarte zu
- * <b>lesen</b> ist etwas anderes, als eines hinaufzuschieben.
+ * <p><b>The question behind it.</b> From step D it is known what the direction
+ * <i>browser → Minecraft</i> costs. Here the reverse direction is added, and
+ * it is the less known one: <b>reading</b> an image off the graphics card is a
+ * different thing from pushing one up to it.
  *
- * <p><b>Und ein Kostenposten, den man leicht übersieht.</b> Jeder neue
- * Hintergrund macht das ganze Bild der Seite ungültig — das Bild deckt die
- * Fläche, und alles Glas darüber muss neu gerechnet werden. Ein Hintergrund
- * mit zehn Bildern je Sekunde erzeugt also zehn <b>Vollbild</b>-Übertragungen
- * in die Gegenrichtung. Die Ausschnitte, die in Schritt D alles gerettet
- * haben, helfen hier nicht.
+ * <p><b>And a cost item that is easy to overlook.</b> Every new backdrop
+ * invalidates the whole image of the page — the image covers the surface, and
+ * all the glass on top of it has to be recomputed. A backdrop at ten frames
+ * per second thus produces ten <b>full-frame</b> transfers in the reverse
+ * direction. The sub-regions that saved everything in step D do not help here.
  *
- * <p>Deshalb misst jeder Abschnitt beide Richtungen.
+ * <p>That is why every section measures both directions.
  */
 public final class BackdropBenchmark extends BackdropScreen {
 
@@ -41,27 +40,27 @@ public final class BackdropBenchmark extends BackdropScreen {
 
     private static boolean finished;
 
-    /** Was nacheinander durchgespielt wird. */
+    /** What is played through one after another. */
     private enum Step {
         SETTLE("Aufbau", Mode.STATIC, 1.0, WorldCapture.Format.PNG),
 
-        // Erst die Auflösungen, alle als Standbild: Was ein einzelnes Bild
-        // kostet, soll nicht von der Wiederholrate verdeckt werden.
+        // First the resolutions, all as a still image: what a single frame
+        // costs should not be masked by the refresh rate.
         STATIC_FULL("Standbild 1,0×  PNG", Mode.STATIC, 1.0, WorldCapture.Format.PNG),
         STATIC_HALF("Standbild 0,5×  PNG", Mode.STATIC, 0.5, WorldCapture.Format.PNG),
         STATIC_QUARTER("Standbild 0,25× PNG", Mode.STATIC, 0.25, WorldCapture.Format.PNG),
 
-        // Dasselbe roh, zum Vergleich: Wie viel von der Zeit ist Kompression?
+        // The same raw, for comparison: how much of the time is compression?
         STATIC_HALF_BMP("Standbild 0,5×  BMP", Mode.STATIC, 0.5, WorldCapture.Format.BMP),
         STATIC_FULL_BMP("Standbild 1,0×  BMP", Mode.STATIC, 1.0, WorldCapture.Format.BMP),
 
-        // Dann die Takte, alle bei halber Kantenlänge.
+        // Then the rates, all at half edge length.
         LOW_TWO("Bewegt 2/s  0,5× PNG", Mode.LOW_2, 0.5, WorldCapture.Format.PNG),
         LOW_FIVE("Bewegt 5/s  0,5× PNG", Mode.LOW_5, 0.5, WorldCapture.Format.PNG),
         LOW_TEN("Bewegt 10/s 0,5× PNG", Mode.LOW_10, 0.5, WorldCapture.Format.PNG),
 
-        // Und einmal roh bei zehn: der Fall, in dem Kompression am meisten
-        // kostete, ohne sie.
+        // And once raw at ten: the case where compression cost the most,
+        // without it.
         LOW_TEN_BMP("Bewegt 10/s 0,5× BMP", Mode.LOW_10, 0.5, WorldCapture.Format.BMP),
 
         CACHE("Zwischenspeicher-Probe", Mode.LOW_5, 0.5, WorldCapture.Format.PNG),
@@ -85,17 +84,17 @@ public final class BackdropBenchmark extends BackdropScreen {
     private long capturesAtStart;
     private long backgroundBytes;
 
-    /** Minecrafts Bildzeit, solange dieser Bildschirm offen ist. */
+    /** Minecraft's frame time, as long as this screen is open. */
     private final DurationSamples frameTimes = new DurationSamples();
     private long lastFrameNanos;
 
     /**
-     * Ob in diesem Abschnitt die Nummer in der Adresse weggelassen wird.
+     * Whether the generation is left out of the address in this section.
      *
-     * <p>Die Probe auf Chromiums Zwischenspeicher: Bleibt der Hintergrund
-     * stehen, obwohl neue Bilder entstehen, dann hält Chromium an seinem
-     * alten fest — und die Nummer ist nicht verhandelbar. Ändert er sich
-     * trotzdem, genügt das mitgeschickte {@code no-store}.
+     * <p>The probe on Chromium's cache: if the backdrop stays frozen even
+     * though new images come into being, then Chromium is holding on to its
+     * old one — and the generation is not negotiable. If it changes anyway,
+     * the {@code no-store} sent along is enough.
      */
     private boolean withoutGeneration;
 
@@ -116,10 +115,10 @@ public final class BackdropBenchmark extends BackdropScreen {
     }
 
     /**
-     * Vier Glasflächen über dem Bild, wie sie eine Oberfläche hätte.
+     * Four glass panes over the image, as a UI would have.
      *
-     * <p>Bewusst nicht schlichter: Was hier gemessen wird, ist auch die Arbeit,
-     * die Chromium nach jedem neuen Hintergrund für die Filter aufwenden muss.
+     * <p>Deliberately not plainer: what is measured here is also the work
+     * Chromium has to spend on the filters after each new backdrop.
      */
     private static final String PAGE_FOR_BENCHMARK = """
             <!doctype html><html lang="de"><head><meta charset="utf-8"><style>
@@ -221,18 +220,19 @@ public final class BackdropBenchmark extends BackdropScreen {
     }
 
     /**
-     * Legt ein Bild des fertigen Schirms ab.
+     * Writes an image of the finished screen out.
      *
-     * <p><b>Weil manche Fragen keine Zahlen haben.</b> Ob eine viertelgroße
-     * Aufnahme hinter einem Weichzeichner auffällt, steht in keiner Messung —
-     * das muss jemand ansehen. Ein Bild je Stufe, unter sprechendem Namen,
-     * macht den Vergleich möglich, ohne dass jemand danebensitzen muss.
+     * <p><b>Because some questions have no numbers.</b> Whether a
+     * quarter-sized capture behind a blur is noticeable stands in no
+     * measurement — someone has to look at it. One image per level, under a
+     * speaking name, makes the comparison possible without anyone having to
+     * sit beside it.
      */
     private void saveScreenshot(String label) {
         try {
-            // Alles heraus, was in einem Dateinamen etwas anderes bedeutet.
-            // Der Schrägstrich in „10/s" wurde sonst zum Pfadtrenner, und die
-            // Ablage scheiterte an einem Verzeichnis, das es nicht gibt.
+            // Strip out everything that means something else in a file name.
+            // The slash in "10/s" otherwise became a path separator, and the
+            // save failed on a directory that does not exist.
             StringBuilder name = new StringBuilder("fn-");
             for (char each : label.toCharArray()) {
                 name.append(Character.isLetterOrDigit(each) ? each : '_');
@@ -294,7 +294,7 @@ public final class BackdropBenchmark extends BackdropScreen {
                 frameTimes.percentile(50) > 0 ? 1_000_000.0 / frameTimes.percentile(50) : 0.0));
     }
 
-    /** Zählt mit, wie viele Bytes der Hintergrund gekostet hat. */
+    /** Keeps count of how many bytes the backdrop has cost. */
     @Override
     protected void beforeDrawing() {
         long before = captures();
@@ -305,10 +305,10 @@ public final class BackdropBenchmark extends BackdropScreen {
     }
 
     /**
-     * In der Zwischenspeicher-Probe bleibt die Nummer weg.
+     * In the cache probe the generation is left out.
      *
-     * <p>Damit ist die Adresse für Chromium jedes Mal dieselbe — und nur noch
-     * das mitgeschickte {@code no-store} könnte es zum Nachladen bewegen.
+     * <p>This makes the address the same for Chromium every time — and only
+     * the {@code no-store} sent along could still move it to reload.
      */
     @Override
     protected String backgroundUrlFor(long generation) {

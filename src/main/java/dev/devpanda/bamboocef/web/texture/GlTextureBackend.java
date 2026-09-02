@@ -11,33 +11,32 @@ import org.lwjgl.opengl.GL12;
 import java.nio.ByteBuffer;
 
 /**
- * Lädt Browserbilder in eine OpenGL-Textur.
+ * Uploads browser images into an OpenGL texture.
  *
- * <p><b>Ohne {@code NativeImage} und ohne {@code DynamicTexture}.</b> Beide
- * hätten eine zusätzliche Kopie im Hauptspeicher bedeutet: Ein
- * {@code NativeImage} besitzt seinen eigenen Puffer, und um Chromiums Bild
- * hineinzubekommen, müsste man es dort hineinschreiben, bevor es auf die
- * Grafikkarte geht. Der Weg hier gibt LWJGL den geliehenen Puffer direkt —
- * eine Kopie weniger je Bild, bei 1080p achteinhalb Megabyte.
+ * <p><b>Without {@code NativeImage} and without {@code DynamicTexture}.</b>
+ * Both would have meant an extra copy in main memory: a {@code NativeImage}
+ * owns its own buffer, and to get Chromium's image in one would have to write
+ * it in there before it goes to the graphics card. The path here gives LWJGL
+ * the borrowed buffer directly — one copy fewer per image, eight and a half
+ * megabytes at 1080p.
  *
- * <p><b>Das Format ist nicht verhandelbar.</b> Chromium liefert BGRA mit
- * Ursprung oben links. {@code GL_BGRA} zusammen mit
- * {@code GL_UNSIGNED_INT_8_8_8_8_REV} ist die Kombination, die das ohne
- * Umsortieren übernimmt; jede andere kostet entweder einen Shader oder eine
- * Schleife über jeden Bildpunkt.
+ * <p><b>The format is not negotiable.</b> Chromium delivers BGRA with the
+ * origin at the top left. {@code GL_BGRA} together with
+ * {@code GL_UNSIGNED_INT_8_8_8_8_REV} is the combination that takes this on
+ * without reordering; any other costs either a shader or a loop over every
+ * pixel.
  *
- * <p><b>Zum Ursprung oben links:</b> OpenGL-Texturen zählen von unten. Hier
- * wird trotzdem nicht gespiegelt — das kostete eine weitere Kopie. Wer das
- * Bild zeichnet, dreht stattdessen die Texturkoordinaten. Spiegeln beim
- * Hochladen wäre die teuerste Stelle für die billigste Rechnung.
+ * <p><b>On the top-left origin:</b> OpenGL textures count from the bottom. Even
+ * so, nothing is flipped here — that would cost another copy. Whoever draws the
+ * image flips the texture coordinates instead. Flipping on upload would be the
+ * most expensive place for the cheapest computation.
  *
- * <p>Alle Aufrufe gehören in den Render-Thread. Das ist heute gegeben:
- * Chromiums Nachrichtenschleife wird dort gepumpt, also kommt auch
- * {@code onPaint} dort an.
+ * <p>All calls belong on the render thread. That is a given today: Chromium's
+ * message loop is pumped there, so {@code onPaint} arrives there too.
  */
 public final class GlTextureBackend implements BrowserTextureBackend {
 
-    /** Vier Byte je Bildpunkt. */
+    /** Four bytes per pixel. */
     private static final int BYTES_PER_PIXEL = 4;
 
     private int textureId;
@@ -45,7 +44,7 @@ public final class GlTextureBackend implements BrowserTextureBackend {
     private int height;
     private boolean closed;
 
-    /** Wie viele Bytes bisher hochgeladen wurden — für die Messung. */
+    /** How many bytes have been uploaded so far — for the measurement. */
     private long uploadedBytes;
     private long uploads;
     private long fullUploads;
@@ -53,10 +52,10 @@ public final class GlTextureBackend implements BrowserTextureBackend {
     private final DurationSamples uploadTimes = new DurationSamples();
 
     /**
-     * Legt die Textur an.
+     * Creates the texture.
      *
-     * <p>Muss im Render-Thread laufen. Vorher gibt es keine Textur, und
-     * {@link #textureId()} antwortet mit null.
+     * <p>Must run on the render thread. Before that there is no texture, and
+     * {@link #textureId()} answers with zero.
      */
     public void initialize() {
         if (closed || textureId != 0) {
@@ -64,23 +63,23 @@ public final class GlTextureBackend implements BrowserTextureBackend {
         }
         textureId = GL11.glGenTextures();
         RenderSystem.bindTexture(textureId);
-        // Linear und nicht nächster Nachbar: Eine Web-Oberfläche wird selten
-        // in ihrer eigenen Auflösung gezeigt, und harte Kanten auf Schrift
-        // sehen schlechter aus als ein weicher Übergang.
+        // Linear and not nearest neighbor: a web interface is rarely shown at
+        // its own resolution, and hard edges on text look worse than a soft
+        // transition.
         RenderSystem.texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
         RenderSystem.texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-        // Ohne Wiederholung: Am Rand einer Oberfläche gehört keine zweite.
+        // No repeat: at the edge of a surface there should be no second one.
         RenderSystem.texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
         RenderSystem.texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
         RenderSystem.bindTexture(0);
     }
 
     /**
-     * Lädt ein geliehenes Bild hoch — der billigste Weg, den es gibt.
+     * Uploads a borrowed image — the cheapest way there is.
      *
-     * <p>Der Puffer gehört Chromium und ist nur während dieses Aufrufs
-     * gültig. Genau deshalb steht hier {@link BorrowedFrame} und nicht
-     * {@link BrowserFrame}: Was nur geliehen ist, soll auch nur so heißen.
+     * <p>The buffer belongs to Chromium and is valid only during this call.
+     * That is exactly why {@link BorrowedFrame} is here and not
+     * {@link BrowserFrame}: what is only borrowed should be named accordingly.
      */
     public void upload(BorrowedFrame frame) {
         if (closed) {
@@ -106,8 +105,8 @@ public final class GlTextureBackend implements BrowserTextureBackend {
     }
 
     private void uploadWhole(BorrowedFrame frame) {
-        // Zeilenlänge zurücksetzen: Ein voriger Ausschnitt könnte sie noch
-        // gesetzt haben, und dann läse OpenGL mit falscher Schrittweite.
+        // Reset the row length: a previous region might still have set it, and
+        // then OpenGL would read with the wrong stride.
         RenderSystem.pixelStore(GL11.GL_UNPACK_ROW_LENGTH, 0);
         RenderSystem.pixelStore(GL11.GL_UNPACK_SKIP_PIXELS, 0);
         RenderSystem.pixelStore(GL11.GL_UNPACK_SKIP_ROWS, 0);
@@ -123,11 +122,11 @@ public final class GlTextureBackend implements BrowserTextureBackend {
     }
 
     private void uploadRegions(BorrowedFrame frame) {
-        // <b>Hier zahlt sich die Zeilenlänge aus.</b> Der Puffer trägt immer
-        // das ganze Bild; damit OpenGL einen Ausschnitt daraus liest, muss es
-        // wissen, wie breit eine Zeile wirklich ist und wo der Ausschnitt
-        // beginnt. Ohne das müsste man den Ausschnitt vorher herauskopieren —
-        // und wäre wieder bei einer Kopie je Bild.
+        // <b>Here the row length pays off.</b> The buffer always carries the
+        // whole image; for OpenGL to read a region out of it, it must know how
+        // wide a row really is and where the region begins. Without that one
+        // would have to copy the region out beforehand — and would be back at
+        // one copy per image.
         RenderSystem.pixelStore(GL11.GL_UNPACK_ROW_LENGTH, frame.width());
         RenderSystem.pixelStore(GL11.GL_UNPACK_ALIGNMENT, 4);
         ByteBuffer pixels = frame.pixels();
@@ -153,12 +152,11 @@ public final class GlTextureBackend implements BrowserTextureBackend {
     }
 
     /**
-     * Der besitzende Weg — heute nicht benutzt.
+     * The owning path — not used today.
      *
-     * <p>Er steht hier, weil die Schnittstelle ihn verlangt, und er ist der
-     * zweite Pfad, den wir später messen wollen: Kopie, Postfach,
-     * entkoppelter Upload. Bis dahin führt jeder Weg über
-     * {@link #upload(BorrowedFrame)}.
+     * <p>It is here because the interface requires it, and it is the second
+     * path we want to measure later: copy, mailbox, decoupled upload. Until
+     * then every path goes through {@link #upload(BorrowedFrame)}.
      */
     @Override
     public void upload(BrowserFrame frame) {
@@ -167,7 +165,7 @@ public final class GlTextureBackend implements BrowserTextureBackend {
                         + "über upload(BorrowedFrame)");
     }
 
-    /** Die Textur, oder null, solange es keine gibt. */
+    /** The texture, or zero while there is none. */
     public int textureId() {
         return textureId;
     }
@@ -180,7 +178,7 @@ public final class GlTextureBackend implements BrowserTextureBackend {
         return height;
     }
 
-    // ---- Messwerte --------------------------------------------------------
+    // ---- Measurements -----------------------------------------------------
 
     public long uploads() {
         return uploads;
@@ -191,21 +189,21 @@ public final class GlTextureBackend implements BrowserTextureBackend {
     }
 
     /**
-     * Wie oft das ganze Bild ging statt nur der geänderte Ausschnitt.
+     * How often the whole image went instead of only the changed region.
      *
-     * <p>Die Zahl, an der sich zeigt, ob Ausschnitte überhaupt ankommen. Ist
-     * sie gleich {@link #uploads()}, arbeitet die Ersparnis nicht.
+     * <p>The number that shows whether regions arrive at all. If it equals
+     * {@link #uploads()}, the saving is not working.
      */
     public long fullUploads() {
         return fullUploads;
     }
 
-    /** Wie viele Ausschnitte insgesamt hochgeladen wurden. */
+    /** How many regions were uploaded in total. */
     public long regions() {
         return regions;
     }
 
-    /** Durchschnittliche Dauer eines Uploads in Mikrosekunden. */
+    /** Average duration of an upload in microseconds. */
     public double averageUploadMicros() {
         return uploadTimes.average();
     }
@@ -214,12 +212,12 @@ public final class GlTextureBackend implements BrowserTextureBackend {
         return uploadTimes.slowest();
     }
 
-    /** Die Verteilung der Uploadzeiten — Median, p95 und Ausreißer. */
+    /** The distribution of upload times — median, p95 and outliers. */
     public DurationSamples uploadTimes() {
         return uploadTimes;
     }
 
-    /** Bytes je Bild, gemittelt — die Zahl, die Ausschnitte klein machen sollen. */
+    /** Bytes per image, averaged — the number that regions are meant to keep small. */
     public double bytesPerUpload() {
         return uploads == 0 ? 0.0 : uploadedBytes / (double) uploads;
     }

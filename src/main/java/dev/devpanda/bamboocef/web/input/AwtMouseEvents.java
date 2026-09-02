@@ -5,28 +5,28 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 
 /**
- * Mausereignisse für Chromium, gebaut aus dem, was Minecraft meldet.
+ * Mouse events for Chromium, built from what Minecraft reports.
  *
- * <p><b>Warum die Maus bei AWT bleibt, die Tastatur aber nicht.</b> Der native
- * Teil liest bei der Maus ausschließlich öffentliche Methoden — {@code getID},
+ * <p><b>Why the mouse stays with AWT but the keyboard does not.</b> For the
+ * mouse the native side reads only public methods — {@code getID},
  * {@code getX}, {@code getY}, {@code getClickCount}, {@code getButton},
- * {@code getModifiersEx}, beim Rad zusätzlich {@code getScrollType},
- * {@code getWheelRotation} und {@code getUnitsToScroll}. Alles davon lässt
- * sich über die Konstruktoren setzen. Bei der Tastatur ist genau das nicht so:
- * Dort hängt alles an einem privaten Feld, das nur der native AWT-Code füllt.
+ * {@code getModifiersEx}, and for the wheel additionally {@code getScrollType},
+ * {@code getWheelRotation} and {@code getUnitsToScroll}. All of it can be set
+ * through the constructors. For the keyboard that is precisely not so: there
+ * everything hangs on a private field that only the native AWT code fills.
  *
- * <p><b>Kein {@code MOUSE_CLICKED}.</b> Chromium baut den Klick aus Herunter
- * und Herauf. Ein zusätzliches Ereignis wäre ein zweiter Klick und verfälschte
- * Doppel- und Dreifachklicks.
+ * <p><b>No {@code MOUSE_CLICKED}.</b> Chromium builds the click from down and
+ * up. An extra event would be a second click and would distort double and
+ * triple clicks.
  */
 public final class AwtMouseEvents {
 
     /**
-     * Minecrafts Tastennummer in AWTs Zählung.
+     * Minecraft's button number in AWT's numbering.
      *
-     * <p>Mitte und rechts sind vertauscht — GLFW zählt in der Reihenfolge, in
-     * der Mäuse ihre Tasten melden, AWT nach Bedeutung. Dieselbe Falle wie in
-     * {@link MouseButtons}, nur mit anderen Zielwerten.
+     * <p>Middle and right are swapped — GLFW counts in the order in which mice
+     * report their buttons, AWT by meaning. The same trap as in
+     * {@link MouseButtons}, only with different target values.
      */
     public static int toAwtButton(int minecraftButton) {
         return switch (minecraftButton) {
@@ -38,11 +38,11 @@ public final class AwtMouseEvents {
     }
 
     /**
-     * Die Flagge „diese Taste ist unten" für {@code getModifiersEx}.
+     * The "this button is down" flag for {@code getModifiersEx}.
      *
-     * <p>CEF liest gedrückte Maustasten aus demselben Feld wie Strg und
-     * Umschalt. Fehlt die Flagge, sieht eine Bewegung für Chromium aus wie
-     * eine mit losgelassener Taste, und jedes Ziehen bricht ab.
+     * <p>CEF reads pressed mouse buttons from the same field as Ctrl and Shift.
+     * If the flag is missing, a movement looks to Chromium like one with the
+     * button released, and every drag breaks off.
      */
     public static int buttonDownMask(int minecraftButton) {
         return switch (minecraftButton) {
@@ -54,20 +54,19 @@ public final class AwtMouseEvents {
     }
 
     /**
-     * Die zusammengesetzte Maske aus Minecrafts Weg in AWTs Familie.
+     * The combined mask, from Minecraft's convention into AWT's family.
      *
-     * <p>Was hereinkommt, trägt zweierlei in einer Zahl: GLFWs Umschalttasten
-     * in den unteren vier Bit und die gedrückten Maustasten in {@code 0x10},
-     * {@code 0x20} und {@code 0x40} — die Flaggen, die {@link MouseButtons}
-     * für Chromiums nativen Teil führt.
+     * <p>What comes in carries two things in one number: GLFW's modifiers in
+     * the lower four bits and the pressed mouse buttons in {@code 0x10},
+     * {@code 0x20} and {@code 0x40} — the flags that {@link MouseButtons} keeps
+     * for Chromium's native side.
      *
-     * <p><b>Die beiden Sätze überschneiden sich, und das ist kein Versehen,
-     * das man hier beheben könnte.</b> GLFW belegt {@code 0x10} mit
-     * Feststelltaste und {@code 0x20} mit Ziffernblocksperre — dieselben Bit
-     * wie linke und mittlere Maustaste. Getrennt bleiben sie nur, weil GLFW
-     * diese beiden Zustände ohne {@code GLFW_LOCK_KEY_MODS} gar nicht meldet.
-     * Deshalb werden hier ausdrücklich nur die unteren vier Bit als
-     * Umschalttasten gelesen: Was darüber liegt, gehört der Maus.
+     * <p><b>The two sets overlap, and that is not an oversight one could fix
+     * here.</b> GLFW puts Caps Lock on {@code 0x10} and Num Lock on
+     * {@code 0x20} — the same bits as the left and middle mouse buttons. They
+     * stay separate only because GLFW does not report these two states at all
+     * without {@code GLFW_LOCK_KEY_MODS}. That is why only the lower four bits
+     * are read as modifiers here: what lies above belongs to the mouse.
      */
     public static int toAwtModifiers(int combinedModifiers) {
         int awt = AwtModifiers.forKey(combinedModifiers & 0x0F);
@@ -83,7 +82,7 @@ public final class AwtMouseEvents {
         return awt;
     }
 
-    /** Ob in der zusammengesetzten Maske überhaupt eine Maustaste steckt. */
+    /** Whether the combined mask contains any mouse button at all. */
     public static boolean anyButtonDown(int combinedModifiers) {
         return (combinedModifiers
                 & (MouseButtons.LEFT_MASK | MouseButtons.MIDDLE_MASK | MouseButtons.RIGHT_MASK))
@@ -91,10 +90,11 @@ public final class AwtMouseEvents {
     }
 
     /**
-     * Chromiums Tastennummer in AWTs Zählung.
+     * Chromium's button number in AWT's numbering.
      *
-     * <p>Die Session hat bereits nach {@link MouseButtons#toBrowserButton}
-     * übersetzt; hier geht es nur noch eine Zählung weiter.
+     * <p>The session has already translated via
+     * {@link MouseButtons#toBrowserButton}; here it only goes one numbering
+     * further.
      */
     public static int browserButtonToAwt(int cefButton) {
         return switch (cefButton) {
@@ -106,11 +106,11 @@ public final class AwtMouseEvents {
     }
 
     /**
-     * Eine Bewegung.
+     * A movement.
      *
-     * @param dragging ob dabei eine Taste unten ist — Chromium unterscheidet
-     *                 Bewegen und Ziehen, und eine Textauswahl entsteht nur
-     *                 beim Ziehen
+     * @param dragging whether a button is down during it — Chromium
+     *                 distinguishes moving and dragging, and a text selection
+     *                 arises only while dragging
      */
     public static MouseEvent moved(int x, int y, int awtModifiers, boolean dragging) {
         return new MouseEvent(AwtEventSource.SOURCE,
@@ -119,10 +119,10 @@ public final class AwtMouseEvents {
     }
 
     /**
-     * Der Zeiger verlässt die Fläche.
+     * The pointer leaves the surface.
      *
-     * <p>Ohne dieses Ereignis nimmt Chromium Schwebezustände nicht zurück, und
-     * der zuletzt berührte Knopf bleibt für immer hell.
+     * <p>Without this event Chromium does not undo hover states, and the last
+     * button touched stays highlighted forever.
      */
     public static MouseEvent exited(int x, int y, int awtModifiers) {
         return new MouseEvent(AwtEventSource.SOURCE, MouseEvent.MOUSE_EXITED,
@@ -130,10 +130,10 @@ public final class AwtMouseEvents {
     }
 
     /**
-     * Eine Taste geht herunter oder herauf.
+     * A button goes down or up.
      *
-     * @param clickCount 1, 2 oder 3 — daran und nur daran erkennt Chromium
-     *                   einen Doppelklick. Den Wert liefert
+     * @param clickCount 1, 2 or 3 — by this and only this does Chromium
+     *                   recognize a double click. The value comes from
      *                   {@link ClickCounter}.
      */
     public static MouseEvent button(int x, int y, boolean down, int minecraftButton,
@@ -141,7 +141,7 @@ public final class AwtMouseEvents {
         return awtButton(x, y, down, toAwtButton(minecraftButton), clickCount, awtModifiers);
     }
 
-    /** Dasselbe, wenn die Tastennummer schon AWTs ist. */
+    /** The same, when the button number is already AWT's. */
     public static MouseEvent awtButton(int x, int y, boolean down, int awtButton, int clickCount,
             int awtModifiers) {
         return new MouseEvent(AwtEventSource.SOURCE,
@@ -151,28 +151,27 @@ public final class AwtMouseEvents {
     }
 
     /**
-     * Eine Raststellung des Rades.
+     * A detent of the wheel.
      *
-     * <p><b>Das Vorzeichen geht unverändert durch — gemessen, nicht geraten.</b>
-     * Drei Zählweisen treffen hier aufeinander: GLFW meldet nach oben ein
-     * positives Delta, AWT nach oben ein negatives {@code wheelRotation}, und
-     * Chromiums {@code deltaY} ist nach oben ebenfalls negativ. Zwei
-     * Vorzeichenwechsel, die sich aufheben — aber das ist eine Behauptung, bis
-     * jemand nachsieht. {@code tools/runtime/probe/KeyProbe.java} hat
-     * nachgesehen:
+     * <p><b>The sign passes through unchanged — measured, not guessed.</b>
+     * Three counting conventions meet here: GLFW reports a positive delta for
+     * up, AWT a negative {@code wheelRotation} for up, and Chromium's
+     * {@code deltaY} is likewise negative for up. Two sign flips that cancel
+     * each other out — but that is a claim until someone checks.
+     * {@code tools/runtime/probe/KeyProbe.java} checked:
      *
      * <pre>
-     *   wheelRotation +1  →  deltaY -2.0   in der Seite: hinauf
-     *   wheelRotation -1  →  deltaY +2.0   in der Seite: hinunter
+     *   wheelRotation +1  →  deltaY -2.0   in the page: up
+     *   wheelRotation -1  →  deltaY +2.0   in the page: down
      * </pre>
      *
-     * <p>Minecrafts Delta ist beim Drehen nach oben positiv. Es wandert
-     * deshalb unverändert in {@code wheelRotation}.
+     * <p>Minecraft's delta is positive when scrolling up. It therefore moves
+     * into {@code wheelRotation} unchanged.
      *
-     * @param notches      Minecrafts Raststellungen, positiv nach oben
-     * @param unitsPerNotch Zeilen je Rastung. Der Wert steht im
-     *                      {@code UnitsToScroll} und überschreibt dort das
-     *                      Delta; drei ist der Wert, den MCEF verwendet hat.
+     * @param notches      Minecraft's detents, positive for up
+     * @param unitsPerNotch lines per detent. The value goes into
+     *                      {@code UnitsToScroll} and overrides the delta there;
+     *                      three is the value MCEF used.
      */
     public static MouseWheelEvent wheel(int x, int y, int notches, int unitsPerNotch,
             int awtModifiers) {

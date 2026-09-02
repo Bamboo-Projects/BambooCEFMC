@@ -3,14 +3,14 @@ package dev.devpanda.bamboocef.web;
 import java.util.function.Supplier;
 
 /**
- * Der eine Ort, an dem entschieden wird, worauf die Runtime läuft.
+ * The one place where it is decided what the runtime runs on.
  *
- * <p>Es gibt genau einen Unterbau. Er steht trotzdem hier und nicht in
- * {@link WebRuntime}, aus einem Grund, der nichts mit Vorrat zu tun hat:
- * {@code WebRuntime} darf keinen Typ aus {@code org.cef} nennen, sonst
- * verlangt schon ihr Laden die native Laufzeitumgebung. Diese Klasse nennt ihn
- * auch nicht — sie reicht ein Lambda weiter, und erst dessen Aufruf lädt die
- * Klasse, die es tut.
+ * <p>There is exactly one backend. It still lives here and not in
+ * {@link WebRuntime}, for a reason that has nothing to do with speculation:
+ * {@code WebRuntime} must not name any type from {@code org.cef}, or merely
+ * loading it would demand the native runtime. This class does not name it
+ * either — it passes a lambda along, and only calling that lambda loads the
+ * class that does.
  */
 public final class WebSupport {
 
@@ -18,26 +18,26 @@ public final class WebSupport {
     }
 
     /**
-     * Fährt die Runtime hoch, falls es geht.
+     * Brings the runtime up, if it can.
      *
-     * <p>Beim ersten Bedarf zu rufen und nicht beim Start des Spiels:
-     * Chromium fährt im Renderthread hoch und braucht dafür ein paar hundert
-     * Millisekunden. Wer zu früh fragt, bekommt ein „noch nicht" als „nein".
+     * <p>To be called on first need and not at game startup: Chromium comes up
+     * on the render thread and takes a few hundred milliseconds to do so.
+     * Whoever asks too early takes a "not yet" for a "no".
      */
     public static WebRuntimeStatus ensureStarted() {
         return WebRuntime.start(backend());
     }
 
-    /** Noch einmal versuchen, wenn der letzte Grund einen zweiten Versuch wert war. */
+    /** Try again, if the last reason was worth a second attempt. */
     public static WebRuntimeStatus retry() {
         return WebRuntime.retry(backend());
     }
 
     private static Supplier<WebBackend> backend() {
-        // Ein Lambda und kein Methodenverweis: Beide wären hier richtig, aber
-        // der Rumpf macht sichtbar, dass die Klasse erst beim Aufruf geladen
-        // wird — und genau darauf beruht, dass die Laufzeitumgebung fehlen
-        // darf, ohne die Mod mitzunehmen.
+        // A lambda and not a method reference: both would be correct here, but
+        // the body makes it visible that the class is loaded only on the call
+        // — and that is exactly what lets the runtime be missing without
+        // taking the mod down with it.
         return () -> dev.devpanda.bamboocef.web.runtime.CefHost.backend();
     }
 }

@@ -3,14 +3,14 @@ package dev.devpanda.bamboocef;
 import net.neoforged.fml.common.Mod;
 
 /**
- * BambooCEF — die CEF-basierte Web-Runtime als eigenständige Mod.
+ * BambooCEF — the CEF-based web runtime as a standalone mod.
  *
- * <p>Hier zieht ein, was heute noch in FactoryNetwork liegt: das Starten und
- * Laden von Chromium, der Bildweg, die Eingaben, und die öffentliche Java-API
- * ({@code FnWeb}, {@code WebSurface}, {@code WebOverlay}, {@code WorldSurface}).
- * FactoryNetwork wird dann ein Nutzer dieser Mod wie jede andere.
+ * <p>This is where what still lives in FactoryNetwork moves in: starting and
+ * loading Chromium, the frame path, the input handling, and the public Java
+ * API ({@code FnWeb}, {@code WebSurface}, {@code WebOverlay}, {@code WorldSurface}).
+ * FactoryNetwork then becomes a consumer of this mod like any other.
  *
- * <p>Nur Client: Ein fensterloses Chromium gibt es auf einem Server nicht.
+ * <p>Client only: a windowless Chromium has no place on a server.
  */
 @Mod(BambooCEF.MOD_ID)
 public final class BambooCEF {

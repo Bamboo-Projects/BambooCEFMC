@@ -8,16 +8,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Die Verteilung muss stimmen, sonst misst der Messwert nichts.
+ * The distribution must be right, otherwise the measurement measures nothing.
  *
- * <p>Der wichtigste Fall ist der letzte: Ein einzelner Ausreißer darf im
- * Median untergehen, aber nirgends sonst. Genau dafür wird die Klasse
- * gebraucht.
+ * <p>The most important case is the last: a single outlier may sink into the
+ * median, but nowhere else. Exactly for that the class is
+ * needed.
  */
 class DurationSamplesTest {
 
     @Test
-    @DisplayName("Ohne Messung gibt es nichts zu berichten")
+    @DisplayName("With no measurement there is nothing to report")
     void nothingMeasuredIsNothingReported() {
         DurationSamples samples = new DurationSamples(16);
 
@@ -27,7 +27,7 @@ class DurationSamplesTest {
     }
 
     @Test
-    @DisplayName("Eine einzelne Messung ist zugleich Median, p95 und Maximum")
+    @DisplayName("A single measurement is at once median, p95 and maximum")
     void oneSampleIsEverything() {
         DurationSamples samples = new DurationSamples(16);
         samples.record(5_000);           // 5 µs
@@ -38,11 +38,11 @@ class DurationSamplesTest {
     }
 
     @Test
-    @DisplayName("Bei hundert gleichmäßigen Werten liegen die Perzentile, wo sie sollen")
+    @DisplayName("With a hundred evenly spaced values the percentiles land where they should")
     void percentilesLandWhereTheyBelong() {
         DurationSamples samples = new DurationSamples(128);
         for (int each = 1; each <= 100; each++) {
-            samples.record(each * 1000L);   // 1 µs bis 100 µs
+            samples.record(each * 1000L);   // 1 µs to 100 µs
         }
 
         assertEquals(50.0, samples.percentile(50));
@@ -51,13 +51,13 @@ class DurationSamplesTest {
     }
 
     @Test
-    @DisplayName("Ein einzelner Ausreißer verschiebt den Median nicht, das Maximum schon")
+    @DisplayName("A single outlier does not shift the median, but the maximum yes")
     void oneOutlierMovesTheMaximumOnly() {
         DurationSamples samples = new DurationSamples(128);
         for (int each = 0; each < 99; each++) {
-            samples.record(100_000);        // 100 µs, neunundneunzig Mal
+            samples.record(100_000);        // 100 µs, ninety-nine times
         }
-        samples.record(500_000_000);        // ein halber Sekundenruckler
+        samples.record(500_000_000);        // a half-second stutter
 
         assertEquals(100.0, samples.percentile(50),
                 "sonst versteckte ein Mittelwert genau den Fall, der auffällt");
@@ -67,10 +67,10 @@ class DurationSamplesTest {
     }
 
     @Test
-    @DisplayName("Das Fenster vergisst die ältesten Werte, die Zählung nicht")
+    @DisplayName("The window forgets the oldest values, the count does not")
     void theWindowForgetsButTheCountDoesNot() {
         DurationSamples samples = new DurationSamples(4);
-        samples.record(1_000_000);          // 1000 µs, fällt gleich heraus
+        samples.record(1_000_000);          // 1000 µs, falls out right away
         for (int each = 0; each < 4; each++) {
             samples.record(10_000);         // 10 µs
         }
@@ -83,7 +83,7 @@ class DurationSamplesTest {
     }
 
     @Test
-    @DisplayName("Ein Perzentil jenseits der Skala wird abgelehnt")
+    @DisplayName("A percentile beyond the scale is rejected")
     void nonsenseIsRefused() {
         DurationSamples samples = new DurationSamples(4);
         samples.record(1000);

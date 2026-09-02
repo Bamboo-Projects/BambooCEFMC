@@ -5,39 +5,39 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Öffnet und schließt die Oberfläche mehrfach und schreibt mit, wann was
- * geschieht.
+ * Opens and closes the interface repeatedly and records when what
+ * happens.
  *
- * <p><b>Die Frage.</b> Nach einer Messreihe mit vielen Seitenwechseln blieben
- * zehn Renderer-Prozesse stehen, zusammen rund 660 MB. Offen ist, woran das
- * lag — und die beiden möglichen Ursachen haben sehr verschiedene Folgen:
+ * <p><b>The question.</b> After a measurement run with many page switches, ten
+ * renderer processes remained, together around 660 MB. Open is what
+ * caused it — and the two possible causes have very different consequences:
  *
  * <ul>
- *   <li><b>Beim Wechseln der Seite.</b> Jedes {@code location.href} legt einen
- *       neuen Prozess an, der alte bleibt. Dann ist es kein Fehler der
- *       Laufzeitumgebung, sondern eine Anweisung an unseren eigenen Entwurf:
- *       Die Oberfläche darf zwischen ihren Ansichten nicht vollständig
- *       navigieren, sondern muss eine Anwendung bleiben, die ihren Inhalt
- *       austauscht.</li>
- *   <li><b>Beim Schließen des Browsers.</b> Wenn ein geschlossener Browser
- *       seinen Prozess behält, wächst der Verbrauch mit jedem Öffnen, und das
- *       wäre ein Hindernis für alles Weitere.</li>
+ *   <li><b>On switching the page.</b> Every {@code location.href} creates a
+ *       new process, the old one stays. Then it is not a fault of the
+ *       runtime environment but an instruction to our own design:
+ *       the interface must not navigate fully between its
+ *       views, but must remain an application that swaps out its
+ *       content.</li>
+ *   <li><b>On closing the browser.</b> When a closed browser
+ *       keeps its process, consumption grows with every open, and that
+ *       would be an obstacle to everything further.</li>
  * </ul>
  *
- * <p><b>Deshalb navigiert dieser Ablauf nie.</b> Immer dieselbe Adresse, immer
- * ein frischer Browser. Was hier wächst, wächst am Schließen — und was nicht
- * wächst, entlastet die Laufzeitumgebung vom Verdacht.
+ * <p><b>That is why this run never navigates.</b> Always the same address, always
+ * a fresh browser. What grows here grows at closing — and what does not
+ * grow clears the runtime environment of suspicion.
  *
- * <p><b>Und deshalb wartet er lange.</b> Chromium räumt seine Prozesse nicht
- * im selben Augenblick ab; wer sofort nach dem Schließen zählt, zählt einen
- * Zwischenzustand und nennt ihn ein Leck. Fünfzehn Sekunden je Abschnitt sind
- * genug, dass ein Aufräumen stattgefunden haben muss.
+ * <p><b>And that is why it waits long.</b> Chromium does not clear its processes
+ * in the same instant; whoever counts right after closing counts an
+ * intermediate state and calls it a leak. Fifteen seconds per section are
+ * enough that a cleanup must have taken place.
  */
 public final class LifecycleBenchmark {
 
     private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/Lifecycle");
 
-    /** Wie lange ein Zustand gehalten wird, in Takten zu 50 ms. */
+    /** How long a state is held, in ticks of 50 ms. */
     private static final int HOLD_TICKS = 300;
 
     private static final int CYCLES = 3;
@@ -50,11 +50,11 @@ public final class LifecycleBenchmark {
     private static long phaseStartedNanos;
 
     private enum Phase {
-        /** Vor dem ersten Öffnen: Chromium läuft, aber kein Browser. */
+        /** Before the first open: Chromium is running, but no browser. */
         SETTLE,
-        /** Die Oberfläche ist offen. */
+        /** The interface is open. */
         OPEN,
-        /** Die Oberfläche ist geschlossen, es wird auf das Aufräumen gewartet. */
+        /** The interface is closed, waiting for the cleanup. */
         CLOSED,
         DONE
     }
@@ -66,7 +66,7 @@ public final class LifecycleBenchmark {
         return finished;
     }
 
-    /** Beginnt den Ablauf. Zu rufen, wenn eine Welt geladen ist. */
+    /** Begins the run. To be called when a world is loaded. */
     public static void start() {
         if (running) {
             return;
@@ -80,11 +80,11 @@ public final class LifecycleBenchmark {
     }
 
     /**
-     * Ein Takt des Clients.
+     * One tick of the client.
      *
-     * <p>Der Ablauf hängt am Takt und nicht am Bild: Ein geschlossener
-     * Bildschirm zeichnet nicht, und ein Ablauf, der nur beim Zeichnen
-     * weiterläuft, bliebe genau an der Stelle stehen, die er messen soll.
+     * <p>The run hangs on the tick and not on the frame: a closed
+     * screen does not draw, and a run that only continues while drawing
+     * would stop exactly at the point it is meant to measure.
      */
     public static void tick(Minecraft client) {
         if (!running || phase == Phase.DONE) {
@@ -113,8 +113,8 @@ public final class LifecycleBenchmark {
                 mark("GEÖFFNET", "Zyklus " + cycle + (opened ? "" : " — ÖFFNEN FEHLGESCHLAGEN"));
             }
             case OPEN -> {
-                // setScreen(null) geht denselben Weg wie die Fluchttaste und
-                // ruft removed(), wo die Sitzung geschlossen wird.
+                // setScreen(null) takes the same path as the escape key and
+                // calls removed(), where the session is closed.
                 client.setScreen(null);
                 phase = Phase.CLOSED;
                 mark("GESCHLOSSEN", "Zyklus " + cycle);
@@ -125,11 +125,11 @@ public final class LifecycleBenchmark {
     }
 
     /**
-     * Setzt eine Marke ins Protokoll.
+     * Sets a marker in the log.
      *
-     * <p>Gezählt wird von außen, und außen braucht einen Zeitpunkt, an dem es
-     * seine eigene Aufzeichnung festmachen kann. Die Uhrzeit steht ohnehin in
-     * jeder Zeile; hier steht, was in diesem Augenblick geschehen ist.
+     * <p>Counting is done from outside, and the outside needs a point in time at
+     * which it can anchor its own recording. The time of day is in every
+     * line anyway; here stands what has happened at this moment.
      */
     private static void mark(String what, String detail) {
         double seconds = (System.nanoTime() - phaseStartedNanos) / 1_000_000_000.0;

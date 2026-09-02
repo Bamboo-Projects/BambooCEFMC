@@ -1,23 +1,24 @@
 package dev.devpanda.bamboocef.web;
 
 /**
- * Was der {@link BrowserManager} von einer Sitzung wissen muss.
+ * What the {@link BrowserManager} needs to know about a session.
  *
- * <p><b>Eine Schnittstelle für genau eine Umsetzung</b> — das sieht nach
- * Vorrat aus und ist keiner. Sie steht hier, damit {@code BrowserManager} in
- * {@code web} liegen kann, ohne {@code web.runtime} zu kennen: Dort hängt
- * Chromium dran, und wer den Verwalter lädt, soll es nicht mitladen müssen.
+ * <p><b>An interface for exactly one implementation</b> — that looks like
+ * speculation and isn't. It exists so that {@code BrowserManager} can live in
+ * {@code web} without knowing {@code web.runtime}: that is where Chromium
+ * hangs, and whoever loads the manager should not have to load it along.
  */
 public interface ManagedBrowser {
 
     /**
-     * Schließt die Sitzung. Muss mehrfach gerufen werden dürfen.
+     * Closes the session. Must be safe to call more than once.
      *
-     * <p>Die Rückmeldung von Chromium — {@code onBeforeClose} — kommt danach
-     * und asynchron. Wer wissen will, ob sie da ist, fragt den Verwalter.
+     * <p>Chromium's acknowledgement — {@code onBeforeClose} — comes afterwards
+     * and asynchronously. Whoever wants to know whether it has arrived asks the
+     * manager.
      */
     void close();
 
-    /** Wie die Sitzung im Protokoll heißen soll. */
+    /** How the session should be named in the log. */
     String describe();
 }

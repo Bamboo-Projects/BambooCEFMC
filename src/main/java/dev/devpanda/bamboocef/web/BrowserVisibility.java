@@ -1,52 +1,51 @@
 package dev.devpanda.bamboocef.web;
 
 /**
- * Wie sichtbar ein Browser gerade ist — und wie viele Bilder er dafür bekommt.
+ * How visible a browser currently is — and how many frames it gets for that.
  *
- * <p><b>Kein Browser bekommt, was er will.</b> Chromium malt so schnell es
- * kann; bei einem Dutzend Anzeigen in einer Basis ist das die schnellste Art,
- * eine Bildrate zu ruinieren. Was ein Browser wirklich braucht, hängt nicht an
- * ihm, sondern daran, wer ihn ansieht: Ein Editor unter den Fingern braucht
- * jeden Tastenanschlag sofort, eine Tafel am anderen Ende der Halle nicht.
+ * <p><b>No browser gets what it wants.</b> Chromium paints as fast as it can;
+ * with a dozen displays in one base that is the fastest way to ruin a frame
+ * rate. What a browser really needs does not depend on it but on who is looking
+ * at it: an editor under the fingers needs every keystroke at once, a board at
+ * the far end of the hall does not.
  *
- * <p><b>Nach oben ist hier etwas zu holen — seit CEF 146.</b> Die Zahlen
- * gelten in beide Richtungen: {@code CefBrowserSettings.windowless_frame_rate}
- * nimmt sie entgegen, wir setzen sechzig, und gemessen kommen <b>60,3 Bilder
- * je Sekunde</b> an. Die frühere JCEF-Fassung kannte weder die Einstellung
- * noch einen Weg, sie zu übergeben; dort waren dreißig die Decke, und diese
- * Stufen konnten nur drosseln.
+ * <p><b>There is headroom to gain here — since CEF 146.</b> The numbers apply
+ * in both directions: {@code CefBrowserSettings.windowless_frame_rate} takes
+ * them, we set sixty, and measured, <b>60.3 frames per second</b> arrive. The
+ * earlier JCEF version knew neither the setting nor a way to pass it; there
+ * thirty was the ceiling, and these levels could only throttle.
  *
- * <p>Die Zahlen unterhalb von {@link #FOREGROUND} sind ein Anfang und keine
- * Messung. Sie stehen hier, damit die Drosselung von Beginn an existiert —
- * nachträglich eingezogen wäre sie ein Umbau jeder Aufrufstelle.
+ * <p>The numbers below {@link #FOREGROUND} are a start and not a measurement.
+ * They stand here so that throttling exists from the outset — introduced
+ * afterwards it would be a rebuild of every call site.
  */
 public enum BrowserVisibility {
 
     /**
-     * Vollbild, unter den Fingern des Spielers.
+     * Full frame, under the player's fingers.
      *
-     * <p>Die Sechzig ist erreicht: Gemessen kommen 60,3 Bilder je Sekunde an.
-     * Diese Stufe drosselt damit nichts — sie ist die Zahl, die beim Aufbau
-     * des Browsers gesetzt wird.
+     * <p>The sixty is reached: measured, 60.3 frames per second arrive. This
+     * level therefore throttles nothing — it is the number set when the browser
+     * is built.
      */
     FOREGROUND(60),
 
-    /** Offen und sichtbar, aber nicht das, worauf jemand tippt. */
+    /** Open and visible, but not what someone is typing on. */
     ACTIVE(30),
 
-    /** Eine Fläche in der Welt, nah genug zum Lesen. */
+    /** A surface in the world, near enough to read. */
     NEARBY(15),
 
-    /** Zu weit weg, um Text zu erkennen — es reicht, dass sich etwas regt. */
+    /** Too far away to make out text — it is enough that something stirs. */
     DISTANT(5),
 
     /**
-     * Niemand sieht hin.
+     * No one is looking.
      *
-     * <p>Null und nicht eins: Ein Browser, der niemandem etwas zeigt, soll
-     * nichts kosten. Chromium wird zusätzlich als unsichtbar gemeldet — in
-     * dieser JCEF-Fassung heißt das {@code setWindowVisibility(false)} —, dann
-     * hören auch seine eigenen Zeitgeber auf.
+     * <p>Zero and not one: a browser that shows no one anything should cost
+     * nothing. Chromium is additionally reported as invisible — in this JCEF
+     * version that is {@code setWindowVisibility(false)} —, then its own timers
+     * stop too.
      */
     HIDDEN(0);
 
@@ -60,12 +59,12 @@ public enum BrowserVisibility {
         return framesPerSecond;
     }
 
-    /** Der Abstand zwischen zwei Bildern in Nanosekunden, oder {@code -1} für nie. */
+    /** The gap between two frames in nanoseconds, or {@code -1} for never. */
     public long frameIntervalNanos() {
         return framesPerSecond <= 0 ? -1L : 1_000_000_000L / framesPerSecond;
     }
 
-    /** Soll dieser Browser überhaupt noch malen? */
+    /** Should this browser still paint at all? */
     public boolean drawing() {
         return framesPerSecond > 0;
     }

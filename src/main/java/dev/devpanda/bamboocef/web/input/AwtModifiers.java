@@ -5,39 +5,38 @@ import org.lwjgl.glfw.GLFW;
 import java.awt.event.InputEvent;
 
 /**
- * Umschalttasten von GLFW nach AWT.
+ * Modifier keys from GLFW to AWT.
  *
- * <p><b>Die {@code _DOWN_MASK}-Familie, nicht die alte.</b> AWT führt zwei
- * Sätze von Konstanten: {@code SHIFT_MASK} (1) aus der Frühzeit und
- * {@code SHIFT_DOWN_MASK} (64) von heute. Der native Teil von JCEF liest die
- * neuen — er ruft {@code getModifiersEx}. Die alten sehen fast genauso aus und
- * tragen andere Zahlen; wer sie verwechselt, bekommt keinen Fehler, sondern
- * Tastenkürzel, die nicht auslösen.
+ * <p><b>The {@code _DOWN_MASK} family, not the old one.</b> AWT keeps two sets
+ * of constants: {@code SHIFT_MASK} (1) from the early days and
+ * {@code SHIFT_DOWN_MASK} (64) of today. JCEF's native side reads the new ones
+ * — it calls {@code getModifiersEx}. The old ones look almost the same and
+ * carry different numbers; whoever confuses them gets no error but keyboard
+ * shortcuts that do not fire.
  *
- * <p><b>Zwei Wege, ein Unterschied — und der ist gemessen.</b> Ein Tastendruck
- * trägt seine Umschalttasten mit, ein getipptes Zeichen nicht. Der Grund steht
- * in {@code tools/runtime/probe/KeyProbe.java}:
+ * <p><b>Two paths, one difference — and it is measured.</b> A key press carries
+ * its modifiers along, a typed character does not. The reason is in
+ * {@code tools/runtime/probe/KeyProbe.java}:
  *
  * <pre>
- *   KEY_TYPED '@' mit Strg+Alt am Ereignis   → nichts kommt an
- *   KEY_TYPED '@' ohne Modifikatoren         → '@' steht im Feld
+ *   KEY_TYPED '@' with Ctrl+Alt on the event   → nothing arrives
+ *   KEY_TYPED '@' without modifiers             → '@' appears in the field
  * </pre>
  *
- * <p>Chromium deutet ein Zeichen mit Strg als Steuerzeichen und trägt es nicht
- * ein. Auf einer deutschen Tastatur ist das kein Randfall: <b>Windows meldet
- * AltGr als Strg + rechtes Alt</b>, und damit hinge an jedem {@code @},
- * {@code €}, {@code \}, {@code |} und {@code ~} ein Strg. Ohne diese
- * Unterscheidung fehlten auf einer deutschen Tastatur die Zeichen, die man in
- * einem Editor am nötigsten braucht.
+ * <p>Chromium reads a character with Ctrl as a control character and does not
+ * insert it. On a German keyboard that is not an edge case: <b>Windows reports
+ * AltGr as Ctrl + right Alt</b>, and so every {@code @}, {@code €}, {@code \},
+ * {@code |} and {@code ~} would carry a Ctrl. Without this distinction a German
+ * keyboard would be missing exactly the characters most needed in an editor.
  */
 public final class AwtModifiers {
 
     /**
-     * Die Umschalttasten für einen Tastendruck oder ein Loslassen.
+     * The modifiers for a key press or a release.
      *
-     * <p>Vollständig — daran hängen die Tastenkürzel. Gemessen: Strg+A, C, V,
-     * S und F kommen als {@code keydown} mit {@code ctrlKey} an und lösen
-     * kein {@code keypress} aus, genau wie in einem Browser.
+     * <p>Complete — the keyboard shortcuts hang on it. Measured: Ctrl+A, C, V,
+     * S and F arrive as {@code keydown} with {@code ctrlKey} and fire no
+     * {@code keypress}, exactly as in a browser.
      */
     public static int forKey(int glfwModifiers) {
         int awt = 0;
@@ -57,20 +56,20 @@ public final class AwtModifiers {
     }
 
     /**
-     * Die Umschalttasten für ein getipptes Zeichen.
+     * The modifiers for a typed character.
      *
-     * <p>Ohne Strg und ohne Alt. Umschalt bleibt: Es entscheidet nichts mehr —
-     * das Zeichen steht ja schon fest —, aber es kostet nichts und hält das
-     * Ereignis vollständig. Gemessen: Mit Umschalt am {@code KEY_TYPED}
-     * kommen Großbuchstaben unverändert an.
+     * <p>Without Ctrl and without Alt. Shift stays: it no longer decides
+     * anything — the character is already fixed — but it costs nothing and
+     * keeps the event complete. Measured: with Shift on the {@code KEY_TYPED},
+     * uppercase letters arrive unchanged.
      *
-     * <p><b>Warum nicht schon am Tastendruck entschärft wird.</b> Ein Browser
-     * meldet AltGr ebenfalls als Strg und Alt; das Ereignis so weiterzugeben
-     * ist also nicht falsch, sondern gewöhnlich. Ob Monaco eine
-     * AltGr-Kombination als Tastenkürzel abfängt, entscheidet die Handprüfung
-     * aus B3e — nicht eine Vermutung hier. Fällt sie negativ aus, ist die
-     * Gegenmaßnahme umrissen: Liegen Strg und rechtes Alt zusammen an, auch am
-     * {@code KEY_PRESSED} beide weglassen.
+     * <p><b>Why it is not defused at the key press already.</b> A browser also
+     * reports AltGr as Ctrl and Alt; passing the event on this way is therefore
+     * not wrong but ordinary. Whether Monaco intercepts an AltGr combination as
+     * a keyboard shortcut is decided by the hands-on check from B3e — not a
+     * guess here. Should it come out negative, the countermeasure is sketched:
+     * when Ctrl and right Alt are down together, drop both at the
+     * {@code KEY_PRESSED} as well.
      */
     public static int forCharacter(int glfwModifiers) {
         return forKey(glfwModifiers) & ~(InputEvent.CTRL_DOWN_MASK | InputEvent.ALT_DOWN_MASK);

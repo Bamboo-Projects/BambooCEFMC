@@ -6,11 +6,11 @@ import dev.devpanda.bamboocef.web.WebSupport;
 import dev.devpanda.bamboocef.web.runtime.BrowserSession;
 
 /**
- * Der Einstieg in die Web-Runtime.
+ * The entry point into the web runtime.
  *
- * <p>Mit dieser Klasse erzeugt Mod-Code Web-Flächen: für einen Bildschirm,
- * für ein Overlay über dem Bild, für eine Fläche in der Welt. Was darunter
- * liegt — Chromium, seine Sitzungen, seine Texturen — bleibt drinnen.
+ * <p>With this class, mod code creates web surfaces: for a screen, for an
+ * overlay above the image, for a surface in the world. What lies beneath —
+ * Chromium, its sessions, its textures — stays inside.
  *
  * <pre>
  * WebSurface fläche = FnWeb.open(
@@ -18,26 +18,25 @@ import dev.devpanda.bamboocef.web.runtime.BrowserSession;
  *                 .named("Schnellmenü")
  *                 .keys(KeyFilter.only(GLFW.GLFW_KEY_ESCAPE)));
  * if (fläche != null) {
- *     // zeichnen über fläche.textureLocation(), schließen mit close()
+ *     // draw via fläche.textureLocation(), close with close()
  * }
  * </pre>
  *
- * <p><b>Drei Zusagen.</b>
+ * <p><b>Three guarantees.</b>
  *
  * <ol>
- *   <li><b>Kein Typ aus {@code org.cef} in einer Signatur.</b> Wer diese
- *       Schnittstelle benutzt, übersetzt nicht gegen Chromium — und die
- *       Fassung darunter darf wechseln, ohne fremden Code zu brechen.</li>
- *   <li><b>Nichts wirft.</b> Fehlt die Laufzeitumgebung, kommt {@code null}
- *       zurück und {@link #status()} sagt warum. Ein fehlender Browser kostet
- *       eine Oberfläche und nicht den Client.</li>
- *   <li><b>Alles gehört dem Renderthread.</b> Chromiums Sitzungen leben dort.
- *       Ein Aufruf von woanders ist kein Zufallsfehler.</li>
+ *   <li><b>No type from {@code org.cef} in a signature.</b> Whoever uses this
+ *       interface does not compile against Chromium — and the implementation
+ *       underneath may change without breaking foreign code.</li>
+ *   <li><b>Nothing throws.</b> If the runtime is missing, {@code null} comes
+ *       back and {@link #status()} says why. A missing browser costs a
+ *       surface, not the client.</li>
+ *   <li><b>Everything belongs to the render thread.</b> Chromium's sessions
+ *       live there. A call from elsewhere is not a chance error.</li>
  * </ol>
  *
- * <p><b>Fassung 1.</b> Was hier öffentlich steht, bleibt es; neue Angaben
- * kommen als weitere Methode an {@link SurfaceSpec} und nicht als weiterer
- * Parameter.
+ * <p><b>Version 1.</b> What is public here stays public; new options arrive
+ * as another method on {@link SurfaceSpec} and not as another parameter.
  */
 public final class FnWeb {
 
@@ -45,14 +44,13 @@ public final class FnWeb {
     }
 
     /**
-     * Öffnet eine Fläche.
+     * Opens a surface.
      *
-     * <p>Fährt die Laufzeitumgebung hoch, falls sie noch steht. Beim ersten
-     * Aufruf dauert das ein paar hundert Millisekunden — deshalb beim ersten
-     * Bedarf zu rufen und nicht beim Start des Spiels.
+     * <p>Boots the runtime if it is still down. The first call takes a few
+     * hundred milliseconds — so call it on first need and not at game start.
      *
-     * @return die Fläche, oder {@code null}, wenn es gerade keine geben kann.
-     *         Der Grund steht in {@link #status()}.
+     * @return the surface, or {@code null} if none can exist right now. The
+     *         reason is in {@link #status()}.
      */
     public static WebSurface open(SurfaceSpec spec) {
         if (!available()) {
@@ -70,22 +68,22 @@ public final class FnWeb {
     }
 
     /**
-     * Kann gerade eine Fläche entstehen?
+     * Can a surface come into being right now?
      *
-     * <p>Fährt die Laufzeitumgebung dabei hoch, wenn sie noch nicht läuft.
+     * <p>Boots the runtime in the process if it is not yet running.
      */
     /**
-     * Öffnet eine Fläche über dem Bild.
+     * Opens a surface above the image.
      *
-     * <p>Breite und Höhe des Bauplans gelten hier als <b>Bildschirmpunkte</b>,
-     * nicht als Pixel — dieselbe Einheit wie {@code x} und {@code y}. Die
-     * Fläche rechnet mit der GUI-Skalierung in Browserpixel um und zieht bei
-     * einem Wechsel nach. Ohne Fokus ist sie ein Bild; siehe
+     * <p>The blueprint's width and height count here as <b>screen points</b>,
+     * not pixels — the same unit as {@code x} and {@code y}. The surface
+     * converts to browser pixels using the GUI scale and re-adjusts on a
+     * change. Without focus it is a picture; see
      * {@link WebOverlay#focus(OverlayFocus)}.
      *
-     * @param x linker Rand in Bildschirmpunkten
-     * @param y oberer Rand in Bildschirmpunkten
-     * @return das Overlay, oder {@code null}, wenn es keinen Browser gibt
+     * @param x left edge in screen points
+     * @param y top edge in screen points
+     * @return the overlay, or {@code null} if there is no browser
      */
     public static WebOverlay openOverlay(SurfaceSpec spec, int x, int y) {
         if (!available()) {
@@ -109,14 +107,14 @@ public final class FnWeb {
     }
 
     /**
-     * Öffnet eine Fläche in der Welt.
+     * Opens a surface in the world.
      *
-     * <p>Ort ist der Mittelpunkt in Weltkoordinaten, der Gierwinkel folgt
-     * Minecrafts Konvention (siehe {@link WorldSurface}), Breite und Höhe sind
-     * in Blöcken. Die Auflösung der Seite steht im {@code spec} in Pixeln und
-     * ist davon unabhängig.
+     * <p>The location is the center in world coordinates, the yaw follows
+     * Minecraft's convention (see {@link WorldSurface}), width and height are
+     * in blocks. The page's resolution is given in the {@code spec} in pixels
+     * and is independent of that.
      *
-     * @return die Fläche, oder {@code null}, wenn es keinen Browser gibt
+     * @return the surface, or {@code null} if there is no browser
      */
     public static WorldSurface openInWorld(SurfaceSpec spec, double x, double y, double z,
                                            float yaw, float widthBlocks, float heightBlocks) {
@@ -139,22 +137,22 @@ public final class FnWeb {
     }
 
     /**
-     * Öffnet eine Fläche als Bildschirm über das ganze Bild.
+     * Opens a surface as a screen over the whole image.
      *
-     * <p>Die Größe kommt vom Fenster, nicht aus dem Bauplan — ein Bildschirm
-     * füllt es und zieht bei einer Skalierungsänderung nach. Der Grund
-     * scheint durch, wenn der Bauplan {@code transparent} ist; dahinter liegt
-     * Minecrafts unscharfe Welt.
+     * <p>The size comes from the window, not from the blueprint — a screen
+     * fills it and re-adjusts on a scale change. The background shows through
+     * when the blueprint is {@code transparent}; behind it lies Minecraft's
+     * blurred world.
      *
-     * <p>Lässt der Bauplan die Tasten offen, bekommt der Bildschirm alle —
-     * ein Editor ohne Tasten wäre sinnlos, und das Spiel ruht ohnehin,
-     * solange ein Bildschirm offen ist.
+     * <p>If the blueprint leaves the keys open, the screen gets them all — an
+     * editor without keys would be pointless, and the game rests anyway as
+     * long as a screen is open.
      *
-     * <p>Zweimal Escape schließt, F10 in jedem Fall. Der Aufrufer hängt seinen
-     * {@code onMessage} an die zurückgegebene Fläche und prüft {@code alive()};
-     * das Schließen besorgt der Bildschirm.
+     * <p>Two presses of Escape close it, F10 in any case. The caller attaches
+     * its {@code onMessage} to the returned surface and checks {@code alive()};
+     * the closing is handled by the screen.
      *
-     * @return die Fläche, oder {@code null}, wenn es keinen Browser gibt
+     * @return the surface, or {@code null} if there is no browser
      */
     public static WebSurface openScreen(SurfaceSpec spec) {
         if (!available()) {
@@ -186,20 +184,20 @@ public final class FnWeb {
     }
 
     /**
-     * Warum es geht oder nicht geht.
+     * Why it works or does not work.
      *
-     * <p>Fünf Zustände und kein Wahrheitswert: Wem die Laufzeitumgebung fehlt,
-     * braucht einen anderen Satz als wer hinter einem Proxy sitzt.
+     * <p>Five states and not a boolean: whoever is missing the runtime needs a
+     * different message than someone sitting behind a proxy.
      */
     public static WebRuntimeStatus status() {
         return dev.devpanda.bamboocef.web.WebRuntime.status();
     }
 
     /**
-     * Wie viele Browser gerade leben — über alle Flächen hinweg.
+     * How many browsers are alive right now — across all surfaces.
      *
-     * <p>Zum Nachsehen, nicht zum Steuern: Wer eine eigene Obergrenze braucht,
-     * zählt seine eigenen Flächen. Diese Zahl enthält auch die von anderen.
+     * <p>For inspection, not for control: whoever needs their own cap counts
+     * their own surfaces. This number includes those of others too.
      */
     public static int liveCount() {
         return BrowserManager.count();

@@ -1,21 +1,21 @@
 package dev.devpanda.bamboocef.web.runtime;
 
 /**
- * Wer Chromiums Nachrichtenschleife dreht — in dieser Fassung: wir selbst.
+ * Who turns Chromium's message loop — in this variant: we do ourselves.
  *
- * <p>Ohne MCEF gibt es keinen Mixin, der pumpt. Der Takt kommt deshalb aus
- * dem Renderereignis: einmal je Bild, im Renderthread, <b>vor</b> dem
- * Zeichnen. Vorher und nicht nachher, damit ein Bild, das Chromium gerade
- * geliefert hat, noch in dieselbe Textur wandert, die dieses Bild benutzt —
- * sonst hinkte die Seite um ein Bild hinterher.
+ * <p>Without MCEF there is no mixin that pumps. The beat therefore comes from
+ * the render event: once per frame, on the render thread, <b>before</b>
+ * drawing. Before and not after, so that a frame Chromium has just delivered
+ * still makes it into the same texture this frame uses — otherwise the page
+ * would lag one frame behind.
  *
- * <p>Solange nichts hochgefahren ist, ist der Aufruf eine Nullprüfung. Es
- * gibt keinen Grund, das Hochfahren an das Zeichnen zu hängen: Ein Browser
- * entsteht, wenn jemand einen sehen will.
+ * <p>As long as nothing has started up, the call is a null check. There is no
+ * reason to tie startup to drawing: a browser comes into being when someone
+ * wants to see one.
  */
 public final class WebPump {
 
-    /** Einmal je Bild, aus dem Renderthread. */
+    /** Once per frame, from the render thread. */
     public static void frame() {
         FnCefRuntime.pump();
     }

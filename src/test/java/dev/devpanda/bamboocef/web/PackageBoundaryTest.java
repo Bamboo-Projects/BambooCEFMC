@@ -15,30 +15,30 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Die Web-Runtime kennt diese Mod nicht.
+ * The web runtime does not know this mod.
  *
- * <p><b>Das ist die eine Regel, die den späteren Schnitt billig hält.</b> Die
- * Runtime soll eines Tages ein eigenes Modul sein — vielleicht sogar eine
- * eigene Mod, die andere benutzen. Ob das geht, entscheidet sich nicht am Tag
- * der Trennung, sondern an jedem Tag davor: Ein einziger Import auf
- * {@code lang} oder {@code network}, und aus der Trennung wird eine
- * Aufräumaktion.
+ * <p><b>This is the one rule that keeps the later cut cheap.</b> The
+ * runtime is meant to become its own module one day — perhaps even its
+ * own mod that others use. Whether that works is not decided on the day
+ * of separation, but on every day before it: a single import of
+ * {@code lang} or {@code network}, and the separation turns into a
+ * cleanup operation.
  *
- * <p>Deshalb steht die Regel als Prüflauf und nicht als Absicht in einem
- * Dokument. Sie gilt in eine Richtung: Die Mod darf die Runtime benutzen, die
- * Runtime die Mod nicht.
+ * <p>That is why the rule stands as a test run and not as an intention in a
+ * document. It holds in one direction: the mod may use the runtime, the
+ * runtime not the mod.
  *
- * <p><b>Auch keine Kennung, kein Logger-Name, keine Konstante.</b> Was die
- * Runtime von ihrem Wirt wissen muss, bekommt sie übergeben. Eine Ausnahme
- * „nur für den Modnamen" wäre die erste von vielen — und der Grund, warum
- * solche Grenzen sonst zerfallen.
+ * <p><b>No identifier either, no logger name, no constant.</b> What the
+ * runtime must know about its host is passed to it. An exception
+ * „just for the mod name" would be the first of many — and the reason why
+ * such boundaries otherwise fall apart.
  */
 class PackageBoundaryTest {
 
     private static final Path ROOT =
             Path.of("src/main/java/dev/devpanda/bamboocef/web");
 
-    /** Das Paket der Mod, aus dem nichts hereindarf — außer der Runtime selbst. */
+    /** The mod's package, from which nothing may come in — except the runtime itself. */
     private static final String MOD = "dev.devpanda.bamboocef.";
     private static final String OWN = "dev.devpanda.bamboocef.web.";
 
@@ -49,14 +49,14 @@ class PackageBoundaryTest {
     }
 
     @Test
-    @DisplayName("Das Paket der Web-Runtime gibt es")
+    @DisplayName("The web runtime's package exists")
     void theRuntimePackageExists() {
         assertTrue(Files.isDirectory(ROOT),
                 "ohne das Paket prüft dieser Lauf nichts — er wäre grün und wertlos");
     }
 
     @Test
-    @DisplayName("Nichts in der Runtime importiert etwas aus der Mod")
+    @DisplayName("Nothing in the runtime imports anything from the mod")
     void theRuntimeImportsNothingFromTheMod() throws IOException {
         List<String> breaches = new ArrayList<>();
         for (Path source : sources()) {
@@ -80,13 +80,13 @@ class PackageBoundaryTest {
     }
 
     @Test
-    @DisplayName("Und auch nicht über den vollen Namen, am Import vorbei")
+    @DisplayName("And not via the full name either, bypassing the import")
     void norByFullyQualifiedName() throws IOException {
         List<String> breaches = new ArrayList<>();
         for (Path source : sources()) {
             String text = Files.readString(source, StandardCharsets.UTF_8);
-            // Zeilen mit Paket- oder Importangabe zählen nicht; gesucht ist der
-            // Griff mitten im Code, mit dem man einen Import umgeht.
+            // Lines with a package or import declaration do not count; what is sought is the
+            // reach in the middle of the code that bypasses an import.
             int from = 0;
             while (true) {
                 int at = text.indexOf(MOD, from);
@@ -113,19 +113,19 @@ class PackageBoundaryTest {
     }
 
     @Test
-    @DisplayName("Die Runtime hängt auch nicht an Minecraft-Fenstern oder Blöcken")
+    @DisplayName("The runtime also does not hang on Minecraft windows or blocks")
     void theRuntimeStaysOutOfGameplay() throws IOException {
-        // Was die Runtime von Minecraft brauchen darf, ist der Client: Textur,
-        // Fenstergröße, Tastatur. Was sie nicht anfassen darf, ist die Welt —
-        // sonst wird aus einer Browserlaufzeit wieder eine Mod.
+        // What the runtime may need from Minecraft is the client: texture,
+        // window size, keyboard. What it must not touch is the world —
+        // otherwise a browser runtime becomes a mod again.
         List<String> forbidden = List.of(
                 "net.minecraft.world.", "net.minecraft.server.");
-        // <b>Eine Ausnahme, und sie ist keine Lücke.</b> ResourceManager liegt
-        // unter net.minecraft.server.packs, gehört aber zum Laden von
-        // Ressourcen und nicht zum Server — auch der Client hat einen. Die
-        // Runtime braucht ihn für die Signatur einer geerbten Methode, die
-        // nichts tut. Ausgeschrieben und nicht als Muster: Was hier steht,
-        // steht einzeln da und fällt beim nächsten Blick auf.
+        // <b>One exception, and it is not a gap.</b> ResourceManager lies
+        // under net.minecraft.server.packs, but belongs to the loading of
+        // resources and not to the server — the client has one too. The
+        // runtime needs it for the signature of an inherited method that
+        // does nothing. Written out and not as a pattern: what stands here
+        // stands alone and stands out at the next glance.
         List<String> allowed = List.of("net.minecraft.server.packs.resources.ResourceManager");
         List<String> breaches = new ArrayList<>();
         for (Path source : sources()) {
@@ -150,11 +150,11 @@ class PackageBoundaryTest {
     }
 
     @Test
-    @DisplayName("Umgekehrt darf die Mod die Runtime benutzen")
+    @DisplayName("Conversely, the mod may use the runtime")
     void theModMayUseTheRuntime() {
-        // Keine Prüfung, sondern eine Festlegung: Die Regel gilt in eine
-        // Richtung. Stünde sie nicht hier, läse der nächste sie als Verbot
-        // jeder Verbindung — und baute eine zweite Runtime daneben.
+        // Not a check, but a commitment: the rule holds in one
+        // direction. If it did not stand here, the next person would read it as a ban
+        // on every connection — and build a second runtime alongside.
         assertFalse(OWN.isEmpty());
     }
 }

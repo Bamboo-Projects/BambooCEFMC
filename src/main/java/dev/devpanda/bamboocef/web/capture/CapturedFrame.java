@@ -1,23 +1,22 @@
 package dev.devpanda.bamboocef.web.capture;
 
 /**
- * Ein fertiges Bild, so wie es an den Browser geht.
+ * A finished image, exactly as it goes to the browser.
  *
- * <p><b>Unveränderlich, und das ist keine Stilfrage.</b> Chromium holt seine
- * Inhalte auf einem eigenen Thread ab, nicht auf dem, der zeichnet. Ein Puffer,
- * der sich unter dem Leser ändert, liefert halb altes und halb neues Bild — ein
- * Fehler, der nur manchmal auftritt und deshalb nie gefunden wird.
+ * <p><b>Immutable, and that is not a matter of style.</b> Chromium fetches its
+ * content on a thread of its own, not the one that draws. A buffer that changes
+ * out from under the reader delivers half an old and half a new image — a bug
+ * that only shows up sometimes and is therefore never found.
  *
- * <p>Der Ausweg ist der einfachste, den es gibt: Jedes Bild ist ein eigenes
- * Feld, das niemand mehr anfasst. Der Austausch ist dann eine einzige Zuweisung
- * und braucht keine Sperre.
+ * <p>The way out is the simplest there is: every image is its own field that
+ * nobody touches again. The swap is then a single assignment and needs no lock.
  *
- * @param bytes      das kodierte Bild, wie es über die Leitung geht
- * @param mimeType   was Chromium daraus machen soll
- * @param width      Breite in Bildpunkten
- * @param height     Höhe in Bildpunkten
- * @param generation die wievielte Aufnahme — steht in der Adresse und macht
- *                   den Zwischenspeicher von Chromium wirkungslos
+ * @param bytes      the encoded image, as it goes over the wire
+ * @param mimeType   what Chromium should make of it
+ * @param width      width in pixels
+ * @param height     height in pixels
+ * @param generation which capture in sequence — it goes into the URL and makes
+ *                   Chromium's cache ineffective
  */
 public record CapturedFrame(byte[] bytes, String mimeType,
                             int width, int height, long generation) {
@@ -35,7 +34,7 @@ public record CapturedFrame(byte[] bytes, String mimeType,
         return bytes.length;
     }
 
-    /** Wie viele Kilobyte, für die Ausgabe im Protokoll. */
+    /** How many kilobytes, for output in the log. */
     public double kilobytes() {
         return bytes.length / 1024.0;
     }

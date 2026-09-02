@@ -1,35 +1,35 @@
 package dev.devpanda.bamboocef.web.api;
 
 /**
- * Eine lebende Web-Fläche.
+ * A living web surface.
  *
- * <p>Was sie zeigt, liegt in einer Textur; was auf ihr geschieht, kommt über
- * die Eingabemethoden herein. Alles davon gehört dem Renderthread — Chromiums
- * Sitzung lebt dort, und ein Aufruf von woanders ist kein Zufallsfehler,
- * sondern einer, der beim ersten Bild auffällt.
+ * <p>What it shows lies in a texture; what happens on it comes in through the
+ * input methods. All of it belongs to the render thread — Chromium's session
+ * lives there, and a call from elsewhere is not a chance error but one that
+ * shows up at the very first frame.
  *
- * <p><b>Kein Typ aus {@code org.cef} kommt hier vor</b>, und das ist die
- * ganze Absicht der Schnittstelle: Wer eine Fläche einbaut, übersetzt nicht
- * gegen Chromium, und die Fassung darunter darf wechseln.
+ * <p><b>No type from {@code org.cef} appears here</b>, and that is the whole
+ * intent of the interface: whoever builds in a surface does not compile
+ * against Chromium, and the implementation underneath may change.
  */
 public interface WebSurface extends AutoCloseable {
 
     /**
-     * Die Textur, in der das aktuelle Bild liegt.
+     * The texture the current frame lies in.
      *
-     * <p>Eine rohe Kennung von OpenGL. Für den Weltrenderpfad reicht das
-     * nicht — dort braucht es eine {@code ResourceLocation}, und die gibt es
-     * über {@link #textureLocation()}.
+     * <p>A raw OpenGL id. For the world render path that is not enough — there
+     * a {@code ResourceLocation} is needed, and that is available via
+     * {@link #textureLocation()}.
      *
-     * @return die Kennung, oder {@code 0}, solange noch kein Bild da ist
+     * @return the id, or {@code 0} as long as there is no frame yet
      */
     int textureId();
 
     /**
-     * Dieselbe Textur, angemeldet beim Texturverwalter.
+     * The same texture, registered with the texture manager.
      *
-     * <p>Der Weg für alles, was über {@code RenderType} zeichnet. Die Adresse
-     * gehört der Fläche und wird beim Schließen abgemeldet.
+     * <p>The path for everything that draws via {@code RenderType}. The address
+     * belongs to the surface and is unregistered on close.
      */
     net.minecraft.resources.ResourceLocation textureLocation();
 
@@ -37,28 +37,28 @@ public interface WebSurface extends AutoCloseable {
 
     int height();
 
-    /** Ändert die Größe. Chromium legt dabei eine neue Textur an. */
+    /** Changes the size. Chromium creates a new texture in the process. */
     void resize(int width, int height);
 
-    /** Wie die Fläche heißt — im Protokoll und in Chromiums Liste. */
+    /** What the surface is called — in the log and in Chromium's list. */
     String name();
 
-    /** Läuft sie noch? */
+    /** Is it still running? */
     boolean alive();
 
-    // ---- Eingaben -----------------------------------------------------------
+    // ---- Input --------------------------------------------------------------
 
     /**
-     * Der Zeiger steht auf diesem Punkt.
+     * The pointer is at this point.
      *
-     * @param x Browserpixel, nicht Bildschirmpunkte
+     * @param x browser pixels, not screen points
      */
     void mouseMoved(int x, int y, int modifiers);
 
-    /** Der Zeiger verlässt die Fläche — sonst bleibt der letzte Knopf hell. */
+    /** The pointer leaves the surface — otherwise the last button stays lit. */
     void mouseLeft(int x, int y);
 
-    /** @param button Minecrafts Zählung: 0 links, 1 rechts, 2 Mitte */
+    /** @param button Minecraft's numbering: 0 left, 1 right, 2 middle */
     void mousePressed(int x, int y, int button, int modifiers);
 
     void mouseReleased(int x, int y, int button, int modifiers);
@@ -66,46 +66,45 @@ public interface WebSurface extends AutoCloseable {
     void mouseScrolled(int x, int y, double amount, int modifiers);
 
     /**
-     * Eine Taste geht herunter.
+     * A key goes down.
      *
-     * @return wahr, wenn die Fläche sie genommen hat. Falsch heißt: Der Filter
-     *         hat sie durchgelassen, und der Aufrufer soll sie dem Spiel
-     *         überlassen.
+     * @return true if the surface took it. False means: the filter let it
+     *         through, and the caller should leave it to the game.
      */
     boolean keyPressed(int glfwKey, int scanCode, int modifiers);
 
     boolean keyReleased(int glfwKey, int scanCode, int modifiers);
 
     /**
-     * Ein getipptes Zeichen.
+     * A typed character.
      *
-     * <p>Getrennt von den Tasten, weil nur das Betriebssystem weiß, was auf
-     * einer deutschen Tastatur ein Umlaut ist.
+     * <p>Separate from the keys, because only the operating system knows what
+     * an umlaut is on a German keyboard.
      *
-     * @return wahr, wenn die Fläche es genommen hat
+     * @return true if the surface took it
      */
     boolean charTyped(char typed, int modifiers);
 
-    /** Hat die Fläche den Tastaturfokus? */
+    /** Does the surface have keyboard focus? */
     void setFocused(boolean focused);
 
     /**
-     * Wird gerufen, wenn Chromium einen anderen Mauszeiger möchte.
+     * Called when Chromium wants a different mouse cursor.
      *
-     * <p>Die Zahl ist die Ordnungszahl aus {@code cef_cursor_type_t}. Wer
-     * nichts anmeldet, bekommt den Zeiger des Spiels.
+     * <p>The number is the ordinal from {@code cef_cursor_type_t}. Whoever
+     * registers nothing gets the game's cursor.
      */
     void onCursor(java.util.function.IntConsumer sink);
 
     /**
-     * Nachrichten aus der Seite entgegennehmen.
+     * Receive messages from the page.
      *
-     * <p>In der Seite: {@code window.fnSend("...")} oder
-     * {@code window.fnSend({...})} — eine Zeichenkette oder ein Objekt als
-     * JSON. Der Empfänger läuft im Renderthread. {@code null} meldet ihn ab.
+     * <p>In the page: {@code window.fnSend("...")} or
+     * {@code window.fnSend({...})} — a string or an object as JSON. The
+     * receiver runs on the render thread. {@code null} unregisters it.
      *
-     * <p>Damit schließt sich der Kreis: Ein Schnellmenü kann nicht nur Tasten
-     * bekommen, sondern seine Wahl auch zurückgeben.
+     * <p>This closes the loop: a quick menu can not only get keys but also
+     * give its choice back.
      */
     void onMessage(java.util.function.Consumer<String> handler);
 

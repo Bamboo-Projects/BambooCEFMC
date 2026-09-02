@@ -9,16 +9,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Welche Tasten eine Fläche bekommt.
+ * Which keys a surface receives.
  *
- * <p><b>Warum das mehr als eine Fallunterscheidung ist.</b> Ein Overlay, das
- * jede Taste nimmt, macht den Spieler bewegungsunfähig, solange es offen ist.
- * Eines, das keine nimmt, lässt sich nicht schließen. Dazwischen liegt der
- * übliche Fall, und der ist der Grund für diese Klasse.
+ * <p><b>Why this is more than a case distinction.</b> An overlay that
+ * takes every key leaves the player unable to move as long as it is open.
+ * One that takes none cannot be closed. Between them lies the
+ * usual case, and that is the reason for this class.
  */
 class KeyFilterTest {
 
-    // Die Zahlen von GLFW, damit der Prüflauf ohne Fenster läuft.
+    // The numbers from GLFW, so that the test run runs without a window.
     private static final int ESCAPE = 256;
     private static final int UP = 265;
     private static final int DOWN = 264;
@@ -34,21 +34,21 @@ class KeyFilterTest {
     private static final int ONE = 49;
 
     @Test
-    @DisplayName("Ein Editor nimmt alles")
+    @DisplayName("An editor takes everything")
     void everythingGoesToAnEditor() {
         assertTrue(KeyFilter.ALL.routes(W, 0));
         assertTrue(KeyFilter.ALL.routes(ESCAPE, SHIFT));
     }
 
     @Test
-    @DisplayName("Ein Bild zum Ansehen nimmt nichts")
+    @DisplayName("A picture just to look at takes nothing")
     void nothingGoesToAPicture() {
         assertFalse(KeyFilter.NONE.routes(ESCAPE, 0));
         assertFalse(KeyFilter.NONE.routes(W, 0));
     }
 
     @Test
-    @DisplayName("Ein Schnellmenü nimmt Escape und die Pfeile, sonst nichts")
+    @DisplayName("A quick menu takes Escape and the arrows, nothing else")
     void aQuickMenuTakesOnlyWhatItNeeds() {
         KeyFilter menu = KeyFilter.only(ESCAPE, UP, DOWN);
 
@@ -58,10 +58,10 @@ class KeyFilterTest {
     }
 
     @Test
-    @DisplayName("Umschalttasten ändern nichts an der Entscheidung")
+    @DisplayName("Modifier keys change nothing about the decision")
     void modifiersDoNotChangeTheAnswer() {
-        // Absichtlich: Wer Umschalt hält, meint dieselbe Taste. Eine Regel je
-        // Kombination wäre eine Tabelle, die niemand vollständig hinbekommt.
+        // On purpose: whoever holds Shift means the same key. One rule per
+        // combination would be a table that no one gets complete.
         KeyFilter menu = KeyFilter.only(ESCAPE);
 
         assertTrue(menu.routes(ESCAPE, SHIFT));
@@ -69,7 +69,7 @@ class KeyFilterTest {
     }
 
     @Test
-    @DisplayName("Alles außer einer Taste")
+    @DisplayName("Everything except one key")
     void everythingExceptOne() {
         KeyFilter editor = KeyFilter.except(ESCAPE);
 
@@ -78,7 +78,7 @@ class KeyFilterTest {
     }
 
     @Test
-    @DisplayName("Zwei Filter lassen sich verbinden")
+    @DisplayName("Two filters can be combined")
     void twoFiltersCombine() {
         KeyFilter both = KeyFilter.only(ESCAPE, UP, W).and(KeyFilter.except(W));
 
@@ -90,7 +90,7 @@ class KeyFilterTest {
     }
 
     @Test
-    @DisplayName("Ein Schnellmenü aus zwei Gruppen")
+    @DisplayName("A quick menu from two groups")
     void groupsCombineIntoAQuickMenu() {
         KeyFilter menu = Keys.CLOSE.or(Keys.ARROWS);
 
@@ -100,7 +100,7 @@ class KeyFilterTest {
     }
 
     @Test
-    @DisplayName("Ein Eingabefeld nimmt, was Text bewegt und ändert")
+    @DisplayName("A text field takes what moves and changes text")
     void textEntryTakesWhatMovesAndChangesText() {
         assertTrue(Keys.TEXT_ENTRY.routes(BACKSPACE, 0));
         assertTrue(Keys.TEXT_ENTRY.routes(UP, 0));
@@ -111,7 +111,7 @@ class KeyFilterTest {
     }
 
     @Test
-    @DisplayName("Alles außer der Bewegung — der Spieler bleibt beweglich")
+    @DisplayName("Everything but movement — the player stays mobile")
     void everythingButMovement() {
         assertTrue(Keys.NOT_MOVEMENT.routes(ESCAPE, 0));
         assertTrue(Keys.NOT_MOVEMENT.routes(UP, 0));
@@ -120,17 +120,17 @@ class KeyFilterTest {
     }
 
     @Test
-    @DisplayName("Kürzel gelten nur mit Strg")
+    @DisplayName("Shortcuts apply only with Ctrl")
     void shortcutsNeedControl() {
-        // Ein blankes C durchzulassen naehme dem Spieler den Buchstaben — und
-        // dieselbe Taste ist ohne Strg etwas voellig anderes.
+        // Letting a bare C through would take the letter from the player — and
+        // the same key without Ctrl is something completely different.
         assertTrue(Keys.SHORTCUTS.routes(C, CONTROL));
         assertFalse(Keys.SHORTCUTS.routes(C, 0));
         assertFalse(Keys.SHORTCUTS.routes(W, CONTROL));
     }
 
     @Test
-    @DisplayName("Bereiche: Funktionstasten und Schnellleiste")
+    @DisplayName("Ranges: function keys and hotbar")
     void rangesCoverTheirEnds() {
         assertTrue(Keys.FUNCTION.routes(F1, 0));
         assertTrue(Keys.FUNCTION.routes(F12, 0), "beide Enden gehören dazu");
@@ -139,7 +139,7 @@ class KeyFilterTest {
     }
 
     @Test
-    @DisplayName("Eine Gruppe plus eine Taste, und eine Gruppe minus einer")
+    @DisplayName("A group plus one key, and a group minus one")
     void plusAndMinusAdjustAGroup() {
         assertTrue(Keys.ARROWS.plus(ENTER).routes(ENTER, 0));
         assertTrue(Keys.ARROWS.plus(ENTER).routes(UP, 0));
@@ -150,35 +150,35 @@ class KeyFilterTest {
     }
 
     @Test
-    @DisplayName("Das Gegenteil eines Filters")
+    @DisplayName("The opposite of a filter")
     void negateFlipsTheAnswer() {
         assertTrue(Keys.MOVEMENT.negate().routes(ESCAPE, 0));
         assertFalse(Keys.MOVEMENT.negate().routes(W, 0));
     }
 
     @Test
-    @DisplayName("Der Bauplan begrenzt die Größe, statt sie zu glauben")
+    @DisplayName("The spec clamps the size instead of trusting it")
     void theSpecClampsItsSize() {
-        // Eine Null ergäbe einen Browser, der nie malt; eine sehr große einen,
-        // der den Speicher der Grafikkarte frisst. Beides fällt sonst erst
-        // sehr viel später auf.
+        // A zero would yield a browser that never draws; a very large one one
+        // that devours the graphics card's memory. Both otherwise show up only
+        // much later.
         assertEquals(1, SurfaceSpec.of("https://example.org", 0, 0).width());
         assertEquals(SurfaceSpec.MAX_EDGE,
                 SurfaceSpec.of("https://example.org", 99_999, 512).width());
     }
 
     @Test
-    @DisplayName("Ohne Adresse gibt es keinen Bauplan")
+    @DisplayName("Without an address there is no spec")
     void aSpecNeedsAnAddress() {
         assertThrows(IllegalArgumentException.class,
                 () -> SurfaceSpec.of("  ", 512, 512));
     }
 
     @Test
-    @DisplayName("Ohne Angabe nimmt eine Fläche keine Tasten")
+    @DisplayName("With no value given a surface takes no keys")
     void aSpecTakesNoKeysUnlessAsked() {
-        // Die sichere Vorgabe: Wer nichts sagt, macht den Spieler nicht
-        // bewegungsunfähig.
+        // The safe default: whoever says nothing does not leave the player
+        // unable to move.
         SurfaceSpec spec = SurfaceSpec.of("https://example.org", 512, 512);
 
         assertFalse(spec.keys().routes(W, 0));

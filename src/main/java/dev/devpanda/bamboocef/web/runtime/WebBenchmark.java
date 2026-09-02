@@ -15,56 +15,55 @@ import java.nio.file.Path;
 import java.util.Locale;
 
 /**
- * Misst, was der Bildweg kostet — in Zahlen statt in Eindrücken.
+ * Measures what the frame path costs — in numbers instead of impressions.
  *
- * <p><b>Warum drei Szenarien und nicht eines.</b> „Wie teuer ist ein Browser"
- * hat keine Antwort, weil die Kosten fast vollständig davon abhängen, wie viel
- * sich auf der Seite bewegt. Ein ruhender Texteditor und eine vollflächige
- * Animation liegen um mehrere Größenordnungen auseinander. Gemessen wird
- * deshalb der Bereich, nicht ein Punkt darin:
+ * <p><b>Why three scenarios and not one.</b> "How expensive is a browser" has
+ * no answer, because the cost depends almost entirely on how much moves on the
+ * page. A resting text editor and a full-surface animation are several orders
+ * of magnitude apart. What is measured is therefore the range, not one point
+ * within it:
  *
  * <ol>
- *   <li><b>Ruhe</b> — eine Seite, die sich nicht ändert. Die untere Grenze.
- *       Der Fall, in dem ein Editor die meiste Zeit verbringt.</li>
- *   <li><b>Kleine Änderung</b> — ein blinkendes Kästchen. Der Fall, für den
- *       Ausschnitte gebaut sind: ein Cursor, ein Tastendruck, ein Menü.</li>
- *   <li><b>Vollflächig</b> — jedes Bild ändert alles. Die obere Grenze, unter
- *       der niemand mehr etwas sparen kann.</li>
+ *   <li><b>Idle</b> — a page that does not change. The lower bound. The case in
+ *       which an editor spends most of its time.</li>
+ *   <li><b>Small change</b> — a blinking box. The case regions are built for:
+ *       a cursor, a keystroke, a menu.</li>
+ *   <li><b>Full-surface</b> — every frame changes everything. The upper bound,
+ *       below which no one can save anything more.</li>
  * </ol>
  *
- * <p>Alle drei laufen bei 1920×1080, damit die Zahlen untereinander
- * vergleichbar sind und die obere Grenze keine geschönte ist.
+ * <p>All three run at 1920×1080, so that the numbers are comparable with one
+ * another and the upper bound is not a flattering one.
  *
- * <p>Läuft einmal je Sitzung, nur wenn {@code fn.benchmark} gesetzt ist —
- * eine Messung, die immer mitliefe, wäre ein Kostenposten statt eines
- * Nachweises.
+ * <p>Runs once per session, only when {@code fn.benchmark} is set — a
+ * measurement that always ran along would be a cost item instead of a proof.
  */
 public final class WebBenchmark {
 
     private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/WebBenchmark");
 
-    /** Die Größe, bei der gemessen wird — ein voller Bildschirm. */
+    /** The size at which measuring happens — a full screen. */
     private static final int WIDTH = 1920;
     private static final int HEIGHT = 1080;
 
-    /** Ein Tick ist eine zwanzigstel Sekunde. */
+    /** A tick is a twentieth of a second. */
     private static final int TICKS_PER_SECOND = 20;
 
-    /** Bevor MCEF nicht steht, misst jede Messung das Hochfahren. */
+    /** Until MCEF is up, every measurement measures the startup. */
     private static final int WARMUP_TICKS = 10 * TICKS_PER_SECOND;
 
-    /** Wie lange je Szenario gemessen wird. */
+    /** How long each scenario is measured. */
     private static final int MEASURE_TICKS = 6 * TICKS_PER_SECOND;
 
-    /** Wie lange auf das erste Bild gewartet wird, bevor aufgegeben wird. */
+    /** How long the first frame is waited for before giving up. */
     private static final int PATIENCE_TICKS = 15 * TICKS_PER_SECOND;
 
     /**
-     * Eine Seite, die sich nie ändert.
+     * A page that never changes.
      *
-     * <p>Kein Skript, keine Animation, kein blinkender Cursor. Was hier
-     * gemessen wird, ist die Frage: Kostet ein offener Browser etwas, wenn
-     * niemand etwas tut?
+     * <p>No script, no animation, no blinking cursor. What is measured here is
+     * the question: does an open browser cost anything when no one does
+     * anything?
      */
     private static final String STILL = """
             <!doctype html><html><head><style>
@@ -78,14 +77,14 @@ public final class WebBenchmark {
             """;
 
     /**
-     * Eine Seite, auf der sich ein kleines Kästchen ändert.
+     * A page on which a small box changes.
      *
-     * <p>24×24 Bildpunkte auf 1920×1080 — ein Tausendstel der Fläche. Wenn
-     * Ausschnitte funktionieren, muss sich das in den Bytes je Bild zeigen;
-     * wenn nicht, kommt jedes Mal das ganze Bild.
+     * <p>24×24 pixels on 1920×1080 — a thousandth of the surface. If regions
+     * work, that has to show in the bytes per frame; if not, the whole frame
+     * comes every time.
      *
-     * <p>Die Größe ist mit Absicht die eines Textcursors: Das ist der Fall,
-     * der in einem Editor tatsächlich vorkommt, und zwar dauernd.
+     * <p>The size is deliberately that of a text cursor: that is the case that
+     * actually occurs in an editor, and constantly.
      */
     private static final String BLINKER = """
             <!doctype html><html><head><style>
@@ -103,12 +102,11 @@ public final class WebBenchmark {
             """;
 
     /**
-     * Eine Seite, auf der sich jedes Bild vollständig ändert.
+     * A page on which every frame changes completely.
      *
-     * <p>Der Hintergrund des ganzen Dokuments wechselt bei jedem Bild die
-     * Farbe. Es gibt keinen Ausschnitt, der kleiner wäre als alles — das ist
-     * der Fall, in dem der Bildweg so viel kostet, wie er überhaupt kosten
-     * kann.
+     * <p>The background of the whole document changes color on every frame.
+     * There is no region smaller than everything — this is the case in which
+     * the frame path costs as much as it possibly can.
      */
     private static final String FLOOD = """
             <!doctype html><html><head><style>
@@ -125,7 +123,7 @@ public final class WebBenchmark {
             </script></body></html>
             """;
 
-    /** Die Schritte, in dieser Reihenfolge. */
+    /** The steps, in this order. */
     private enum Stage {
         WARMUP, BASELINE, STILL_PAGE, BLINKER_PAGE, FLOOD_PAGE, DONE
     }
@@ -139,7 +137,7 @@ public final class WebBenchmark {
     private static long paintsAtStart;
     private static long measureStartNanos;
 
-    /** Bildzeiten von Minecraft, einmal ohne und einmal mit laufendem Browser. */
+    /** Minecraft frame times, once without and once with a running browser. */
     private static final DurationSamples baselineFrames = new DurationSamples();
     private static final DurationSamples loadedFrames = new DurationSamples();
     private static DurationSamples collectingFrames;
@@ -148,12 +146,12 @@ public final class WebBenchmark {
     private WebBenchmark() {
     }
 
-    /** Ob die Messung durch ist — für alles, was danach kommen soll. */
+    /** Whether the measurement is through — for everything that should come after. */
     public static boolean finished() {
         return !enabled || stage == Stage.DONE;
     }
 
-    /** Wird vom Bild des Clients gerufen — misst den Abstand zweier Bilder. */
+    /** Called from the client's frame — measures the gap between two frames. */
     public static void frameRendered() {
         if (collectingFrames == null) {
             lastFrameNanos = 0;
@@ -166,7 +164,7 @@ public final class WebBenchmark {
         lastFrameNanos = now;
     }
 
-    /** Wird vom Takt des Clients gerufen. */
+    /** Called from the client's tick. */
     public static void tick() {
         if (!enabled || stage == Stage.DONE) {
             return;
@@ -183,19 +181,19 @@ public final class WebBenchmark {
     }
 
     private static void warmup() {
-        // Die Nachweise kommen zuerst und haben ihre eigenen Browser. Zwei
-        // gleichzeitig teilten sich die Bildrate, und die Messung berichtete
-        // die Hälfte als Grenze.
+        // The proofs come first and have their own browsers. Two at once would
+        // share the frame rate, and the measurement would report half as the
+        // bound.
         if (ticksInStage < WARMUP_TICKS || !WebSelfTest.finished()
                 || !dev.devpanda.bamboocef.web.screen.RenderProof.finished()
                 || !dev.devpanda.bamboocef.web.screen.BackdropBenchmark.finished()) {
             return;
         }
-        // <b>Nicht im Hauptmenü messen.</b> Ohne geladene Welt deckelt
-        // Minecraft die Bildrate hart auf sechzig — unabhängig von VSync und
-        // der eingestellten Sperre. Die Bildzeit klebt dann bei 16,6 ms, und
-        // ein Browser, der weniger als das kostet, sähe gratis aus. Genau so
-        // ist die erste Messung ausgegangen.
+        // <b>Do not measure in the main menu.</b> Without a loaded world
+        // Minecraft caps the frame rate hard at sixty — regardless of VSync and
+        // the configured limit. The frame time then sticks at 16.6 ms, and a
+        // browser that costs less than that would look free. That is exactly how
+        // the first measurement turned out.
         if (Minecraft.getInstance().level == null) {
             if (ticksInStage % (10 * TICKS_PER_SECOND) == 0) {
                 LOG.info("Messung wartet auf eine geladene Welt — im Hauptmenü "
@@ -216,12 +214,12 @@ public final class WebBenchmark {
     }
 
     /**
-     * Die Bildzeit ohne Browser, in derselben Sitzung und derselben Szene.
+     * The frame time without a browser, in the same session and the same scene.
      *
-     * <p><b>Ein Vergleich mit einem früheren Lauf wäre keiner.</b> Wo der
-     * Spieler steht, was im Bild ist, wie warm die Grafikkarte ist — all das
-     * ändert die Bildzeit stärker als ein Browser. Nur eine Messung
-     * unmittelbar davor, ohne dazwischen etwas anzufassen, trägt.
+     * <p><b>A comparison with an earlier run would be none.</b> Where the player
+     * stands, what is in the frame, how warm the graphics card is — all of that
+     * changes the frame time more than a browser does. Only a measurement
+     * immediately before, without touching anything in between, holds.
      */
     private static void baseline() {
         if (ticksInStage < MEASURE_TICKS) {
@@ -240,11 +238,11 @@ public final class WebBenchmark {
             return;
         }
         if (!measuring) {
-            // <b>Erst das erste Bild abwarten, dann die Zähler leeren.</b>
-            // Das erste Bild ist immer ein Vollbild — es gehört zum Aufbau
-            // und nicht zur Messung. Wer es mitzählt, findet auch beim
-            // Blinker einen Vollbild-Upload und schließt daraus, Ausschnitte
-            // funktionierten nicht.
+            // <b>First wait for the first frame, then clear the counters.</b>
+            // The first frame is always a full upload — it belongs to the
+            // build-up and not to the measurement. Whoever counts it in finds a
+            // full upload even for the blinker and concludes that regions do not
+            // work.
             if (session.paints() >= 1) {
                 session.texture().resetStats();
                 paintsAtStart = session.paints();
@@ -313,8 +311,8 @@ public final class WebBenchmark {
     }
 
     /**
-     * Was der Browser die Bildzeit kostet — die einzige Zahl, die der Spieler
-     * merkt.
+     * What the browser costs in frame time — the only number the player
+     * notices.
      */
     private static void reportFrameCost() {
         double before = baselineFrames.percentile(50) / 1000.0;
@@ -332,12 +330,11 @@ public final class WebBenchmark {
     }
 
     /**
-     * Was über die Messung gewusst werden muss, um sie zu deuten.
+     * What must be known about the measurement in order to interpret it.
      *
-     * <p><b>Ohne die Bildratensperre ist jede Bildzeit wertlos.</b> Steht ein
-     * Limit bei sechzig, deckelt es beide Messungen gleich, und der
-     * Unterschied verschwindet in der Wartezeit auf den Bildschirm — der
-     * Browser sähe gratis aus.
+     * <p><b>Without the frame-rate limit every frame time is worthless.</b> If a
+     * limit sits at sixty, it caps both measurements equally, and the difference
+     * disappears into the wait for the screen — the browser would look free.
      */
     private static void reportEnvironment() {
         try {
@@ -349,10 +346,10 @@ public final class WebBenchmark {
         } catch (Throwable unknown) {
             LOG.info("Messung Umgebung: nicht ermittelbar", unknown);
         }
-        // Diese JCEF-Fassung kennt weder CefBrowserSettings noch ein
-        // windowless_frame_rate. Chromiums Voreinstellung ist also die
-        // Obergrenze, und sie steht nicht zur Verhandlung — was hier an
-        // Bildern je Sekunde herauskommt, ist keine Wahl, sondern ein Befund.
+        // This JCEF version knows neither CefBrowserSettings nor a
+        // windowless_frame_rate. Chromium's default is therefore the upper
+        // bound, and it is not up for negotiation — what comes out here in
+        // frames per second is not a choice but a finding.
         LOG.info("Messung Umgebung: die Bildrate von Chromium ist in dieser "
                 + "JCEF-Fassung nicht einstellbar — gemessen wird die Voreinstellung");
     }

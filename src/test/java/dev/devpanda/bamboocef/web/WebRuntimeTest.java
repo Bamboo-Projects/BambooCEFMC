@@ -13,20 +13,20 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Nichts an der Runtime wirft — jeder Weg endet in einem Zustand.
+ * Nothing on the runtime throws — every path ends in a state.
  *
- * <p>Das ist die Zusicherung, unter der eine Browser-Laufzeit überhaupt in
- * diese Mod darf. Ein Prüflauf dafür ist billig und wäre teuer nachzuholen:
- * Der Fall, den man nicht prüft, ist der, bei dem jemandem der Client nicht
- * mehr startet.
+ * <p>That is the guarantee under which a browser runtime may get into
+ * this mod at all. A test run for it is cheap and would be expensive to catch up on:
+ * the case you do not test is the one where someone's client no longer
+ * starts.
  *
- * <p>Chromium wird hier nie angefasst. Der Unterbau kommt als Lambda herein, und
- * genau deshalb ist diese Schicht ohne Minecraft prüfbar — Chromium in einem
- * gewöhnlichen Prüflauf hochzufahren wäre weder möglich noch sinnvoll.
+ * <p>Chromium is never touched here. The backend comes in as a lambda, and
+ * exactly for that reason this layer is testable without Minecraft — starting Chromium in an
+ * ordinary test run would be neither possible nor sensible.
  */
 class WebRuntimeTest {
 
-    /** Ein Unterbau, der nichts tut außer mitzuzählen. */
+    /** A backend that does nothing but count along. */
     private static final class FakeBackend implements WebBackend {
         private final AtomicInteger closes = new AtomicInteger();
         private final RuntimeException failOnClose;
@@ -60,7 +60,7 @@ class WebRuntimeTest {
     }
 
     @Test
-    @DisplayName("Vor dem ersten Versuch ist nichts geschehen")
+    @DisplayName("Before the first attempt nothing has happened")
     void beforeAnythingHappens() {
         assertEquals(WebRuntimeState.NOT_STARTED, WebRuntime.status().state());
         assertFalse(WebRuntime.isAvailable());
@@ -68,7 +68,7 @@ class WebRuntimeTest {
     }
 
     @Test
-    @DisplayName("Ein Unterbau, der hochkommt, macht die Runtime nutzbar")
+    @DisplayName("A backend that comes up makes the runtime usable")
     void aWorkingBackendMakesItUsable() {
         FakeBackend backend = new FakeBackend();
         WebRuntimeStatus status = WebRuntime.start(() -> backend);
@@ -79,7 +79,7 @@ class WebRuntimeTest {
     }
 
     @Test
-    @DisplayName("Ein vorhergesehener Grund kommt unverändert durch")
+    @DisplayName("A foreseen reason comes through unchanged")
     void aKnownReasonSurvives() {
         WebRuntimeStatus status = WebRuntime.start(() -> {
             throw new WebRuntimeUnavailable(WebRuntimeState.RUNTIME_MISSING,
@@ -92,11 +92,11 @@ class WebRuntimeTest {
     }
 
     @Test
-    @DisplayName("Auch ein NoClassDefFoundError bringt nur einen Zustand zurück")
+    @DisplayName("Even a NoClassDefFoundError only brings back a state")
     void evenAnErrorIsJustAState() {
-        // Genau das passiert, wenn die Laufzeitumgebung fehlt und trotzdem
-        // jemand eine Klasse daraus anfasst: kein Exception, sondern ein
-        // Error. Wer nur Exception fängt, nimmt den Client mit.
+        // Exactly this happens when the runtime environment is missing and yet
+        // someone touches a class from it: not an Exception, but an
+        // Error. Whoever catches only Exception takes the client down with it.
         WebRuntimeStatus status = WebRuntime.start(() -> {
             throw new NoClassDefFoundError("org/cef/CefApp");
         });
@@ -108,7 +108,7 @@ class WebRuntimeTest {
     }
 
     @Test
-    @DisplayName("Ein Unterbau, der still null liefert, gilt als gescheitert")
+    @DisplayName("A backend that silently returns null counts as failed")
     void aSilentNullCounts() {
         WebRuntimeStatus status = WebRuntime.start(() -> null);
 
@@ -117,7 +117,7 @@ class WebRuntimeTest {
     }
 
     @Test
-    @DisplayName("Zweimal starten versucht es nur einmal")
+    @DisplayName("Starting twice tries only once")
     void startingTwiceTriesOnce() {
         AtomicInteger attempts = new AtomicInteger();
         WebRuntime.start(() -> {
@@ -134,7 +134,7 @@ class WebRuntimeTest {
     }
 
     @Test
-    @DisplayName("Ein zweiter Versuch lohnt nur, wenn der Grund sich ändern kann")
+    @DisplayName("A second attempt is worthwhile only if the reason can change")
     void retryingOnlyWhereItCanHelp() {
         AtomicInteger attempts = new AtomicInteger();
 
@@ -153,11 +153,11 @@ class WebRuntimeTest {
     }
 
     @Test
-    @DisplayName("Nach dem Herunterfahren ist Schluss — kein zweiter Start")
+    @DisplayName("After shutdown that is the end — no second start")
     void afterShutdownNothingRestarts() {
-        // Der Unterbau meldet den Endzustand; die Runtime darf ihn nicht als
-        // Anlass für einen weiteren Versuch nehmen. Beim Beenden des Spiels
-        // kommt genau dieser Aufruf noch einmal aus dem Renderpfad.
+        // The backend reports the final state; the runtime must not take it as
+        // occasion for another attempt. When the game shuts down
+        // exactly this call comes once more from the render path.
         AtomicInteger attempts = new AtomicInteger();
 
         WebRuntime.start(() -> {
@@ -175,7 +175,7 @@ class WebRuntimeTest {
     }
 
     @Test
-    @DisplayName("Nach einem Fehlschlag darf man es erneut versuchen")
+    @DisplayName("After a failure you may try again")
     void afterAFailureRetryingWorks() {
         WebRuntime.start(() -> {
             throw new WebRuntimeUnavailable(WebRuntimeState.NOT_DOWNLOADED, "kein Netz");
@@ -188,7 +188,7 @@ class WebRuntimeTest {
     }
 
     @Test
-    @DisplayName("Herunterfahren schließt den Unterbau und setzt zurück")
+    @DisplayName("Shutdown closes the backend and resets")
     void shutdownReleasesEverything() {
         FakeBackend backend = new FakeBackend();
         WebRuntime.start(() -> backend);
@@ -200,7 +200,7 @@ class WebRuntimeTest {
     }
 
     @Test
-    @DisplayName("Ein Unterbau, der beim Schließen wirft, reißt nichts mit")
+    @DisplayName("A backend that throws on closing drags nothing down with it")
     void aThrowingCloseIsContained() {
         FakeBackend angry = new FakeBackend(new IllegalStateException("kaputt"));
         WebRuntime.start(() -> angry);
@@ -213,7 +213,7 @@ class WebRuntimeTest {
     }
 
     @Test
-    @DisplayName("Herunterfahren ohne Start tut nichts")
+    @DisplayName("Shutdown without a start does nothing")
     void shutdownWithoutStartIsHarmless() {
         WebRuntime.shutdown();
         assertEquals(WebRuntimeState.NOT_STARTED, WebRuntime.status().state());

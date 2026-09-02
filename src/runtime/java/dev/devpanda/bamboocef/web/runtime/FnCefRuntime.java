@@ -10,36 +10,36 @@ import org.slf4j.Logger;
 import java.io.File;
 
 /**
- * Chromium ohne MCEF — die Dev-Fassung.
+ * Chromium without MCEF — the dev variant.
  *
- * <p><b>Was diese Klasse ist und was sie nicht ist.</b> Sie fährt die selbst
- * gebaute Laufzeitumgebung hoch, damit der neue Browser- und Eingabepfad im
- * Spiel geprüft werden kann. Sie ist <i>kein</i> Auslieferungsweg: Es gibt
- * keinen Download, keine Prüfsummen, keine Wächter über fremde Prozesse. Der
- * Ordner muss dasein, sonst sagt sie es und hört auf.
+ * <p><b>What this class is and what it is not.</b> It starts up the
+ * self-built runtime, so that the new browser and input path can be tested in
+ * the game. It is <i>not</i> a shipping route: there is no download, no
+ * checksums, no watchdog over foreign processes. The directory must be
+ * present, otherwise it says so and stops.
  *
  * <pre>
  *   pwsh -File tools/runtime/build-jcef.ps1
  *   ./gradlew runClient
  * </pre>
  *
- * <p><b>Alles läuft im Renderthread — auch das Hochfahren.</b> CEF verlangt,
- * dass Initialisierung, Nachrichtenschleife und Herunterfahren in demselben
- * Thread stattfinden, und unser Renderpfad verlangt, dass es der Renderthread
- * ist: {@code onPaint} kommt dort an, wo gepumpt wird, und die Freigabe der
- * Textur hängt daran. Deshalb wird hier nichts beim Start des Spiels
- * angestoßen, sondern beim ersten Bedarf — und der entsteht im Renderthread.
+ * <p><b>Everything runs on the render thread — startup included.</b> CEF
+ * demands that initialization, message loop and shutdown take place on the
+ * same thread, and our render path demands that it be the render thread:
+ * {@code onPaint} arrives where the pumping happens, and the release of the
+ * texture hangs off that. So nothing is kicked off here at game start, but on
+ * first need — and that arises on the render thread.
  */
 public final class FnCefRuntime {
 
     private static final Logger LOG = LogUtils.getLogger();
 
     /**
-     * Ob die Fehlersuche mitläuft: {@code -Dfn.cef.trace=true}.
+     * Whether debugging runs along: {@code -Dfn.cef.trace=true}.
      *
-     * <p>Sie hängt sich in die Standardfehlerausgabe und schreibt jede Taste
-     * mit. Beides ist im Alltag nur Lärm und im Zweifelsfall das Einzige, was
-     * hilft — deshalb ein Schalter und keine Entscheidung für immer.
+     * <p>It hooks into the standard error output and records every key. Both
+     * are only noise in everyday use and, in case of doubt, the only thing that
+     * helps — hence a switch and not a decision for good.
      */
     static final boolean TRACE = Boolean.getBoolean("fn.cef.trace");
 
@@ -48,27 +48,27 @@ public final class FnCefRuntime {
     private static Thread owner;
     private static boolean failed;
     private static String failure;
-    /** Ein vorhergesehener Grund, der sich nicht ändert — kommt beim nächsten Griff unverändert wieder. */
+    /** A foreseen reason that does not change — returns unchanged on the next call. */
     private static dev.devpanda.bamboocef.web.WebRuntimeStatus knownFailure;
     private static boolean shutDown;
 
     /**
-     * Fährt hoch, falls nötig, und gibt den Thread zurück, dem CEF gehört.
+     * Starts up if necessary, and returns the thread that CEF belongs to.
      *
-     * @throws IllegalStateException wenn es nicht geht — der Text nennt den
-     *         Grund und ist für Menschen gedacht
+     * @throws IllegalStateException when it does not work — the text names the
+     *         reason and is meant for people
      */
     public static synchronized void ensureStarted() {
         if (app != null) {
             return;
         }
         if (shutDown) {
-            // <b>Ein Endzustand, keine Wiederholung.</b> CEF lässt sich je
-            // Prozess nur einmal starten. Beim Beenden malt Minecraft nach dem
-            // Herunterfahren noch ein Bild, und wer dabei einen Browser will,
-            // bekommt diese Auskunft — kein zweiter Startversuch, der mit
-            // „Settings can only be passed to CEF before createClient" als
-            // Fehler mit Stapel im Protokoll endete.
+            // <b>An end state, not a retry.</b> CEF can be started only once
+            // per process. On exit, Minecraft paints one more frame after
+            // shutdown, and whoever wants a browser then gets this notice — no
+            // second startup attempt that ended as an error with a stack trace
+            // in the log, saying "Settings can only be passed to CEF before
+            // createClient".
             throw new dev.devpanda.bamboocef.web.WebRuntimeUnavailable(
                     dev.devpanda.bamboocef.web.WebRuntimeState.SHUT_DOWN,
                     "Chromium ist heruntergefahren und startet in diesem Prozess nicht neu");
@@ -83,16 +83,16 @@ public final class FnCefRuntime {
         try {
             start();
         } catch (dev.devpanda.bamboocef.web.WebRuntimeUnavailable known) {
-            // <b>Ein vorhergesehener Zustand geht unverändert weiter.</b> Wer
-            // ihn in eine IllegalStateException packte, machte aus „wird
-            // gerade geladen" ein „kaputt" — und die Auskunft, die der Spieler
-            // liest, wäre die falsche.
+            // <b>A foreseen state passes on unchanged.</b> Whoever packed it
+            // into an IllegalStateException would turn "currently loading" into
+            // "broken" — and the notice the player reads would be the wrong
+            // one.
             //
-            // Und er wird nicht gemerkt, wenn ein zweiter Versuch lohnt: Nach
-            // einem Download soll derselbe Aufruf durchgehen und nicht an
-            // einem Merkposten scheitern. Gemerkt wird der Zustand selbst,
-            // nicht sein Text — sonst käme beim zweiten Griff ein FAILED mit
-            // dem Wortlaut eines anderen Grundes.
+            // And it is not remembered when a second attempt is worthwhile:
+            // after a download the same call should go through and not fail on
+            // a remembered note. What is remembered is the state itself, not
+            // its text — otherwise the second call would bring a FAILED with
+            // the wording of a different reason.
             if (!known.status().state().worthRetrying()) {
                 knownFailure = known.status();
             }
@@ -113,40 +113,40 @@ public final class FnCefRuntime {
             captureStandardError();
         }
 
-        // <b>Wir nennen den Ordner, laden tut java-cef selbst.</b> Ein eigener
-        // Ladeweg über SystemBootstrap.setLoader und System.load mit absolutem
-        // Pfad lädt die Datei zwar, nützt aber nichts: Native Methoden findet
-        // die JVM nur in Bibliotheken, die der Klassenlader der jeweiligen
-        // Klasse geladen hat. Gemessen im Spiel —
+        // <b>We name the directory, the loading java-cef does itself.</b> A
+        // loading path of our own via SystemBootstrap.setLoader and
+        // System.load with an absolute path does load the file, but is of no
+        // use: the JVM only finds native methods in libraries that the
+        // classloader of the respective class loaded. Measured in the game —
         //
         //   CefApp        cpw.mods.cl.ModuleClassLoader
         //   FnCefRuntime  cpw.mods.modlauncher.TransformingClassLoader
         //
-        // — und ein System.load aus unserem Code bindet an den zweiten. Die
-        // Folge ist ein UnsatisfiedLinkError beim ersten nativen Aufruf,
-        // obwohl die Bibliothek längst im Prozess steht. Ein Loader, den wir
-        // von außen setzen, hätte dasselbe Problem: Er liefe in unserem Lader.
+        // — and a System.load from our code binds to the second. The result is
+        // an UnsatisfiedLinkError on the first native call, even though the
+        // library has long been in the process. A loader we set from outside
+        // would have the same problem: it would run in our loader.
         //
-        // Deshalb sagt Patch 0005 dem Vorgabeweg, wo er suchen soll. Der
-        // System.load-Aufruf steht damit in SystemBootstrap selbst, der Lader
-        // stimmt, und es braucht keinen PATH-Eintrag mehr — den setzt unter
-        // einem echten Launcher ohnehin niemand für uns.
+        // That is why patch 0005 tells the default path where to look. The
+        // System.load call thus lives in SystemBootstrap itself, the loader is
+        // correct, and no PATH entry is needed any more — under a real launcher
+        // nobody sets that for us anyway.
         System.setProperty("jcef.library.path", dir.getAbsolutePath());
 
-        // <b>Vor CefApp.startup, nicht danach.</b> Der Wächter klammert den
-        // eigenen Prozess ein, und Kindprozesse erben die Zugehörigkeit. Wer
-        // erst nach dem Start klammert, klammert die schon gestarteten Helfer
-        // nicht mehr ein.
+        // <b>Before CefApp.startup, not after.</b> The watchdog brackets our
+        // own process, and child processes inherit the membership. Whoever
+        // brackets only after the start no longer brackets the helpers that
+        // are already running.
         dev.devpanda.bamboocef.web.ProcessGuard.install();
 
         if (!CefApp.startup(new String[] {})) {
             throw new IllegalStateException("CefApp.startup schlug fehl");
         }
 
-        // Vor dem ersten getInstance und aus dem Thread, in dem danach gepumpt
-        // wird. Ohne das schiebt CefApp Initialisierung und Schleife auf AWTs
-        // Ereignisthread — die Bilder kämen dann im falschen Thread an, und der
-        // Takt wäre bei dreißig gedeckelt.
+        // Before the first getInstance and from the thread that pumps
+        // afterwards. Without this CefApp pushes initialization and loop onto
+        // AWT's event thread — the frames would then arrive on the wrong
+        // thread, and the rate would be capped at thirty.
         CefApp.useCallingThread();
 
         CefSettings settings = new CefSettings();
@@ -154,15 +154,15 @@ public final class FnCefRuntime {
         settings.log_severity = CefSettings.LogSeverity.LOGSEVERITY_WARNING;
         settings.log_file = new File(gameDirectory(), "logs/fn-cef.log").getAbsolutePath();
 
-        // Ausdrücklich gesetzt, nicht geraten: Upstream leitet den Pfad des
-        // Hilfsprozesses sonst aus java.library.path ab, und der zeigt hier
-        // nicht auf unseren Ordner.
+        // Set explicitly, not guessed: otherwise upstream derives the path of
+        // the helper process from java.library.path, and that does not point
+        // at our directory here.
         settings.browser_subprocess_path = new File(dir, "jcef_helper.exe").getAbsolutePath();
         settings.resources_dir_path = dir.getAbsolutePath();
         settings.locales_dir_path = new File(dir, "locales").getAbsolutePath();
 
-        // Ohne eigenen Zwischenspeicher warnt CEF vor unbeabsichtigtem
-        // Verhalten, wenn zwei Anwendungen sich denselben Vorgabepfad teilen.
+        // Without a cache of its own, CEF warns of unintended behaviour when
+        // two applications share the same default path.
         File cache = new File(gameDirectory(), "fn-cef-cache");
         settings.root_cache_path = cache.getAbsolutePath();
         settings.cache_path = cache.getAbsolutePath();
@@ -173,16 +173,15 @@ public final class FnCefRuntime {
     }
 
     /**
-     * Eine Runde der Nachrichtenschleife.
+     * One round of the message loop.
      *
-     * <p>Aus dem Renderthread, einmal je Bild. Alles, was CEF zu melden hat —
-     * auch {@code onPaint} —, kommt in diesem Aufruf und damit in diesem
-     * Thread.
+     * <p>From the render thread, once per frame. Everything CEF has to report —
+     * {@code onPaint} included — comes in this call and thus on this thread.
      *
-     * <p>Nicht {@code doMessageLoopWork}: Das ist der Weg für Anwendungen ohne
-     * eigene Schleife und reicht die Arbeit an AWT weiter. CEF ruft es
-     * außerdem selbst zurück, um eine Runde zu erbitten — die erste noch
-     * mitten aus der Initialisierung heraus.
+     * <p>Not {@code doMessageLoopWork}: that is the route for applications
+     * without a loop of their own and hands the work off to AWT. CEF also calls
+     * it back itself to request a round — the first one still from the middle
+     * of initialization.
      */
     public static void pump() {
         CefApp running = app;
@@ -201,7 +200,7 @@ public final class FnCefRuntime {
         return client;
     }
 
-    /** Der Thread, dem CEF gehört — null, solange nichts läuft. */
+    /** The thread that CEF belongs to — null as long as nothing is running. */
     public static Thread owner() {
         return owner;
     }
@@ -211,11 +210,11 @@ public final class FnCefRuntime {
     }
 
     /**
-     * Fährt herunter.
+     * Shuts down.
      *
-     * <p>Im selben Thread wie das Hochfahren, und mit Weiterpumpen: CEF
-     * arbeitet das Schließen über seine eigene Schleife ab, und wer nach
-     * {@code dispose()} nicht mehr pumpt, lässt die Hilfsprozesse stehen.
+     * <p>On the same thread as startup, and with continued pumping: CEF works
+     * the closing off via its own loop, and whoever stops pumping after
+     * {@code dispose()} leaves the helper processes standing.
      */
     public static synchronized void shutdown() {
         if (app == null) {
@@ -240,19 +239,19 @@ public final class FnCefRuntime {
     }
 
     /**
-     * Schreibt mit, was auf die Standardfehlerausgabe geht.
+     * Records what goes to the standard error output.
      *
-     * <p><b>Wozu, obwohl es ein Protokoll gibt.</b> Wenn eine Ausnahme aus
-     * einem Rückruf von Chromium heraus fliegt, meldet der native Teil sie
-     * über {@code ExceptionDescribe}: Die Kopfzeile geht an die nackte
-     * Fehlerausgabe, der Stapel über {@code printStackTrace} an
-     * {@code System.err} — und den hat das Spiel längst umgebogen. Übrig
-     * bleibt ein „Exception in thread" ohne alles dahinter, und damit lässt
-     * sich nichts anfangen.
+     * <p><b>What for, even though there is a log.</b> When an exception flies
+     * out of a Chromium callback, the native part reports it via
+     * {@code ExceptionDescribe}: the header line goes to the bare error output,
+     * the stack trace via {@code printStackTrace} to {@code System.err} — and
+     * the game has long since redirected that. What is left is an "Exception in
+     * thread" with nothing behind it, and there is nothing to be done with
+     * that.
      *
-     * <p>Hier wird deshalb ein zweiter Weg danebengelegt, der niemandem
-     * gehört: eine Datei unter {@code logs/}. Was durchgeht, geht weiterhin
-     * auch dorthin, wo es vorher hinging.
+     * <p>That is why a second path is laid down alongside, one that belongs to
+     * no one: a file under {@code logs/}. What passes through still also goes
+     * where it went before.
      */
     private static void captureStandardError() {
         try {
@@ -280,11 +279,11 @@ public final class FnCefRuntime {
     }
 
     /**
-     * Wo die Laufzeitumgebung liegt.
+     * Where the runtime lives.
      *
-     * <p>Die Suche steht in {@code RuntimeInstall} und nicht hier: Sie darf
-     * keine Klasse aus {@code org.cef} anfassen — sie läuft ja gerade deshalb,
-     * weil noch nicht feststeht, ob es welche gibt.
+     * <p>The search lives in {@code RuntimeInstall} and not here: it must not
+     * touch any class from {@code org.cef} — it runs precisely because it is
+     * not yet settled whether there are any.
      */
     private static File runtimeDir() {
         return dev.devpanda.bamboocef.web.RuntimeInstall.locate(gameDirectory());

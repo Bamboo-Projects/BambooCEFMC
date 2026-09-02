@@ -15,39 +15,39 @@ import java.util.Base64;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Prüft den Bildweg, ohne dass jemand hinsehen muss.
+ * Checks the frame path without anyone having to look.
  *
- * <p><b>Warum das kein gewöhnlicher Prüflauf sein kann.</b> Der Weg von
- * Chromium in eine Textur braucht einen Zeichenkontext, und den gibt es nur
- * im laufenden Spiel. Ein GameTest läuft auf dem Server und hat keinen.
+ * <p><b>Why this cannot be an ordinary test run.</b> The path from Chromium
+ * into a texture needs a drawing context, and that exists only in the running
+ * game. A GameTest runs on the server and has none.
  *
- * <p><b>Und warum trotzdem nicht das Auge entscheidet.</b> „Sieht richtig
- * aus" beantwortet die drei Fragen nicht, auf die es ankommt: Sind die
- * Farbkanäle richtig herum, steht das Bild richtig herum, und kommt das Alpha
- * an? Ein Bild, bei dem Rot und Blau vertauscht sind, sieht plausibel aus,
- * bis jemand eine Farbe wiedererkennen will.
+ * <p><b>And why the eye still does not decide.</b> "Looks right" does not
+ * answer the three questions that matter: are the color channels the right way
+ * round, is the image the right way up, and does the alpha come through? An
+ * image in which red and blue are swapped looks plausible, until someone tries
+ * to recognize a color.
  *
- * <p>Deshalb lädt dieser Lauf eine Seite mit vier bekannten Feldern, liest
- * die fertige Textur von der Grafikkarte zurück und vergleicht die
- * Bildpunkte. Was er meldet, ist nachprüfbar und steht im Protokoll.
+ * <p>That is why this run loads a page with four known fields, reads the
+ * finished texture back from the graphics card, and compares the pixels. What
+ * it reports is verifiable and goes into the log.
  *
- * <p>Er läuft einmal je Sitzung, ein paar Sekunden nach dem Start — dann ist
- * MCEF hochgekommen. Danach räumt er alles wieder ab.
+ * <p>It runs once per session, a few seconds after startup — by then MCEF has
+ * come up. Afterwards it tears everything down again.
  */
 public final class WebSelfTest {
 
     private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/WebSelfTest");
 
-    /** Kantenlänge der Prüffläche. Klein genug, um schnell zurückzulesen. */
+    /** Edge length of the test surface. Small enough to read back quickly. */
     private static final int SIZE = 256;
 
     /**
-     * Vier Felder mit bekannten Farben, dazu ein durchsichtiges.
+     * Four fields with known colors, plus a transparent one.
      *
-     * <p>Die Anordnung ist die Prüfung: Oben links Rot, oben rechts Grün,
-     * unten links Blau. Wer das Bild senkrecht spiegelt, findet Blau oben —
-     * und wer Kanäle vertauscht, findet Blau links oben. Beides fällt damit
-     * auf, ohne dass jemand hinsieht.
+     * <p>The arrangement is the test: top left red, top right green, bottom
+     * left blue. Whoever flips the image vertically finds blue at the top — and
+     * whoever swaps channels finds blue at the top left. Both thus show up
+     * without anyone looking.
      */
     private static final String PAGE = """
             <!doctype html><html><head><style>
@@ -72,35 +72,36 @@ public final class WebSelfTest {
     }
 
     /**
-     * Einmal je Sitzung, vom Takt des Clients gerufen.
+     * Once per session, called from the client's tick.
      *
-     * <p>Wartet erst ein paar Sekunden: MCEF fährt sich nebenher hoch, und
-     * wer zu früh fragt, misst das Hochfahren statt des Bildwegs.
+     * <p>Waits a few seconds first: MCEF comes up alongside, and whoever asks
+     * too early measures the startup instead of the frame path.
      */
     public static void tick() {
         if (done) {
             return;
         }
         ticksWaited++;
-        if (ticksWaited < 200) {          // etwa zehn Sekunden
+        if (ticksWaited < 200) {          // about ten seconds
             return;
         }
         if (session == null) {
             start();
             return;
         }
-        // <b>Ein Bild reicht, und mehr kommen auch nicht.</b> Eine Seite, die
-        // sich nicht ändert, malt genau einmal — danach schickt Chromium
-        // nichts mehr. Wer auf ein zweites wartet, wartet für immer; genau das
-        // ist hier zuerst passiert und sah aus wie ein kaputter Renderpfad.
+        // <b>One frame is enough, and no more come anyway.</b> A page that does
+        // not change paints exactly once — after that Chromium sends nothing
+        // more. Whoever waits for a second waits forever; that is exactly what
+        // happened here first and looked like a broken render path.
         //
-        // Nebenbei ist das die beste Nachricht für die Kostenfrage: Ein
-        // ruhender Editor kostet keinen einzigen Upload.
+        // Incidentally, that is the best news for the cost question: a resting
+        // editor costs not a single upload.
         if (session.paints() >= 1) {
             check();
         } else if (ticksWaited % 100 == 0) {
-            // Zwischenstand statt Schweigen: Wer nur am Ende meldet, weiß
-            // hinterher nicht, ob der Browser lud, hing oder nie anfing.
+            // Progress instead of silence: whoever only reports at the end does
+            // not know afterwards whether the browser was loading, hung, or
+            // never started.
             LOG.info("Selbsttest: warte auf das erste Bild — bisher {} Bilder, URL {}",
                     session.paints(), session.currentUrl());
         }
@@ -112,11 +113,11 @@ public final class WebSelfTest {
     }
 
     /**
-     * Ob der Selbsttest durch ist.
+     * Whether the self-test is through.
      *
-     * <p>Die Messung fragt danach: Zwei Browser gleichzeitig messen einander
-     * mit, und der Selbsttest kommt zuerst — er entscheidet, ob überhaupt
-     * etwas zu messen ist.
+     * <p>The measurement asks about this: two browsers at once measure each
+     * other in, and the self-test comes first — it decides whether there is
+     * anything to measure at all.
      */
     public static boolean finished() {
         return done;
@@ -129,10 +130,10 @@ public final class WebSelfTest {
             done = true;
             return;
         }
-        // <b>Keine data:-URL.</b> Chromium verweigert sie als Hauptdokument
-        // seit Version 60 — eine Sicherheitsmaßnahme gegen Phishing. Der
-        // Browser lädt dann gar nichts, malt folglich nie, und es sieht aus
-        // wie ein kaputter Renderpfad. Eine Datei tut es genauso.
+        // <b>No data: URL.</b> Chromium has refused it as a main document since
+        // version 60 — a security measure against phishing. The browser then
+        // loads nothing at all, consequently never paints, and it looks like a
+        // broken render path. A file does the job just as well.
         String url;
         try {
             java.nio.file.Path page = java.nio.file.Files.createTempFile(
@@ -167,7 +168,7 @@ public final class WebSelfTest {
                     .allocateDirect(session.width() * session.height() * 4)
                     .order(ByteOrder.nativeOrder());
             RenderSystem.bindTexture(texture);
-            // Zurücklesen in derselben Anordnung, in der hochgeladen wurde.
+            // Read back in the same layout in which it was uploaded.
             GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0,
                     GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, read);
             RenderSystem.bindTexture(0);
@@ -201,10 +202,10 @@ public final class WebSelfTest {
         }
     }
 
-    /** Ein Bildpunkt als r, g, b, a. */
+    /** One pixel as r, g, b, a. */
     private static int[] pixel(ByteBuffer buffer, int x, int y) {
         int offset = (y * SIZE + x) * 4;
-        // BGRA im Speicher, wie Chromium und OpenGL es hier führen.
+        // BGRA in memory, the way Chromium and OpenGL handle it here.
         int b = buffer.get(offset) & 0xFF;
         int g = buffer.get(offset + 1) & 0xFF;
         int r = buffer.get(offset + 2) & 0xFF;
@@ -213,9 +214,9 @@ public final class WebSelfTest {
     }
 
     private static void report(String where, int[] found, int r, int g, int b) {
-        // Großzügig: Chromium darf runden, und eine Skalierung kann an den
-        // Rändern mischen. Was hier auffallen soll, ist ein vertauschter
-        // Kanal oder ein gespiegeltes Bild — beides liegt weit daneben.
+        // Generous: Chromium may round, and scaling can blend at the edges.
+        // What should stand out here is a swapped channel or a mirrored image —
+        // both are far off.
         boolean ok = Math.abs(found[0] - r) < 40
                 && Math.abs(found[1] - g) < 40
                 && Math.abs(found[2] - b) < 40;

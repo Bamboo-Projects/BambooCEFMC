@@ -13,27 +13,27 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Ohne Chromium sagt die Runtime das — und nimmt nichts mit.
+ * Without Chromium the runtime says so — and takes nothing down with it.
  *
- * <p><b>Dieser Prüflauf steht genau in der Lage des Spielers ohne
- * Laufzeitumgebung.</b> Im Prüfstand liegt {@code org.cef} nicht auf dem
- * Klassenpfad: Das gebaute {@code jcef.jar} ist {@code compileOnly}, und das
- * reicht zum Übersetzen und nicht zum Laufen. Was hier passiert, passiert also
- * auch bei jedem, neben dessen Spiel die Laufzeitumgebung fehlt.
+ * <p><b>This test run stands exactly in the position of the player without a
+ * runtime environment.</b> On the test bench {@code org.cef} is not on the
+ * classpath: the built {@code jcef.jar} is {@code compileOnly}, and that
+ * is enough to compile but not to run. What happens here therefore happens
+ * for anyone whose game is missing the runtime environment.
  *
- * <p>Die Zusicherung, um die es geht, ist die wichtigste der ganzen Runtime:
- * Eine fehlende Browser-Laufzeit kostet eine Oberfläche und nicht den Client.
+ * <p>The guarantee at stake is the most important of the whole runtime:
+ * a missing browser runtime costs an interface and not the client.
  */
 class WebSupportTest {
 
     @BeforeEach
     void reset() {
         WebRuntime.shutdown();
-        // <b>Ein Manifest ohne Adresse.</b> Das echte im Klassenpfad nennt
-        // seit der Auslieferung eine — und der Griff nach der Laufzeitumgebung
-        // stieße damit aus dem Prüflauf heraus einen echten Download an, ins
-        // Arbeitsverzeichnis von Gradle. Ohne Adresse endet er im Zustand,
-        // den dieser Prüflauf sehen will.
+        // <b>A manifest without an address.</b> The real one in the classpath names
+        // one since delivery — and the reach for the runtime environment
+        // would thereby trigger a real download out of the test run, into
+        // Gradle's working directory. Without an address it ends in the state
+        // that this test run wants to see.
         Properties offline = new Properties();
         offline.setProperty("runtime.version", "0.0-probe");
         offline.setProperty("runtime." + RuntimeManifest.platform() + ".archive", "probe.tar.gz");
@@ -48,7 +48,7 @@ class WebSupportTest {
     }
 
     @Test
-    @DisplayName("Ohne Laufzeitumgebung gibt es einen Zustand statt eines Absturzes")
+    @DisplayName("Without a runtime environment there is a state instead of a crash")
     void withoutRuntimeThereIsAnAnswerInsteadOfACrash() {
         WebRuntimeStatus status = WebSupport.ensureStarted();
 
@@ -56,16 +56,16 @@ class WebSupportTest {
         assertFalse(status.usable(), "ohne Laufzeitumgebung kann nichts nutzbar sein");
         assertFalse(WebRuntime.isAvailable());
 
-        // <b>Der Grund muss unverändert ankommen.</b> Der Griff nach der
-        // Laufzeitumgebung findet den Ordner nicht und sagt das als
-        // RUNTIME_MISSING; wer das unterwegs in FAILED umpackt, macht aus
-        // „liegt nicht da" ein „kaputt" — und aus „wird geladen" ebenso.
+        // <b>The reason must arrive unchanged.</b> The reach for the
+        // runtime environment does not find the folder and reports that as
+        // RUNTIME_MISSING; whoever repackages it into FAILED along the way turns
+        // „not there" into „broken" — and „is loading" likewise.
         assertEquals(WebRuntimeState.RUNTIME_MISSING, status.state(),
                 "der Grund muss unverändert durchkommen: " + status);
     }
 
     @Test
-    @DisplayName("Und man kann es danach gefahrlos noch einmal versuchen")
+    @DisplayName("And you can safely try again afterwards")
     void tryingAgainIsHarmless() {
         WebSupport.ensureStarted();
         WebRuntimeStatus second = WebSupport.retry();

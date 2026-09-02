@@ -17,43 +17,43 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
 /**
- * Wo die Laufzeitumgebung liegt — und wie sie dorthin kommt.
+ * Where the runtime sits — and how it gets there.
  *
- * <p><b>Drei Orte, in dieser Reihenfolge.</b>
+ * <p><b>Three places, in this order.</b>
  *
  * <pre>
- *   1. fn.runtime.dir            gesetzt vom Buildskript, für Entwicklung
- *   2. &lt;Spielordner&gt;/factorynetwork/runtime/&lt;Fassung&gt;/
- *   3. heruntergeladen, wenn eine Adresse im Manifest steht
+ *   1. fn.runtime.dir            set by the build script, for development
+ *   2. &lt;game directory&gt;/factorynetwork/runtime/&lt;version&gt;/
+ *   3. downloaded, if an address is given in the manifest
  * </pre>
  *
- * <p><b>Die Fassung steht im Pfad</b>, und das ist kein Ordnungssinn: Ohne sie
- * startete nach einem Anheben der CEF-Fassung kommentarlos der alte Stand
- * weiter, und die neue Mod liefe gegen alte Bibliotheken.
+ * <p><b>The version is in the path</b>, and that is not tidiness: without it,
+ * after a bump of the CEF version the old state would silently keep starting,
+ * and the new mod would run against old libraries.
  *
- * <p><b>Nichts hiervon lädt im Renderthread.</b> Der Aufrufer steht dort und
- * bekommt sofort eine Antwort — auch die Antwort „wird gerade geladen". Ein
- * erster Bildschirmwechsel darf nicht hundertsiebzig Megabyte lang hängen.
+ * <p><b>None of this loads on the render thread.</b> The caller stands there and
+ * gets an answer at once — including the answer "currently loading". A first
+ * screen change must not hang for a hundred and seventy megabytes.
  */
 public final class RuntimeInstall {
 
     private static final Logger LOG = LogUtils.getLogger();
 
-    /** Woran ein vollständiger Ordner zu erkennen ist. */
+    /** How a complete folder can be recognized. */
     private static final String MARKER = "jcef.jar";
 
     /**
-     * Woran ein <b>un</b>vollständiger zu erkennen ist.
+     * How an <b>in</b>complete one can be recognized.
      *
-     * <p>Diese Datei entsteht vor dem Auspacken und verschwindet danach. Ohne
-     * sie sähen zweihundert halb ausgepackte Dateien wie eine fertige
-     * Laufzeitumgebung aus, und der Fehler käme später als
-     * {@code UnsatisfiedLinkError} tief aus {@code CefApp} statt hier als
-     * Auskunft.
+     * <p>This file is created before unpacking and disappears afterwards.
+     * Without it, two hundred half-unpacked files would look like a finished
+     * runtime, and the error would come later as an
+     * {@code UnsatisfiedLinkError} deep out of {@code CefApp} instead of here as
+     * information.
      */
     private static final String INCOMPLETE = ".unvollstaendig";
 
-    /** Ab wie vielen Bytes die nächste Fortschrittszeile fällig ist. */
+    /** After how many bytes the next progress line is due. */
     private static final long REPORT_EVERY = 20L * 1024 * 1024;
 
     private static volatile boolean downloading;
@@ -62,10 +62,10 @@ public final class RuntimeInstall {
     }
 
     /**
-     * Der Ordner mit den nativen Bibliotheken.
+     * The folder with the native libraries.
      *
-     * @throws WebRuntimeUnavailable wenn er fehlt — mit dem Zustand, der sagt,
-     *         warum, und ob ein zweiter Versuch lohnt
+     * @throws WebRuntimeUnavailable if it is missing — with the state that says
+     *         why, and whether a second attempt is worthwhile
      */
     public static File locate(File gameDirectory) {
         String configured = System.getProperty("fn.runtime.dir");
@@ -101,23 +101,23 @@ public final class RuntimeInstall {
                 "Die Laufzeitumgebung wird geladen (" + entry.archive() + ")");
     }
 
-    /** Wo eine nachgeladene Laufzeitumgebung liegt. */
+    /** Where a downloaded runtime sits. */
     public static File cacheDir(File gameDirectory) {
         File own = new File(gameDirectory, "factorynetwork");
         return new File(new File(own, "runtime"), RuntimeManifest.version());
     }
 
-    /** Ist der Ordner da und vollständig ausgepackt? */
+    /** Is the folder there and fully unpacked? */
     public static boolean complete(File dir) {
         return new File(dir, MARKER).isFile() && !new File(dir, INCOMPLETE).exists();
     }
 
-    /** Läuft gerade ein Download? */
+    /** Is a download running right now? */
     public static boolean downloading() {
         return downloading;
     }
 
-    // ---- Herunterladen ------------------------------------------------------
+    // ---- Downloading --------------------------------------------------------
 
     private static synchronized void startDownload(RuntimeManifest.Entry entry,
                                                    String url, File target) {
@@ -135,24 +135,25 @@ public final class RuntimeInstall {
                 downloading = false;
             }
         }, "FactoryNetwork Laufzeitumgebung");
-        // Ein Hintergrundthread: Wer das Spiel beendet, während geladen wird,
-        // soll nicht auf hundertsiebzig Megabyte warten. Was halb geladen ist,
-        // liegt in einer .teil-Datei und stört beim nächsten Mal nicht.
+        // A background thread: whoever quits the game while it is downloading
+        // should not wait for a hundred and seventy megabytes. What is
+        // half-loaded sits in a .teil file and does not get in the way next
+        // time.
         worker.setDaemon(true);
         worker.start();
     }
 
     /**
-     * Laden, prüfen, auspacken — in dieser Reihenfolge und nicht anders.
+     * Download, verify, unpack — in this order and no other.
      *
-     * <p>Am Zielordner wird erst gearbeitet, wenn die Prüfsumme stimmt, und
-     * dann unter einem Marker. Zwischen Anfang und Ende des Auspackens gibt es
-     * damit keinen Augenblick, in dem der Ordner fertig aussieht.
+     * <p>Work on the target folder only begins once the checksum matches, and
+     * then under a marker. Between the start and the end of unpacking there is
+     * thus no moment in which the folder looks finished.
      *
-     * <p>Paketprivat und nicht privat, damit ein Prüflauf sie gegen einen
-     * eigenen Server aufrufen kann. Auf dem Weg über {@link #locate(File)}
-     * wird sie im Entwicklungslauf nie erreicht — dort steht
-     * {@code fn.runtime.dir}, und dann ist alles schon da.
+     * <p>Package-private and not private, so that a test run can call it against
+     * its own server. On the path through {@link #locate(File)} it is never
+     * reached in a development run — there {@code fn.runtime.dir} is set, and
+     * then everything is already present.
      */
     static void download(RuntimeManifest.Entry entry, String url, Path target)
             throws IOException {
@@ -175,7 +176,7 @@ public final class RuntimeInstall {
         Files.deleteIfExists(partial);
     }
 
-    /** Lädt herunter und gibt die Prüfsumme des Geladenen zurück. */
+    /** Downloads and returns the checksum of what was downloaded. */
     private static String fetch(String url, Path into) throws IOException {
         HttpURLConnection connection =
                 (HttpURLConnection) URI.create(url).toURL().openConnection();
@@ -207,8 +208,8 @@ public final class RuntimeInstall {
         while ((read = in.read(buffer)) > 0) {
             out.write(buffer, 0, read);
             done += read;
-            // Alle zwanzig Megabyte eine Zeile: genug, um zu sehen, dass es
-            // vorangeht, wenig genug, um das Protokoll nicht zuzuschütten.
+            // One line every twenty megabytes: enough to see that it is making
+            // progress, little enough not to bury the log.
             if (done - reported >= REPORT_EVERY) {
                 reported = done;
                 LOG.info("Laufzeitumgebung: {} von {} MB", done / REPORT_EVERY * 20,
@@ -218,12 +219,11 @@ public final class RuntimeInstall {
     }
 
     /**
-     * Packt das Archiv aus.
+     * Unpacks the archive.
      *
-     * <p><b>Über {@code tar} und nicht über eine Bibliothek.</b> Windows
-     * liefert es seit Zehn mit, Linux und macOS ohnehin — und eine
-     * tar.gz-Bibliothek wäre eine Abhängigkeit für zwanzig Zeilen, die es im
-     * Betriebssystem schon gibt.
+     * <p><b>Via {@code tar} and not via a library.</b> Windows has shipped it
+     * since Ten, Linux and macOS anyway — and a tar.gz library would be a
+     * dependency for twenty lines that the operating system already provides.
      */
     private static void unpack(Path archive, Path into) throws IOException {
         ProcessBuilder builder = new ProcessBuilder(
@@ -249,7 +249,7 @@ public final class RuntimeInstall {
         try {
             return MessageDigest.getInstance("SHA-256");
         } catch (NoSuchAlgorithmException impossible) {
-            // SHA-256 ist in jeder JVM Pflicht.
+            // SHA-256 is mandatory in every JVM.
             throw new IllegalStateException(impossible);
         }
     }

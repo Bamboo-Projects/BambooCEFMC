@@ -1,27 +1,25 @@
 package dev.devpanda.bamboocef.web;
 
 /**
- * Entscheidet, wann ein Browser wieder ein Bild malen darf.
+ * Decides when a browser may paint a frame again.
  *
- * <p><b>Eine Obergrenze, kein Antrieb.</b> Was hier steht, kann Chromium
- * ausbremsen und niemals beschleunigen. Die Bildrate im fensterlosen Betrieb
- * ist in dieser JCEF-Fassung überhaupt nicht einstellbar — es gibt weder
- * {@code CefBrowserSettings} noch ein {@code windowless_frame_rate}, und das
- * native {@code createBrowser} nimmt keine Browser-Einstellungen entgegen.
- * Gemessen liefert Chromium <b>30,1 Bilder je Sekunde</b>, seine
- * Voreinstellung.
+ * <p><b>An upper bound, not a drive.</b> What stands here can slow Chromium
+ * down and never speed it up. The frame rate in windowless mode is not
+ * adjustable at all in this JCEF version — there is neither
+ * {@code CefBrowserSettings} nor a {@code windowless_frame_rate}, and the
+ * native {@code createBrowser} takes no browser settings. Measured, Chromium
+ * delivers <b>30.1 frames per second</b>, its default.
  *
- * <p>Wer hier sechzig einträgt, bekommt dreißig. Wer fünf einträgt, bekommt
- * fünf. Nur die zweite Richtung wirkt.
+ * <p>Whoever enters sixty here gets thirty. Whoever enters five gets five.
+ * Only the second direction takes effect.
  *
- * <p><b>Reine Zeitrechnung, ohne Minecraft und ohne Chromium</b> — und
- * deshalb prüfbar. Die Uhr kommt von außen, damit ein Prüflauf sie stellen
- * kann; im Spiel ist es {@code System.nanoTime}.
+ * <p><b>Pure timekeeping, without Minecraft and without Chromium</b> — and
+ * therefore testable. The clock comes from outside so that a test run can set
+ * it; in the game it is {@code System.nanoTime}.
  *
- * <p>Der Takt läuft nicht mit: Wer zehn Bilder lang nicht gefragt wurde,
- * bekommt danach nicht zehn auf einmal. Ein Browser, der aus dem Blick
- * gerät und zurückkommt, soll ein Bild malen und nicht die versäumte
- * Vergangenheit nachholen.
+ * <p>The cadence does not accumulate: whoever was not asked for ten frames does
+ * not then get ten at once. A browser that drops out of sight and comes back
+ * should paint one frame and not catch up on the missed past.
  */
 public final class FramePacer {
 
@@ -37,10 +35,10 @@ public final class FramePacer {
     }
 
     /**
-     * Ändert die Sichtbarkeit.
+     * Changes the visibility.
      *
-     * <p>Ein Browser, der sichtbar wird, darf sofort malen — sonst sieht der
-     * Spieler beim Aufklappen bis zu eine Fünftelsekunde lang das alte Bild.
+     * <p>A browser that becomes visible may paint at once — otherwise the
+     * player sees the old frame for up to a fifth of a second when it unfolds.
      */
     public void setVisibility(BrowserVisibility next) {
         BrowserVisibility wanted = next == null ? BrowserVisibility.HIDDEN : next;
@@ -52,13 +50,13 @@ public final class FramePacer {
     }
 
     /**
-     * Ist ein Bild fällig?
+     * Is a frame due?
      *
-     * <p>Sagt <b>nicht</b>, dass eines gemalt wurde — das entscheidet
-     * Chromium. Wer hier ein Ja bekommt und dann doch nichts tut, meldet das
-     * mit {@link #skipped()}, damit der Takt nicht davonläuft.
+     * <p>Does <b>not</b> say that one was painted — Chromium decides that.
+     * Whoever gets a yes here and then does nothing after all reports it with
+     * {@link #skipped()}, so that the cadence does not run away.
      *
-     * @param now die aktuelle Zeit in Nanosekunden
+     * @param now the current time in nanoseconds
      */
     public boolean due(long now) {
         long interval = visibility.frameIntervalNanos();
@@ -71,12 +69,12 @@ public final class FramePacer {
         return now - lastFrameAt >= interval;
     }
 
-    /** Ein Bild ist entstanden. */
+    /** A frame has been produced. */
     public void drawn(long now) {
         lastFrameAt = now;
     }
 
-    /** Es wurde doch keines — der Takt bleibt stehen, statt aufzuholen. */
+    /** None was produced after all — the cadence stays put instead of catching up. */
     public void skipped() {
         lastFrameAt = Long.MIN_VALUE;
     }

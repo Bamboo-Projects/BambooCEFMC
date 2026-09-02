@@ -1,17 +1,17 @@
 package dev.devpanda.bamboocef.web.frame;
 
 /**
- * Ein Rechteck, das sich geändert hat.
+ * A rectangle that has changed.
  *
- * <p>Chromium meldet sie zu jedem Bild. Wer sie ignoriert, lädt für einen
- * blinkenden Cursor achteinhalb Megabyte hoch; wer sie beachtet, ein paar
- * hundert Byte. Deshalb steht die Angabe von Anfang an im Bild und wird nicht
- * später nachgerüstet.
+ * <p>Chromium reports them with every image. Whoever ignores them uploads eight
+ * and a half megabytes for a blinking cursor; whoever heeds them, a few hundred
+ * bytes. That is why the information is in the image from the start and is not
+ * retrofitted later.
  *
- * @param x      linke Kante in Bildpunkten
- * @param y      obere Kante
- * @param width  Breite
- * @param height Höhe
+ * @param x      left edge in pixels
+ * @param y      top edge
+ * @param width  width
+ * @param height height
  */
 public record DirtyRegion(int x, int y, int width, int height) {
 
@@ -22,12 +22,12 @@ public record DirtyRegion(int x, int y, int width, int height) {
         }
     }
 
-    /** Wie viele Bildpunkte darin liegen. */
+    /** How many pixels lie within it. */
     public long pixels() {
         return (long) width * height;
     }
 
-    /** Der Bereich, der ein ganzes Bild dieser Größe abdeckt. */
+    /** The region that covers a whole image of this size. */
     public static DirtyRegion whole(int width, int height) {
         return new DirtyRegion(0, 0, width, height);
     }

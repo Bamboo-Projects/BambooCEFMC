@@ -10,19 +10,19 @@ import org.cef.misc.LongRef;
 import org.cef.network.CefRequest;
 
 /**
- * Der Bearbeiter für {@code mc://frame} — Fassung für upstream java-cef.
+ * The handler for {@code mc://frame} — variant for upstream java-cef.
  *
- * <p>Upstream verlangt von einem {@code CefResourceHandler} drei Methoden
- * mehr als der CinemaMod-Fork: {@code open}, {@code read} und {@code skip}.
- * Ihre Parametertypen — {@code BoolRef}, {@code CefResourceReadCallback},
- * {@code LongRef}, {@code CefResourceSkipCallback} — gibt es im Fork nicht,
- * deshalb stehen sie hier und nicht in {@link FrameScheme}.
+ * <p>Upstream demands three more methods from a {@code CefResourceHandler}
+ * than the CinemaMod fork: {@code open}, {@code read} and {@code skip}. Their
+ * parameter types — {@code BoolRef}, {@code CefResourceReadCallback},
+ * {@code LongRef}, {@code CefResourceSkipCallback} — do not exist in the fork,
+ * which is why they live here and not in {@link FrameScheme}.
  *
- * <p><b>Sie tun nichts Eigenes.</b> Upstream beschreibt für {@code open} und
- * {@code read} ausdrücklich einen Rückweg auf die älteren Methoden, und genau
- * den nehmen sie. Damit bleibt die ganze Arbeit — welches Bild, welche Köpfe,
- * welche Bytes — in der gemeinsamen Fassung, und diese Datei ist nur die
- * Übersetzung zwischen zwei Schnittstellenständen.
+ * <p><b>They do nothing of their own.</b> For {@code open} and {@code read}
+ * upstream explicitly describes a fallback onto the older methods, and that is
+ * exactly what these take. So all the actual work — which image, which
+ * headers, which bytes — stays in the shared variant, and this file is only
+ * the translation between two interface generations.
  */
 public final class FrameHandler extends FrameScheme {
 
@@ -31,10 +31,10 @@ public final class FrameHandler extends FrameScheme {
     }
 
     /**
-     * Öffnet den Antwortstrom.
+     * Opens the response stream.
      *
-     * <p>Nach upstreams eigener Beschreibung: {@code handleRequest} auf falsch
-     * und falsch zurückgeben heißt „nimm {@code processRequest}".
+     * <p>Per upstream's own description: returning {@code handleRequest} false
+     * and false means "use {@code processRequest}".
      */
     @Override
     public boolean open(CefRequest request, BoolRef handleRequest, CefCallback callback) {
@@ -43,10 +43,10 @@ public final class FrameHandler extends FrameScheme {
     }
 
     /**
-     * Liest Antwortdaten.
+     * Reads response data.
      *
-     * <p>Nach upstreams eigener Beschreibung: {@code bytesRead} auf minus eins
-     * und falsch zurückgeben heißt „nimm {@code readResponse}".
+     * <p>Per upstream's own description: returning {@code bytesRead} minus one
+     * and false means "use {@code readResponse}".
      */
     @Override
     public boolean read(byte[] dataOut, int bytesToRead, IntRef bytesRead,
@@ -56,14 +56,13 @@ public final class FrameHandler extends FrameScheme {
     }
 
     /**
-     * Überspringt Daten, wenn ein {@code Range}-Kopf danach fragt.
+     * Skips data when a {@code Range} header asks for it.
      *
-     * <p><b>Es gibt nichts zu überspringen.</b> Was hier ausgeliefert wird,
-     * ist ein einzelnes Bild, das jedes Mal frisch entsteht und ausdrücklich
-     * nicht zwischengespeichert werden soll — ein Teilbereich davon ergibt
-     * keinen Sinn. Für diesen Fall sieht upstream keinen Rückweg vor; ein
-     * negativer Wert ist Chromiums Art, „das geht nicht" zu hören, und
-     * {@code -2} steht für {@code ERR_FAILED}.
+     * <p><b>There is nothing to skip.</b> What is served here is a single
+     * image that comes into being fresh each time and is explicitly not to be
+     * cached — a sub-range of it makes no sense. For this case upstream
+     * provides no fallback; a negative value is Chromium's way of hearing
+     * "that cannot be done", and {@code -2} stands for {@code ERR_FAILED}.
      */
     @Override
     public boolean skip(long bytesToSkip, LongRef bytesSkipped,

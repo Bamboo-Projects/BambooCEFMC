@@ -3,23 +3,23 @@ package dev.devpanda.bamboocef.web.measure;
 import java.util.Arrays;
 
 /**
- * Gemessene Dauern, aus denen sich Perzentile ziehen lassen.
+ * Measured durations from which percentiles can be drawn.
  *
- * <p><b>Warum nicht nur ein Mittelwert.</b> Ein Mittel von 700 µs kann heißen:
- * jeder Upload dauert 700 µs. Es kann genauso heißen: neunhundert dauern 100 µs
- * und einer dauert 500 ms. Das erste ist harmlos, das zweite ist ein Ruckler,
- * den jeder sieht. Nur die Verteilung trennt die beiden Fälle.
+ * <p><b>Why not just an average.</b> A mean of 700 µs can mean: every upload
+ * takes 700 µs. It can equally mean: nine hundred take 100 µs and one takes
+ * 500 ms. The first is harmless, the second is a stutter that everyone sees.
+ * Only the distribution tells the two cases apart.
  *
- * <p><b>Warum ein Fenster und kein vollständiges Gedächtnis.</b> Bei dreißig
- * Bildern in der Sekunde kämen in einer Stunde über hunderttausend Werte
- * zusammen. Die letzten paar tausend sagen alles, was interessiert, und kosten
- * nichts, was auffiele. Was aus dem Fenster fällt, zählt weiter in
- * {@link #count()} und {@link #average()}, aber nicht mehr in den Perzentilen —
- * die beschreiben also die jüngste Vergangenheit, nicht den ganzen Lauf.
+ * <p><b>Why a window and not a complete memory.</b> At thirty frames per
+ * second, over a hundred thousand values would accumulate in an hour. The last
+ * few thousand say everything of interest and cost nothing noticeable. What
+ * falls out of the window still counts in {@link #count()} and
+ * {@link #average()}, but no longer in the percentiles — those therefore
+ * describe the recent past, not the whole run.
  */
 public final class DurationSamples {
 
-    /** Reicht für gut vier Minuten bei dreißig Bildern je Sekunde. */
+    /** Enough for a good four minutes at thirty frames per second. */
     private static final int DEFAULT_CAPACITY = 8192;
 
     private final long[] window;
@@ -41,7 +41,7 @@ public final class DurationSamples {
         this.window = new long[capacity];
     }
 
-    /** Nimmt eine Dauer auf, in Nanosekunden. */
+    /** Records a duration, in nanoseconds. */
     public void record(long nanos) {
         count++;
         total += nanos;
@@ -59,21 +59,21 @@ public final class DurationSamples {
         return count;
     }
 
-    /** Mittelwert über alle Werte, in Mikrosekunden. */
+    /** Mean over all values, in microseconds. */
     public double average() {
         return count == 0 ? 0.0 : total / (double) count / 1000.0;
     }
 
-    /** Der langsamste Wert überhaupt, in Mikrosekunden. */
+    /** The slowest value of all, in microseconds. */
     public double slowest() {
         return slowest / 1000.0;
     }
 
     /**
-     * Ein Perzentil über das Fenster, in Mikrosekunden.
+     * A percentile over the window, in microseconds.
      *
-     * <p>{@code percentile(50)} ist der Median, {@code percentile(95)} der
-     * Wert, den neunzehn von zwanzig unterschreiten.
+     * <p>{@code percentile(50)} is the median, {@code percentile(95)} the value
+     * that nineteen out of twenty fall below.
      */
     public double percentile(int wanted) {
         if (filled == 0) {
@@ -84,28 +84,29 @@ public final class DurationSamples {
         }
         long[] sorted = Arrays.copyOf(window, filled);
         Arrays.sort(sorted);
-        // Nearest-Rank: der kleinste Wert, den mindestens `wanted` Prozent
-        // der Messungen nicht überschreiten. Ohne Interpolation, weil eine
-        // gemittelte Dauer zwischen zwei echten keine gemessene mehr ist.
+        // Nearest-rank: the smallest value that at least `wanted` percent of
+        // the measurements do not exceed. Without interpolation, because an
+        // averaged duration between two real ones is no longer a measured one.
         int rank = (int) Math.ceil(wanted / 100.0 * filled);
         int index = Math.max(0, Math.min(filled - 1, rank - 1));
         return sorted[index] / 1000.0;
     }
 
     /**
-     * Die Verteilung als Textblock, in Fächern von je {@code bucketMillis}.
+     * The distribution as a text block, in buckets of {@code bucketMillis}
+     * each.
      *
-     * <p><b>Wozu, wenn es schon Perzentile gibt.</b> Perzentile verraten die
-     * Lage, nicht die Form. Zwei Messreihen mit demselben Median sehen gleich
-     * aus, solange niemand hinsieht: die eine streut gleichmäßig über ihre
-     * Spanne, die andere hat zwei scharfe Häufungen und dazwischen fast
-     * nichts. Das ist der Unterschied zwischen „mal schneller, mal langsamer"
-     * und „wartet auf einen Takt" — und den entscheidet keine einzelne Zahl,
-     * sondern nur das Bild der ganzen Verteilung.
+     * <p><b>What for, when there are already percentiles.</b> Percentiles
+     * reveal the location, not the shape. Two series of measurements with the
+     * same median look alike as long as nobody looks closely: one spreads
+     * evenly across its range, the other has two sharp clusters and almost
+     * nothing between them. That is the difference between "sometimes faster,
+     * sometimes slower" and "waiting for a clock tick" — and no single number
+     * decides it, only the picture of the whole distribution.
      *
-     * <p>Was oberhalb des letzten Fachs liegt, fällt nicht unter den Tisch,
-     * sondern kommt in eine eigene Zeile. Ein Ausreißerfach, das man nicht
-     * sieht, verschiebt die Form still.
+     * <p>What lies above the last bucket does not fall through the cracks but
+     * goes into a line of its own. An outlier bucket one does not see shifts the
+     * shape quietly.
      */
     public String histogram(double bucketMillis, int buckets) {
         if (filled == 0) {
@@ -145,7 +146,7 @@ public final class DurationSamples {
         slowest = 0;
     }
 
-    /** Kurzfassung fürs Protokoll: Median, p95 und der schlimmste Fall. */
+    /** Short form for the log: median, p95 and the worst case. */
     public String summary() {
         return String.format(java.util.Locale.GERMANY,
                 "p50 %.1f µs, p95 %.1f µs, max %.1f µs, Mittel %.1f µs (%d Messungen)",

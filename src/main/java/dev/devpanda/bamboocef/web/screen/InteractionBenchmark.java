@@ -12,21 +12,22 @@ import java.nio.file.Path;
 import java.util.Locale;
 
 /**
- * Misst, was gewöhnliches Bedienen kostet — und bedient sich dafür selbst.
+ * Measures what ordinary use costs — and uses itself to do it.
  *
- * <p><b>Die Frage ist nicht, ob der Bildweg schnell ist.</b> Das ist gemessen:
- * ein ruhender Editor kostet nichts, ein blinkender Cursor 2,3 KB je Bild, eine
- * vollflächige Animation 240 MB je Sekunde. Die offene Frage ist, wo zwischen
- * diesen Enden das <b>Bedienen</b> liegt. Ein Scrollen, das jedes Mal die ganze
- * Seite neu malt, kostet so viel wie eine Animation — und man sähe es nicht.
+ * <p><b>The question is not whether the frame path is fast.</b> That is
+ * measured: a resting editor costs nothing, a blinking cursor 2.3 KB per
+ * frame, a full-surface animation 240 MB per second. The open question is
+ * where between these extremes <b>use</b> lies. A scroll that repaints the
+ * whole page every time costs as much as an animation — and one would not see
+ * it.
  *
- * <p><b>Warum die Ereignisse durch den Bildschirm gehen und nicht direkt an die
- * Sitzung.</b> Gemessen werden soll der Weg, den ein Spieler nimmt: Umrechnung
- * von GUI-Einheiten in Browser-Pixel, Fokusprüfung, Klickzählung. Wer die
- * Sitzung direkt fütterte, umginge genau die Teile, an denen ein Fehler säße.
+ * <p><b>Why the events go through the screen and not straight to the
+ * session.</b> What is to be measured is the route a player takes: conversion
+ * from GUI units to browser pixels, focus check, click counting. Whoever fed
+ * the session directly would bypass exactly the parts where a fault would sit.
  *
- * <p>Jeder Abschnitt läuft ein paar Sekunden, dann steht seine Zeile im
- * Protokoll und die Zähler beginnen von vorn.
+ * <p>Each section runs for a few seconds, then its line stands in the log and
+ * the counters start over.
  */
 public final class InteractionBenchmark extends BrowserScreen {
 
@@ -34,23 +35,23 @@ public final class InteractionBenchmark extends BrowserScreen {
             LoggerFactory.getLogger("FactoryNetwork/InteractionBenchmark");
 
     /**
-     * Wie lange ein Abschnitt dauert.
+     * How long a section lasts.
      *
-     * <p>In Zeit und nicht in Bildern: Die Bildrate schwankt, und Abschnitte
-     * von verschiedener Länge ließen sich nicht vergleichen. Beim ersten
-     * Versuch lief „Maus bewegen" 2,2 Sekunden und „Rollen" vier.
+     * <p>In time and not in frames: the frame rate fluctuates, and sections of
+     * different length could not be compared. On the first attempt "Maus
+     * bewegen" ran 2.2 seconds and "Rollen" four.
      */
     private static final long SECTION_NANOS = 4_000_000_000L;
 
-    /** Ruhe zu Beginn, damit die Seite fertig geladen ist. */
+    /** Rest at the start, so that the page has finished loading. */
     private static final long SETTLE_NANOS = 2_000_000_000L;
 
     /**
-     * Eine Seite mit festen Plätzen.
+     * A page with fixed positions.
      *
-     * <p>Die Prüfseite für Menschen zentriert ihren Inhalt und ist damit für
-     * eine Messung unbrauchbar: Wohin geklickt werden muss, hinge von der
-     * Fenstergröße ab. Hier steht alles an festen Anteilen der Fläche.
+     * <p>The probe page for people centres its content and is thus unusable
+     * for a measurement: where a click has to land would depend on the window
+     * size. Here everything sits at fixed fractions of the surface.
      */
     private static final String PAGE = """
             <!doctype html><html lang="de"><head><meta charset="utf-8"><style>
@@ -94,7 +95,7 @@ public final class InteractionBenchmark extends BrowserScreen {
             </script></body></html>
             """;
 
-    /** Die Abschnitte, in dieser Reihenfolge. */
+    /** The sections, in this order. */
     private enum Step {
         SETTLE("Aufbau"),
         STILL("Ruhe — nichts tun"),
@@ -125,7 +126,7 @@ public final class InteractionBenchmark extends BrowserScreen {
         super(Component.literal("Interaktionsmessung"), url, false);
     }
 
-    /** Legt die Messseite ab und öffnet die Messung. */
+    /** Writes the measurement page out and opens the measurement. */
     public static void open(Minecraft client) throws Exception {
         Path file = Files.createTempFile("fn-interaction", ".html");
         Files.writeString(file, PAGE, StandardCharsets.UTF_8);
@@ -153,11 +154,11 @@ public final class InteractionBenchmark extends BrowserScreen {
         if (System.nanoTime() - stepStartedNanos < limit) {
             return;
         }
-        // <b>Auch nach dem Aufbau melden, obwohl nichts zu melden ist.</b> Der
-        // Aufruf setzt die Zähler zurück und merkt sich den Zeitpunkt; ohne ihn
-        // trägt der erste echte Abschnitt die Zahlen des Aufbaus und alle
-        // Beschriftungen sind um eins verschoben. Genau so ist es hier zuerst
-        // ausgegangen.
+        // <b>Report after the settle too, even though there is nothing to
+        // report.</b> The call resets the counters and remembers the moment;
+        // without it the first real section carries the numbers of the settle
+        // and all labels are off by one. That is exactly how it first turned
+        // out here.
         report();
         cleanUpStep();
         step = Step.values()[step.ordinal() + 1];
@@ -170,13 +171,13 @@ public final class InteractionBenchmark extends BrowserScreen {
         }
     }
 
-    /** Was in diesem Abschnitt bei jedem Bild getan wird. */
+    /** What is done in this section on every frame. */
     private void act() {
         switch (step) {
             case MOUSE -> {
-                // Ein Kreis über die Fläche: mal über Text, mal über einen
-                // Knopf, mal über nichts. Das ist näher am wirklichen Bedienen
-                // als eine gerade Linie.
+                // A circle across the surface: now over text, now over a
+                // button, now over nothing. That is closer to real use than a
+                // straight line.
                 double angle = framesInStep * 0.1;
                 double x = width * (0.5 + 0.35 * Math.cos(angle));
                 double y = height * (0.5 + 0.35 * Math.sin(angle));
@@ -188,8 +189,9 @@ public final class InteractionBenchmark extends BrowserScreen {
                 }
             }
             case TYPE -> {
-                // Etwa fünf Zeichen je Sekunde — schnelles, aber menschliches
-                // Tippen. Jedes Zeichen einzeln, wie es von der Tastatur käme.
+                // About five characters per second — fast, but human typing.
+                // Each character separately, as it would come from the
+                // keyboard.
                 if (framesInStep % 12 == 0) {
                     char next = TYPED.charAt(typedIndex % TYPED.length());
                     typedIndex++;
@@ -201,22 +203,21 @@ public final class InteractionBenchmark extends BrowserScreen {
         }
     }
 
-    /** Was zu Beginn eines Abschnitts einmal geschieht. */
+    /** What happens once at the start of a section. */
     private void beginStep() {
         switch (step) {
             case TYPE -> {
-                // Ins Textfeld klicken, sonst landet der Text nirgends.
+                // Click into the text field, otherwise the text lands nowhere.
                 clickAt(0.25, 0.16);
             }
             case SPECIAL -> {
-                // <b>Genau die Tasten, für die der Vertrag ungewöhnlich ist.</b>
-                // Bei Druck und Loslassen erwartet dieser JCEF-Fork in keyChar
-                // den GLFW-Tastencode, weil er ihn mit GLFW_KEY_LEFT und
-                // Verwandten vergleicht, um den richtigen Scancode zu wählen.
-                // Wäre dort ein Schriftzeichen, bekämen Pfeiltasten den
-                // Scancode irgendeines Buchstabens — und nichts geschähe.
-                // Geschieht doch etwas, ändert sich das Textfeld, und eine
-                // Änderung ist ein Bild.
+                // <b>Exactly the keys for which the contract is unusual.</b>
+                // On press and release this JCEF fork expects the GLFW key code
+                // in keyChar, because it compares it with GLFW_KEY_LEFT and
+                // relatives to choose the right scancode. Were a character
+                // there, arrow keys would get the scancode of some letter — and
+                // nothing would happen. If something does happen, the text
+                // field changes, and a change is a frame.
                 clickAt(0.25, 0.16);
                 for (int key : new int[] {
                         GLFW.GLFW_KEY_HOME, GLFW.GLFW_KEY_END,
@@ -227,30 +228,30 @@ public final class InteractionBenchmark extends BrowserScreen {
                 }
             }
             case PASTE -> {
-                // <b>Was hier geprüft werden kann und was nicht.</b> Ob der
-                // Text wirklich ankommt, wüsste nur die Seite selbst — und
-                // eine Brücke zu ihr gibt es noch nicht. Prüfbar ist, ob
-                // überhaupt etwas geschieht: Ein Einfügen, das ankommt, ändert
-                // das Textfeld, und eine Änderung ist ein Bild. Bleibt es bei
-                // null Bildern, ist der Weg tot.
-                // Genug Text, dass ein Einfügen sich nicht mit einem
-                // blinkenden Cursor verwechseln lässt: Der ändert zwei
-                // Kilobyte, ein gefülltes Textfeld ein Vielfaches davon.
+                // <b>What can be checked here and what cannot.</b> Whether the
+                // text really arrives only the page itself would know — and a
+                // bridge to it does not exist yet. What can be checked is
+                // whether anything happens at all: a paste that arrives changes
+                // the text field, and a change is a frame. If it stays at zero
+                // frames, the route is dead.
+                // Enough text that a paste cannot be mistaken for a blinking
+                // cursor: that changes two kilobytes, a filled text field a
+                // multiple of it.
                 minecraft.keyboardHandler.setClipboard(
                         ("Aus der Zwischenablage: äöü ÄÖÜ ß € {} [] <> ").repeat(6));
                 clickAt(0.25, 0.16);
-                sendCombination(GLFW.GLFW_KEY_A);        // alles markieren
-                sendCombination(GLFW.GLFW_KEY_V);        // und ersetzen
+                sendCombination(GLFW.GLFW_KEY_A);        // select all
+                sendCombination(GLFW.GLFW_KEY_V);        // and replace
             }
             case SELECT -> {
-                // Das Auswahlfeld aufklappen — der einzige einfache Weg zu
-                // einem echten Popup von Chromium.
+                // Open the select box — the only simple way to a real Chromium
+                // popup.
                 clickAt(0.72, 0.115);
             }
             case RESIZE -> {
-                // Die Fläche schmaler machen und wieder zurück. Chromium
-                // rechnet dabei die ganze Seite neu; die Frage ist, was das
-                // an Übertragung kostet.
+                // Make the surface narrower and back again. Chromium recomputes
+                // the whole page in doing so; the question is what that costs
+                // in transfer.
                 resizeTo(0.7);
             }
             default -> {
@@ -261,8 +262,8 @@ public final class InteractionBenchmark extends BrowserScreen {
     private void cleanUpStep() {
         switch (step) {
             case SELECT -> {
-                // Escape schließt das Feld — und weil Escape hier der Seite
-                // gehört, geht das ohne Umweg.
+                // Escape closes the box — and because Escape belongs to the
+                // page here, that works without a detour.
                 keyPressed(GLFW.GLFW_KEY_ESCAPE, 0, 0);
                 keyReleased(GLFW.GLFW_KEY_ESCAPE, 0, 0);
             }
@@ -273,21 +274,21 @@ public final class InteractionBenchmark extends BrowserScreen {
     }
 
     /**
-     * Eine Taste mit Steuerung, wie sie von einer Tastatur käme.
+     * A key with a modifier, as it would come from a keyboard.
      *
-     * <p>Der Steuerungs-Modifikator geht als GLFW-Flagge mit; der native Teil
-     * von JCEF macht daraus {@code EVENTFLAG_CONTROL_DOWN}, und den Rest
-     * erledigt Chromium selbst — es hat einen eigenen Weg zur Zwischenablage
-     * des Betriebssystems. Nachzubauen wäre daran nichts.
+     * <p>The Ctrl modifier goes along as a GLFW flag; JCEF's native part turns
+     * it into {@code EVENTFLAG_CONTROL_DOWN}, and Chromium does the rest itself
+     * — it has its own path to the operating system's clipboard. There would
+     * be nothing to rebuild about that.
      *
-     * <p><b>Der Scancode ist auf Windows nicht optional.</b> Der native Teil
-     * baut den Windows-Tastencode mit {@code MapVirtualKey} <b>aus dem
-     * Scancode</b>; eine Null darin ergibt einen Tastencode von null, und
-     * Chromium sieht eine Taste, die es nicht gibt. Bei echter Eingabe liefert
-     * Minecraft den Scancode mit — hier muss er erfragt werden.
+     * <p><b>The scancode is not optional on Windows.</b> The native part builds
+     * the Windows key code with {@code MapVirtualKey} <b>from the scancode</b>;
+     * a zero in it yields a key code of zero, and Chromium sees a key that does
+     * not exist. On real input Minecraft supplies the scancode — here it has to
+     * be queried.
      *
-     * <p>Das ist keine Kleinigkeit gewesen: Beim ersten Versuch kam Strg+A und
-     * Strg+V nirgends an, und die Messung zeigte nur den blinkenden Cursor.
+     * <p>This was no trifle: on the first attempt Ctrl+A and Ctrl+V arrived
+     * nowhere, and the measurement showed only the blinking cursor.
      */
     private void sendCombination(int glfwKey) {
         int scanCode = GLFW.glfwGetKeyScancode(glfwKey);
@@ -295,7 +296,7 @@ public final class InteractionBenchmark extends BrowserScreen {
         keyReleased(glfwKey, scanCode, GLFW.GLFW_MOD_CONTROL);
     }
 
-    /** Eine Taste ohne Zusatz, ebenfalls mit echtem Scancode. */
+    /** A key without a modifier, likewise with a real scancode. */
     private void sendPlain(int glfwKey) {
         int scanCode = GLFW.glfwGetKeyScancode(glfwKey);
         keyPressed(glfwKey, scanCode, 0);
@@ -320,7 +321,7 @@ public final class InteractionBenchmark extends BrowserScreen {
         return false;
     }
 
-    /** Nur zur Sicherheit: Der Ablauf soll nicht von Hand gestört werden. */
+    /** Just as a safeguard: the run should not be disturbed by hand. */
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == GLFW.GLFW_KEY_ESCAPE && step != Step.SELECT) {

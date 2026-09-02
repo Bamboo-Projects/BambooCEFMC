@@ -3,12 +3,12 @@ package dev.devpanda.bamboocef.web.api;
 import dev.devpanda.bamboocef.web.BrowserVisibility;
 
 /**
- * Der Bauplan einer Fläche.
+ * The blueprint of a surface.
  *
- * <p><b>Ein Bauplan und keine Parameterliste.</b> Sechs Angaben, von denen
- * vier fast immer dasselbe sind — als Parameter wären das sechs Zahlen in
- * einer Zeile, bei denen niemand mehr weiß, welche die Höhe ist. Und jede
- * spätere Angabe bräche jeden Aufruf.
+ * <p><b>A blueprint, not a parameter list.</b> Six inputs, four of which are
+ * almost always the same — as parameters those would be six numbers in a row
+ * where no one can tell anymore which one is the height. And every later
+ * input would break every call.
  *
  * <pre>
  * SurfaceSpec.of("https://example.org", 512, 512)
@@ -16,29 +16,29 @@ import dev.devpanda.bamboocef.web.BrowserVisibility;
  *     .keys(KeyFilter.only(GLFW.GLFW_KEY_ESCAPE))
  * </pre>
  *
- * @param url        was geladen wird
- * @param width      Breite in Pixeln
- * @param height     Höhe in Pixeln
- * @param name       wie die Fläche im Protokoll und in Chromiums Liste heißt
- * @param keys       welche Tasten sie bekommt
- * @param visibility wie oft sie malen darf
- * @param transparent ob der Grund durchscheint
+ * @param url        what is loaded
+ * @param width      width in pixels
+ * @param height     height in pixels
+ * @param name       what the surface is called in the log and in Chromium's list
+ * @param keys       which keys it gets
+ * @param visibility how often it may draw
+ * @param transparent whether the background shows through
  */
 public record SurfaceSpec(String url, int width, int height, String name,
                           KeyFilter keys, BrowserVisibility visibility,
                           boolean transparent) {
 
-    /** Die größte Kantenlänge, die zugelassen wird. */
+    /** The largest edge length that is allowed. */
     public static final int MAX_EDGE = 4096;
 
     public SurfaceSpec {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("Eine Fläche ohne Adresse hat nichts zu zeigen");
         }
-        // <b>Begrenzt, und zwar hier.</b> Eine Fläche entsteht aus einer Zahl,
-        // die irgendwo herkommt; eine Null ergäbe einen Browser, der nie malt,
-        // und eine sehr große einen, der den Speicher der Grafikkarte frisst.
-        // Beides fällt erst viel später auf.
+        // <b>Bounded, and right here.</b> A surface arises from a number that
+        // comes from somewhere; a zero would yield a browser that never draws,
+        // and a very large one a browser that eats the graphics card's memory.
+        // Both only show up much later.
         width = Math.clamp(width, 1, MAX_EDGE);
         height = Math.clamp(height, 1, MAX_EDGE);
         name = name == null ? "" : name;
@@ -47,10 +47,10 @@ public record SurfaceSpec(String url, int width, int height, String name,
     }
 
     /**
-     * Das Übliche: eine Adresse und eine Größe.
+     * The usual: an address and a size.
      *
-     * <p>Ohne Namen, ohne Tasten, deckend, mit mittlerem Takt. Wer mehr will,
-     * hängt es an.
+     * <p>Without a name, without keys, opaque, at a medium cadence. Whoever
+     * wants more appends it.
      */
     public static SurfaceSpec of(String url, int width, int height) {
         return new SurfaceSpec(url, width, height, "", KeyFilter.NONE,
@@ -70,14 +70,14 @@ public record SurfaceSpec(String url, int width, int height, String name,
     }
 
     /**
-     * Ob der Grund durchscheint.
+     * Whether the background shows through.
      *
-     * <p>Kostet nichts an Rechenzeit, aber alles an Deutlichkeit: Eine
-     * durchsichtige Fläche vor einer hellen Wand ist nicht mehr zu lesen. Für
-     * ein Overlay richtig, für eine Tafel selten.
+     * <p>Costs nothing in compute time, but everything in clarity: a
+     * transparent surface in front of a bright wall can no longer be read. Right
+     * for an overlay, rarely for a board.
      *
-     * <p>Mit Parameter und nicht ohne: {@code transparent()} gehört schon dem
-     * Datensatz — es liest die Angabe, statt sie zu setzen.
+     * <p>With a parameter and not without: {@code transparent()} already
+     * belongs to the record — it reads the setting instead of setting it.
      */
     public SurfaceSpec transparent(boolean on) {
         return new SurfaceSpec(url, width, height, name, keys, visibility, on);

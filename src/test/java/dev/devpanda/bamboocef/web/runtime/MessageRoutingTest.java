@@ -11,18 +11,18 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Welche Sitzung eine Nachricht der Seite bekommt.
+ * Which session receives a message from the page.
  *
- * <p><b>Warum das getrennt prüfbar ist.</b> Chromium reicht bei einer Anfrage
- * aus der Seite den Browser mit, der sie stellte — und mehrere Browser teilen
- * sich einen Client. Die eine Nachricht muss also zur richtigen Sitzung, und
- * das ist eine Zuordnung über Kennungen, die kein Chromium braucht, um
- * geprüft zu werden.
+ * <p><b>Why this is testable in isolation.</b> On a request from the page,
+ * Chromium passes along the browser that made it — and several browsers share
+ * one client. The one message must therefore reach the right session, and
+ * that is a mapping over identities that needs no Chromium to be
+ * tested.
  */
 class MessageRoutingTest {
 
     @Test
-    @DisplayName("Eine Nachricht geht an die Sitzung, die ihren Schlüssel trägt")
+    @DisplayName("A message goes to the session that carries its key")
     void aMessageReachesItsOwner() {
         MessageRouting routing = new MessageRouting();
         List<String> got = new ArrayList<>();
@@ -34,7 +34,7 @@ class MessageRoutingTest {
     }
 
     @Test
-    @DisplayName("Ein unbekannter Browser bekommt niemanden")
+    @DisplayName("An unknown browser reaches nobody")
     void anUnknownBrowserReachesNobody() {
         MessageRouting routing = new MessageRouting();
 
@@ -43,7 +43,7 @@ class MessageRoutingTest {
     }
 
     @Test
-    @DisplayName("Zwei Browser haben ihre eigenen Empfänger")
+    @DisplayName("Two browsers keep their own receivers")
     void twoBrowsersKeepTheirOwn() {
         MessageRouting routing = new MessageRouting();
         List<String> a = new ArrayList<>();
@@ -61,7 +61,7 @@ class MessageRoutingTest {
     }
 
     @Test
-    @DisplayName("Nach dem Abmelden bekommt der Browser nichts mehr")
+    @DisplayName("After unregistering the browser receives nothing more")
     void afterUnregisterNothingArrives() {
         MessageRouting routing = new MessageRouting();
         List<String> got = new ArrayList<>();
@@ -74,10 +74,10 @@ class MessageRoutingTest {
     }
 
     @Test
-    @DisplayName("Gleichheit zählt nicht, nur dieselbe Kennung")
+    @DisplayName("Equality does not count, only the same identity")
     void identityNotEquality() {
-        // Zwei Browser können gleich aussehen und sind doch zwei. Die
-        // Zuordnung hängt an der Kennung selbst, nicht an equals.
+        // Two browsers can look alike and are still two. The
+        // mapping hangs on the identity itself, not on equals.
         MessageRouting routing = new MessageRouting();
         List<String> got = new ArrayList<>();
         String key = new String("browser");
@@ -90,7 +90,7 @@ class MessageRoutingTest {
     }
 
     @Test
-    @DisplayName("Eine leere Nachricht geht durch, eine fehlende nicht")
+    @DisplayName("An empty message goes through, a missing one does not")
     void emptyPassesNullDoesNot() {
         MessageRouting routing = new MessageRouting();
         List<String> got = new ArrayList<>();
@@ -104,7 +104,7 @@ class MessageRoutingTest {
     }
 
     @Test
-    @DisplayName("Alles vergessen macht jeden Empfänger los")
+    @DisplayName("Forgetting everything releases every receiver")
     void clearForgetsEveryone() {
         MessageRouting routing = new MessageRouting();
         List<String> got = new ArrayList<>();

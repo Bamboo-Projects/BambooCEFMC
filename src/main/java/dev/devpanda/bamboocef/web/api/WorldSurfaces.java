@@ -9,13 +9,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Alle offenen Flächen in der Welt und der Haken, über den sie gezeichnet werden.
+ * All open surfaces in the world and the hook through which they are drawn.
  *
- * <p><b>Innen, kein Versprechen</b> — wie {@link Overlays}. Öffentlich nur,
- * weil der Client-Einstieg zeichnen, takten und schließen muss.
+ * <p><b>Internal, not a guarantee</b> — like {@link Overlays}. Public only
+ * because the client entry point has to draw, tick, and close.
  *
- * <p>Die Kamera kommt als drei Zahlen, nicht als {@code Vec3}: Der Typ liegt
- * in {@code net.minecraft.world}, und das darf hier nichts herein.
+ * <p>The camera comes as three numbers, not as a {@code Vec3}: that type lives
+ * in {@code net.minecraft.world}, and nothing from there may come in here.
  */
 public final class WorldSurfaces {
 
@@ -38,10 +38,10 @@ public final class WorldSurfaces {
     }
 
     /**
-     * Aus der Weltstufe nach den durchscheinenden Blöcken.
+     * From the world render stage, after the translucent blocks.
      *
-     * @param pose    der Stapel des Weltrenderers, Kamera als Ursprung
-     * @param buffers die Puffer des Weltrenderers
+     * @param pose    the world renderer's stack, camera as the origin
+     * @param buffers the world renderer's buffers
      */
     public static void draw(PoseStack pose, MultiBufferSource.BufferSource buffers,
                             double cameraX, double cameraY, double cameraZ) {
@@ -53,7 +53,7 @@ public final class WorldSurfaces {
         }
     }
 
-    /** Je Takt: Was seinen Browser verloren hat, wird abgeräumt. */
+    /** Each tick: whatever has lost its browser is cleaned up. */
     public static void tick() {
         if (surfaces.isEmpty()) {
             return;
@@ -76,13 +76,12 @@ public final class WorldSurfaces {
     }
 
     /**
-     * Welche Fläche ein Strahl zuerst trifft, und wo.
+     * Which surface a ray hits first, and where.
      *
-     * <p>Die Kamera als drei Zahlen, die Blickrichtung als drei — kein
-     * Weltklasse. Getroffen wird die nächste innerhalb von {@code maxDistance}
-     * Blöcken.
+     * <p>The camera as three numbers, the view direction as three — no world
+     * type. The nearest one within {@code maxDistance} blocks is hit.
      *
-     * @return der Treffer oder {@code null}
+     * @return the hit or {@code null}
      */
     public static Pick pick(double camX, double camY, double camZ,
                             double dirX, double dirY, double dirZ, double maxDistance) {
@@ -100,7 +99,7 @@ public final class WorldSurfaces {
         return best;
     }
 
-    /** Ein Treffer: welche Fläche, welcher Pixel, wie weit. */
+    /** A hit: which surface, which pixel, how far. */
     public record Pick(WebSurface surface, int x, int y, double distance) {
     }
 }

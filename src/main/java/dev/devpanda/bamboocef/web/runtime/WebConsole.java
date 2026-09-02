@@ -8,20 +8,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Leitet Chromiums eigene Meldungen ins Protokoll.
+ * Routes Chromium's own messages into the log.
  *
- * <p><b>Weil Raten teuer ist.</b> Als der Hintergrund nicht ankam, war der
- * einzige Hinweis ein Bruchsymbol in der Ecke eines Bildschirmfotos. Chromium
- * wusste die ganze Zeit, was los war, und sagte es in seine Konsole — die
- * niemand las.
+ * <p><b>Because guessing is expensive.</b> When the background did not arrive,
+ * the only hint was a broken-image icon in the corner of a screenshot. Chromium
+ * knew all along what was going on and said it into its console — which no one
+ * read.
  *
- * <p>Meldungen der Seite gehen jetzt denselben Weg wie alles andere. Was in
- * der Weboberfläche schiefgeht, steht damit neben dem, was in Minecraft
- * schiefgeht, und in derselben Zeitachse.
+ * <p>The page's messages now take the same path as everything else. What goes
+ * wrong in the web interface thus stands next to what goes wrong in Minecraft,
+ * and on the same timeline.
  *
- * <p>Angemeldet wird an MCEFs Klienten, nicht am Browser: Der Klient ist der
- * Ort, an dem JCEF solche Handler erwartet, und er gilt dann für jeden
- * Browser.
+ * <p>The registration is on MCEF's client, not on the browser: the client is
+ * the place where JCEF expects such handlers, and it then applies to every
+ * browser.
  */
 public final class WebConsole implements CefDisplayHandler {
 
@@ -32,7 +32,7 @@ public final class WebConsole implements CefDisplayHandler {
     private WebConsole() {
     }
 
-    /** Hängt sich ein, einmal je Sitzung. */
+    /** Hooks in, once per session. */
     public static synchronized void attach() {
         if (attached) {
             return;
@@ -55,12 +55,12 @@ public final class WebConsole implements CefDisplayHandler {
             case LOGSEVERITY_WARNING -> LOG.info("Seite (Warnung): {}{}", message, where);
             default -> LOG.info("Seite: {}{}", message, where);
         }
-        // Falsch wäre wahr: Das hieße „behandelt" und nähme die Meldung dem
-        // Rest von Chromium weg.
+        // The wrong answer would be true: that would mean "handled" and take
+        // the message away from the rest of Chromium.
         return false;
     }
 
-    /** Lange Dateipfade kürzen — der Name reicht zum Wiedererkennen. */
+    /** Shorten long file paths — the name is enough to recognize it. */
     private static String shorten(String source) {
         int slash = source.lastIndexOf('/');
         return slash >= 0 && slash < source.length() - 1 ? source.substring(slash + 1) : source;
@@ -75,17 +75,16 @@ public final class WebConsole implements CefDisplayHandler {
     }
 
     /**
-     * Eine Seite will in den Vollbildmodus.
+     * A page wants to enter fullscreen mode.
      *
-     * <p><b>Ohne {@code @Override}, und das ist Absicht.</b> Upstream
-     * java-cef verlangt diese Methode, der CinemaMod-Fork kennt sie nicht.
-     * Ohne die Anmerkung erfüllt dieselbe Datei beide Schnittstellen: Dort
-     * setzt sie eine Methode außer Kraft, hier ist sie eine zusätzliche, die
-     * niemand ruft.
+     * <p><b>Without {@code @Override}, and that is deliberate.</b> Upstream
+     * java-cef requires this method, the CinemaMod fork does not know it.
+     * Without the annotation the same file satisfies both interfaces: there it
+     * overrides a method, here it is an extra one that no one calls.
      *
-     * <p>Zu tun gibt es nichts. Ein Vollbild innerhalb eines Bildschirms, der
-     * selbst schon die ganze Fläche einnimmt, ist keine Zustandsänderung, die
-     * uns betrifft.
+     * <p>There is nothing to do. A fullscreen within a screen that itself
+     * already takes up the whole surface is not a state change that concerns
+     * us.
      */
     public void onFullscreenModeChange(CefBrowser browser, boolean fullscreen) {
     }
@@ -100,11 +99,11 @@ public final class WebConsole implements CefDisplayHandler {
     }
 
     /**
-     * Zeigerwünsche gehen woanders durch.
+     * Cursor requests go through elsewhere.
      *
-     * <p>Der Browser nimmt sie in seinem eigenen {@code onCursorChange}
-     * entgegen und reicht sie an den Bildschirm weiter. Hier noch einmal
-     * einzugreifen hieße, zwei Stellen zu haben, die dasselbe tun.
+     * <p>The browser takes them in its own {@code onCursorChange} and passes
+     * them on to the screen. Intervening here as well would mean having two
+     * places that do the same thing.
      */
     @Override
     public boolean onCursorChange(CefBrowser browser, int cursorType) {

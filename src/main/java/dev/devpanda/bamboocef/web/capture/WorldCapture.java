@@ -11,60 +11,59 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
 /**
- * Holt Minecrafts Bild von der Grafikkarte und macht es zu einem Bild für den
- * Browser.
+ * Fetches Minecraft's image from the graphics card and turns it into an image
+ * for the browser.
  *
- * <p><b>Wann.</b> Aufzurufen, solange im Hauptziel <b>Welt und
- * Bedienoberfläche</b> stehen, aber noch kein eigener Bildschirm. In
- * Minecrafts Ablauf ist das die Zeit zwischen {@code gui.render(…)} und dem
- * Zeichnen des offenen Bildschirms — praktisch also die erste Zeile in dessen
- * {@code render}, vor jedem eigenen Strich.
+ * <p><b>When.</b> To be called while the main target holds <b>world and
+ * interface</b> but no screen of its own yet. In Minecraft's flow that is the
+ * time between {@code gui.render(…)} and the drawing of the open screen — in
+ * practice, then, the first line in that screen's {@code render}, before any
+ * stroke of our own.
  *
- * <p><b>Und warum das die Rückkopplung ausschließt.</b> Der Browser wird
- * <b>nach</b> diesem Punkt gezeichnet. Was hier aufgenommen wird, kann ihn
- * deshalb nie enthalten — auch nicht ein Bild später, denn dann wird wieder
- * vorher aufgenommen. Es braucht keine Erkennung und keinen zweiten
- * Zeichenpuffer; die Reihenfolge allein genügt.
+ * <p><b>And why that rules out feedback.</b> The browser is drawn <b>after</b>
+ * this point. What is captured here can therefore never contain it — not even
+ * one frame later, because then the capture again happens beforehand. No
+ * detection is needed and no second draw buffer; the ordering alone is enough.
  *
- * <p><b>Verkleinert wird auf der Grafikkarte, nicht im Hauptspeicher.</b>
- * {@code glBlitFramebuffer} mit linearer Filterung kostet dort fast nichts und
- * verkleinert das, was danach über den Bus muss: Ein Viertel der Kantenlänge
- * ist ein Sechzehntel der Bytes. Erst danach wird gelesen — der Schritt, der
- * wirklich teuer ist.
+ * <p><b>Downscaling happens on the graphics card, not in main memory.</b>
+ * {@code glBlitFramebuffer} with linear filtering costs almost nothing there
+ * and shrinks what has to cross the bus afterwards: a quarter of the edge
+ * length is a sixteenth of the bytes. Only then is it read — the step that is
+ * genuinely expensive.
  *
- * <p>Die Pipeline in voller Länge:
+ * <p>The pipeline at full length:
  *
  * <pre>
- *   Minecrafts Bild auf der Grafikkarte
- *     → glBlitFramebuffer (Grafikkarte, verkleinert)
- *     → glGetTexImage     (Grafikkarte → Hauptspeicher)   ← der teure Schritt
- *     → Kodierung          (Hauptspeicher)
- *     → Ablage
- *     → Chromium holt ab, dekodiert, lädt auf seine Grafikkarte
+ *   Minecraft's image on the graphics card
+ *     → glBlitFramebuffer (graphics card, downscaled)
+ *     → glGetTexImage     (graphics card → main memory)   ← the expensive step
+ *     → encoding           (main memory)
+ *     → store
+ *     → Chromium fetches, decodes, uploads to its graphics card
  * </pre>
  */
 public final class WorldCapture implements AutoCloseable {
 
-    /** In welchem Format das Bild an den Browser geht. */
+    /** In which format the image goes to the browser. */
     public enum Format {
 
         /**
-         * Verlustfrei komprimiert.
+         * Losslessly compressed.
          *
-         * <p>Klein auf der Leitung, teuer beim Erzeugen: Die Kompression läuft
-         * im Hauptspeicher und wird mit der Fläche teurer.
+         * <p>Small on the wire, expensive to produce: the compression runs in
+         * main memory and grows more expensive with area.
          */
         PNG("image/png"),
 
         /**
-         * Rohdaten mit vierundfünfzig Byte Kopf davor.
+         * Raw data with a fifty-four-byte header in front.
          *
-         * <p>Nichts zu rechnen — die Bildpunkte gehen so hinaus, wie sie von
-         * der Grafikkarte kommen. Groß auf der Leitung, aber die Leitung ist
-         * hier der Hauptspeicher.
+         * <p>Nothing to compute — the pixels go out exactly as they come from
+         * the graphics card. Large on the wire, but the wire here is main
+         * memory.
          *
-         * <p>Der glückliche Zufall: Diese Bilder zählen ihre Zeilen von unten,
-         * und OpenGL-Texturen tun das auch. Es ist also nichts zu spiegeln.
+         * <p>The happy coincidence: these images count their rows from the
+         * bottom, and OpenGL textures do too. So there is nothing to flip.
          */
         BMP("image/bmp");
 
@@ -89,13 +88,13 @@ public final class WorldCapture implements AutoCloseable {
     private long lastBytes;
 
     /**
-     * Nimmt auf und legt in der Ablage ab.
+     * Captures and deposits it in the store.
      *
-     * <p>Muss im Render-Thread laufen.
+     * <p>Must run on the render thread.
      *
-     * @param scale wie groß im Verhältnis zum Bildschirm — 1,0 ist voll,
-     *              0,25 ist ein Sechzehntel der Bildpunkte
-     * @return die Nummer der Aufnahme, oder null bei einem Fehlschlag
+     * @param scale how large relative to the screen — 1.0 is full, 0.25 is a
+     *              sixteenth of the pixels
+     * @return the number of the capture, or null on failure
      */
     public long captureInto(FrameStore store, double scale, Format format) {
         RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
@@ -119,11 +118,10 @@ public final class WorldCapture implements AutoCloseable {
     }
 
     /**
-     * Legt das Verkleinerungsziel an, wenn es fehlt oder nicht mehr passt.
+     * Creates the downscale target if it is missing or no longer fits.
      *
-     * <p>Wiederverwendet, solange die Maße stimmen: Ein Zeichenziel je
-     * Aufnahme anzulegen hieße, je Aufnahme eine Textur zu erzeugen und wieder
-     * freizugeben.
+     * <p>Reused as long as the dimensions match: creating one render target per
+     * capture would mean creating and freeing a texture per capture.
      */
     private void ensureTarget(int width, int height) {
         if (small != null && targetWidth == width && targetHeight == height) {
@@ -132,7 +130,7 @@ public final class WorldCapture implements AutoCloseable {
         if (small != null) {
             small.destroyBuffers();
         }
-        // Ohne Tiefenpuffer: Was hier ankommt, ist ein fertiges Bild.
+        // No depth buffer: what arrives here is a finished image.
         small = new TextureTarget(width, height, false, Minecraft.ON_OSX);
         small.setClearColor(0f, 0f, 0f, 1f);
         targetWidth = width;
@@ -146,18 +144,18 @@ public final class WorldCapture implements AutoCloseable {
                 0, 0, main.width, main.height,
                 0, 0, targetWidth, targetHeight,
                 GL11.GL_COLOR_BUFFER_BIT, GL11.GL_LINEAR);
-        // <b>Zurückbinden, sonst zeichnet Minecraft ins falsche Ziel.</b> Was
-        // danach kommt — der eigene Bildschirm — ginge sonst in die kleine
-        // Textur und wäre auf dem Schirm nicht zu sehen.
+        // <b>Bind back, or Minecraft draws into the wrong target.</b> What
+        // comes after — our own screen — would otherwise go into the small
+        // texture and not be visible on screen.
         main.bindWrite(true);
     }
 
     /**
-     * Liest und komprimiert.
+     * Reads and compresses.
      *
-     * <p>Der Weg von Minecrafts eigenem Bildschirmfoto: Textur binden,
-     * herunterladen, senkrecht spiegeln. Das Spiegeln ist nötig, weil
-     * OpenGL-Texturen ihre Zeilen von unten zählen und PNG von oben.
+     * <p>The path from Minecraft's own screenshot: bind the texture, download
+     * it, flip it vertically. The flip is necessary because OpenGL textures
+     * count their rows from the bottom and PNG from the top.
      */
     private byte[] readAsPng(long readStarted) throws Exception {
         try (NativeImage image = new NativeImage(targetWidth, targetHeight, false)) {
@@ -174,12 +172,11 @@ public final class WorldCapture implements AutoCloseable {
     }
 
     /**
-     * Liest roh und setzt einen Kopf davor.
+     * Reads raw and prepends a header.
      *
-     * <p>Gelesen wird gleich in der Anordnung, die dieses Format erwartet —
-     * Blau, Grün, Rot, Alpha —, und die Zeilenrichtung stimmt von selbst.
-     * Zwischen Grafikkarte und Browser liegt damit keine Rechnung mehr, nur
-     * noch eine Kopie.
+     * <p>It is read straight into the order this format expects — blue, green,
+     * red, alpha — and the row direction comes out right on its own. Between
+     * graphics card and browser there is then no computation left, only a copy.
      */
     private byte[] readAsBmp() {
         long readStarted = System.nanoTime();
@@ -202,17 +199,17 @@ public final class WorldCapture implements AutoCloseable {
         }
     }
 
-    /** Vierundfünfzig Byte, die aus Bildpunkten eine Datei machen. */
+    /** Fifty-four bytes that turn pixels into a file. */
     private static void writeBmpHeader(byte[] out, int width, int height, int pixelBytes) {
         out[0] = 'B';
         out[1] = 'M';
-        putInt(out, 2, 54 + pixelBytes);        // Dateigröße
-        putInt(out, 10, 54);                    // wo die Bildpunkte beginnen
-        putInt(out, 14, 40);                    // Länge dieses zweiten Kopfes
+        putInt(out, 2, 54 + pixelBytes);        // file size
+        putInt(out, 10, 54);                    // where the pixels begin
+        putInt(out, 14, 40);                    // length of this second header
         putInt(out, 18, width);
-        putInt(out, 22, height);                // positiv: Zeilen zählen von unten
-        out[26] = 1;                            // eine Ebene
-        out[28] = 32;                           // zweiunddreißig Bit je Bildpunkt
+        putInt(out, 22, height);                // positive: rows count from the bottom
+        out[26] = 1;                            // one plane
+        out[28] = 32;                           // thirty-two bits per pixel
         putInt(out, 34, pixelBytes);
     }
 
@@ -223,7 +220,7 @@ public final class WorldCapture implements AutoCloseable {
         out[at + 3] = (byte) (value >> 24);
     }
 
-    // ---- Messwerte --------------------------------------------------------
+    // ---- Measurements -----------------------------------------------------
 
     public DurationSamples blitTimes() {
         return blitTimes;

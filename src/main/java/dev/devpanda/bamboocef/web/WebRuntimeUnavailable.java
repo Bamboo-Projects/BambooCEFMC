@@ -1,15 +1,15 @@
 package dev.devpanda.bamboocef.web;
 
 /**
- * Die Runtime kommt nicht hoch, und jemand weiß warum.
+ * The runtime does not come up, and someone knows why.
  *
- * <p>Der Unterschied zu jedem anderen Fehler: Dieser hier ist vorhergesehen.
- * Wer ihn wirft, hat den Zustand schon eingeordnet — fehlende Mod, fehlender
- * Download, unbekannte Plattform. Alles, was <b>nicht</b> so geworfen wird,
- * landet als {@link WebRuntimeState#FAILED} mit dem Klassennamen im Protokoll.
+ * <p>The difference from every other failure: this one is foreseen. Whoever
+ * throws it has already classified the state — missing mod, missing download,
+ * unknown platform. Everything that is <b>not</b> thrown this way ends up as
+ * {@link WebRuntimeState#FAILED} with the class name in the log.
  *
- * <p><b>Keine Fehlerhierarchie.</b> Eine Ausnahme je Zustand wäre eine Menge
- * Klassen für eine Unterscheidung, die ein Enum schon trifft.
+ * <p><b>No exception hierarchy.</b> One exception per state would be a lot of
+ * classes for a distinction that an enum already makes.
  */
 public class WebRuntimeUnavailable extends RuntimeException {
 

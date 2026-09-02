@@ -1,22 +1,22 @@
 package dev.devpanda.bamboocef.web.view;
 
 /**
- * Welcher Mauszeiger Chromiums Kennung entspricht.
+ * Which mouse cursor corresponds to Chromium's identifier.
  *
- * <p><b>Warum diese Tabelle uns gehört.</b> Sie stand als Aufzählungstyp im
- * CinemaMod-Fork von JCEF und war der Grund, warum {@code BrowserCursor} sie
- * nicht selbst führen musste. Upstream java-cef hat sie nicht — dort meldet
- * {@code onCursorChange} eine nackte Zahl und sonst nichts. Die Abbildung
- * gehört also hierher, und dann gehört sie hierher für beide Wege.
+ * <p><b>Why this table belongs to us.</b> It was an enum type in the CinemaMod
+ * fork of JCEF and was the reason {@code BrowserCursor} did not have to keep it
+ * itself. Upstream java-cef does not have it — there {@code onCursorChange}
+ * reports a bare number and nothing else. The mapping therefore belongs here,
+ * and then it belongs here for both paths.
  *
- * <p><b>Die Reihenfolge ist der Vertrag.</b> Chromium meldet den Zeiger als
- * Ordnungszahl seiner eigenen Aufzählung {@code cef_cursor_type_t}; welcher
- * Name an welcher Stelle steht, ist die ganze Information. Umsortieren heißt
- * hier: alles falsch zuordnen.
+ * <p><b>The order is the contract.</b> Chromium reports the cursor as the
+ * ordinal of its own enum {@code cef_cursor_type_t}; which name stands at which
+ * position is the whole of the information. Reordering here means: mapping
+ * everything wrong.
  *
- * <p><b>Was GLFW nicht kennt, bleibt der Pfeil.</b> Zellenkreuz, Fortschritt,
- * Kontextmenü und die Schwenkzeiger haben dort keine Entsprechung und tragen
- * eine Null. Einen davon zu erzwingen hieße, einen falschen zu zeigen.
+ * <p><b>What GLFW does not know stays the arrow.</b> Cell cross, progress,
+ * context menu and the panning cursors have no equivalent there and carry a
+ * zero. Forcing one of them would mean showing a wrong one.
  */
 public enum CursorType {
     POINTER(0),
@@ -64,7 +64,7 @@ public enum CursorType {
     GRABBING(0),
     CUSTOM(0);
 
-    /** Die Kennung von GLFW, oder null für „dafür gibt es keinen". */
+    /** The GLFW identifier, or zero for "there is none for it". */
     public final int glfwId;
 
     CursorType(int glfwId) {
@@ -72,12 +72,11 @@ public enum CursorType {
     }
 
     /**
-     * Der Zeiger zu einer Kennung von Chromium.
+     * The cursor for an identifier from Chromium.
      *
-     * <p><b>Unbekannt wird zum Pfeil, nicht zum Absturz.</b> Die Vorlage im
-     * Fork griff mit {@code values()[id]} zu und flog bei jeder Zahl, die eine
-     * neuere Chromium-Fassung hinzufügt, aus dem Rahmen. Ein Zeiger ist nichts,
-     * wofür ein Spiel stehenbleiben sollte.
+     * <p><b>Unknown becomes the arrow, not a crash.</b> The template in the
+     * fork accessed it with {@code values()[id]} and blew up on every number a
+     * newer Chromium version adds. A cursor is nothing a game should halt for.
      */
     public static CursorType fromId(int id) {
         CursorType[] all = values();

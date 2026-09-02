@@ -7,13 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Was zusammengehört, geht denselben Weg.
+ * What belongs together takes the same path.
  *
- * <p><b>Der Filter entscheidet nur beim Drücken.</b> Alles, was zu diesem
- * Druck gehört — das Zeichen, die Wiederholung, das Loslassen — folgt ihm,
- * ohne den Filter noch einmal zu fragen. Sonst läuft der Spieler los und
- * bleibt laufen, weil das Loslassen bei der Seite landete; oder die Seite
- * bekommt ein „w“, dessen Taste das Spiel schon hatte.
+ * <p><b>The filter decides only on the press.</b> Everything that belongs to this
+ * press — the character, the repeat, the release — follows it,
+ * without asking the filter again. Otherwise the player starts moving and
+ * keeps moving because the release landed at the page; or the page
+ * gets a „w“ whose key the game already had.
  */
 class KeyRoutingTest {
 
@@ -25,7 +25,7 @@ class KeyRoutingTest {
     private final KeyRouting routing = new KeyRouting(KeyFilter.only(ESCAPE, UP));
 
     @Test
-    @DisplayName("Das Zeichen folgt der Taste, die davor gedrückt wurde")
+    @DisplayName("The character follows the key that was pressed before it")
     void aCharacterFollowsItsKey() {
         assertTrue(routing.press(UP, 0));
         assertTrue(routing.typed(), "die Seite hat die Taste, also auch das Zeichen");
@@ -35,7 +35,7 @@ class KeyRoutingTest {
     }
 
     @Test
-    @DisplayName("Das Loslassen folgt dem Drücken, nicht dem Filter")
+    @DisplayName("The release follows the press, not the filter")
     void aReleaseFollowsItsPress() {
         assertFalse(routing.press(W, 0));
         assertFalse(routing.release(W), "das Spiel hat W gedrückt gesehen, es muss es auch losgelassen sehen");
@@ -46,10 +46,10 @@ class KeyRoutingTest {
     }
 
     @Test
-    @DisplayName("Die Wiederholung einer gehaltenen Taste folgt ihrem Drücken")
+    @DisplayName("The repeat of a held key follows its press")
     void aRepeatFollowsItsPress() {
-        // Wer Pfeil-hoch hält und dabei Umschalt dazunimmt, meint weiter
-        // dieselbe Taste — auch wenn ein Filter die Kombination anders sähe.
+        // Whoever holds arrow-up and adds Shift still means
+        // the same key — even if a filter saw the combination differently.
         KeyRouting picky = new KeyRouting((key, modifiers) -> key == UP && modifiers == 0);
 
         assertTrue(picky.press(UP, 0));
@@ -58,13 +58,13 @@ class KeyRoutingTest {
     }
 
     @Test
-    @DisplayName("Ohne vorheriges Drücken geht kein Zeichen an die Seite")
+    @DisplayName("Without a prior press no character goes to the page")
     void noCharacterWithoutAPress() {
         assertFalse(routing.typed());
     }
 
     @Test
-    @DisplayName("Alles loslassen vergisst jeden gehaltenen Druck")
+    @DisplayName("Releasing everything forgets every held press")
     void releaseAllForgetsEverything() {
         routing.press(UP, 0);
         routing.releaseAll();

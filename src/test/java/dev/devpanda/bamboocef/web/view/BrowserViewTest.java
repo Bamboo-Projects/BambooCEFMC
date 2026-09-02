@@ -10,17 +10,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Die eine Umrechnung, an der Zeichnen und Maus gemeinsam hängen.
+ * The one conversion that drawing and mouse both hang on.
  *
- * <p>Der Fehler, den diese Prüfläufe verhindern sollen, sieht im Spiel nicht
- * aus wie ein Rechenfehler: Der Spieler klickt auf einen Knopf und trifft den
- * daneben. Das wird als „die Seite reagiert falsch" gemeldet und lange an der
- * falschen Stelle gesucht.
+ * <p>The fault these test runs are meant to prevent does not look like a
+ * calculation error in the game: the player clicks a button and hits the
+ * one next to it. That gets reported as „the page reacts wrongly" and is long
+ * searched for in the wrong place.
  */
 class BrowserViewTest {
 
     @Test
-    @DisplayName("Bei Skalierung 1 sind GUI-Einheiten und Browser-Pixel dasselbe")
+    @DisplayName("At scale 1, GUI units and browser pixels are the same")
     void scaleOneChangesNothing() {
         BrowserView view = BrowserView.fullscreen(800, 600, 1.0);
 
@@ -31,9 +31,9 @@ class BrowserViewTest {
     }
 
     @Test
-    @DisplayName("Bei Skalierung 3 bekommt der Browser die volle Auflösung")
+    @DisplayName("At scale 3, the browser gets the full resolution")
     void scaleThreeGivesFullResolution() {
-        // 640x360 GUI-Einheiten auf einem 1920x1080-Schirm
+        // 640x360 GUI units on a 1920x1080 screen
         BrowserView view = BrowserView.fullscreen(640, 360, 3.0);
 
         assertEquals(1920, view.browserWidth(),
@@ -42,7 +42,7 @@ class BrowserViewTest {
     }
 
     @Test
-    @DisplayName("Die Mitte bleibt die Mitte, egal wie skaliert wird")
+    @DisplayName("The center stays the center, no matter how it is scaled")
     void theMiddleStaysTheMiddle() {
         for (double scale : new double[] {1.0, 2.0, 3.0, 4.0}) {
             BrowserView view = BrowserView.fullscreen(640, 360, scale);
@@ -55,7 +55,7 @@ class BrowserViewTest {
     }
 
     @Test
-    @DisplayName("Ein Rand verschiebt beides gleich — Bild und Maus")
+    @DisplayName("A margin shifts both alike — picture and mouse")
     void anOffsetMovesPictureAndMouseAlike() {
         BrowserView view = new BrowserView(20, 10, 600, 340, 2.0);
 
@@ -67,7 +67,7 @@ class BrowserViewTest {
     }
 
     @Test
-    @DisplayName("Was außerhalb liegt, wird geklemmt und nicht hinausgerechnet")
+    @DisplayName("What lies outside is clamped and not extrapolated out")
     void outsideIsClampedNotExtrapolated() {
         BrowserView view = BrowserView.fullscreen(100, 100, 2.0);
 
@@ -81,19 +81,19 @@ class BrowserViewTest {
     }
 
     @Test
-    @DisplayName("Der Weg über den Anteil landet in derselben Ebene")
+    @DisplayName("The path via the fraction lands in the same plane")
     void theFractionPathLandsInTheSamePlane() {
         BrowserView view = BrowserView.fullscreen(640, 360, 3.0);
 
-        // Eine Fläche in der Welt meldet „auf halber Strecke, ein Viertel
-        // hinunter". Das muss dasselbe Pixel treffen wie die Maus dort.
+        // A surface in the world reports „halfway across, a quarter
+        // down". That must hit the same pixel as the mouse there.
         assertArrayEquals(new int[] {960, 270}, view.fromFraction(0.5, 0.25));
         assertEquals(view.toBrowserX(320), view.fromFraction(0.5, 0.25)[0]);
         assertEquals(view.toBrowserY(90), view.fromFraction(0.5, 0.25)[1]);
     }
 
     @Test
-    @DisplayName("Der Anteil eins trifft den letzten Pixel, nicht den ersten dahinter")
+    @DisplayName("The fraction one hits the last pixel, not the first behind it")
     void fractionOneHitsTheLastPixel() {
         BrowserView view = BrowserView.fullscreen(100, 100, 1.0);
 
@@ -102,7 +102,7 @@ class BrowserViewTest {
     }
 
     @Test
-    @DisplayName("Ein Seitenverhältnis bleibt erhalten, weil nur eine Zahl skaliert")
+    @DisplayName("An aspect ratio is preserved because only one number scales")
     void theAspectRatioSurvives() {
         BrowserView view = BrowserView.fullscreen(1600, 900, 1.5);
 
@@ -113,7 +113,7 @@ class BrowserViewTest {
     }
 
     @Test
-    @DisplayName("Gleiche Browsergröße heißt: keine Meldung an Chromium nötig")
+    @DisplayName("Same browser size means: no message to Chromium needed")
     void sameSizeNeedsNoMessage() {
         BrowserView view = BrowserView.fullscreen(640, 360, 3.0);
 
@@ -125,7 +125,7 @@ class BrowserViewTest {
     }
 
     @Test
-    @DisplayName("Eine Fläche ohne Ausdehnung wird abgelehnt")
+    @DisplayName("A surface without extent is rejected")
     void nonsenseIsRefused() {
         assertThrows(IllegalArgumentException.class,
                 () -> new BrowserView(0, 0, 0, 100, 1.0));
@@ -134,9 +134,9 @@ class BrowserViewTest {
     }
 
     @Test
-    @DisplayName("Selbst eine winzige Fläche bekommt mindestens einen Pixel")
+    @DisplayName("Even a tiny surface gets at least one pixel")
     void evenATinyAreaGetsOnePixel() {
-        // Beim Zuziehen des Fensters geht die Höhe durch sehr kleine Werte.
+        // When the window is dragged closed, the height passes through very small values.
         BrowserView view = new BrowserView(0, 0, 1, 1, 0.1);
 
         assertEquals(1, view.browserWidth(), "null Pixel breit malt nie wieder");

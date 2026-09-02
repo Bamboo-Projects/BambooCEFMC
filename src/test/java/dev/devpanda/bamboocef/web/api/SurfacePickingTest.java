@@ -9,24 +9,24 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Wohin auf der Seite das Fadenkreuz zeigt.
+ * Where on the page the crosshair points.
  *
- * <p><b>Der heikle Teil, für sich geprüft.</b> Ein Strahl von der Kamera
- * trifft die Fläche irgendwo; daraus muss ein Pixel werden, und zwar dasselbe,
- * das der Renderer an diese Stelle malt. Die Drehung von Hand nachzurechnen
- * ist genau die Art Fehler, die im Spiel als „ich klicke hier, es reagiert
- * dort" auffällt — also hier, ohne Spiel.
+ * <p><b>The tricky part, tested on its own.</b> A ray from the camera
+ * hits the surface somewhere; from that a pixel must come, namely the same one
+ * that the renderer draws at this spot. Recomputing the rotation by hand
+ * is exactly the kind of mistake that shows up in the game as „I click here, it reacts
+ * there" — so here, without the game.
  *
- * <p>Eine Fläche mit Gierwinkel 0 schaut nach Süden, also in Welt-{@code +Z};
- * lesbar ist sie von dort, wo {@code +Z} größer wird. Der Strahl kommt also
- * von {@code +Z} und zielt nach {@code -Z}.
+ * <p>A surface with yaw 0 looks south, that is into world {@code +Z};
+ * readable it is from where {@code +Z} grows larger. The ray therefore comes
+ * from {@code +Z} and aims toward {@code -Z}.
  */
 class SurfacePickingTest {
 
     private static final int PW = 512;
     private static final int PH = 512;
 
-    /** Eine Fläche bei (0,0,0), Gierwinkel 0, ein Block im Quadrat. */
+    /** A surface at (0,0,0), yaw 0, one block square. */
     private static double[] hitAtOrigin(double ox, double oy, double oz,
                                         double dx, double dy, double dz) {
         return SurfacePicking.hit(0, 0, 0, 0f, 0f, 1f, 1f, PW, PH,
@@ -34,7 +34,7 @@ class SurfacePickingTest {
     }
 
     @Test
-    @DisplayName("Geradeaus in die Mitte trifft die Mitte")
+    @DisplayName("Straight ahead into the center hits the center")
     void straightAheadHitsTheCenter() {
         double[] hit = hitAtOrigin(0, 0, 3, 0, 0, -1);
 
@@ -45,10 +45,10 @@ class SurfacePickingTest {
     }
 
     @Test
-    @DisplayName("Ein Ziel links der Mitte ergibt ein kleineres x")
+    @DisplayName("A target left of center yields a smaller x")
     void aimingLeftGivesSmallerX() {
-        // Von vorn gesehen ist links die kleinere Welt-x. Der Strahl zielt
-        // leicht nach −x.
+        // Seen from the front, the left is the smaller world x. The ray aims
+        // slightly toward −x.
         double[] hit = hitAtOrigin(0, 0, 3, -0.1, 0, -1);
 
         assertNotNull(hit);
@@ -56,9 +56,9 @@ class SurfacePickingTest {
     }
 
     @Test
-    @DisplayName("Ein Ziel über der Mitte ergibt ein kleineres y")
+    @DisplayName("A target above center yields a smaller y")
     void aimingUpGivesSmallerY() {
-        // Oben ist v=0; der Strahl zielt leicht nach oben (+y).
+        // Top is v=0; the ray aims slightly upward (+y).
         double[] hit = hitAtOrigin(0, 0, 3, 0, 0.1, -1);
 
         assertNotNull(hit);
@@ -66,24 +66,24 @@ class SurfacePickingTest {
     }
 
     @Test
-    @DisplayName("Ein Strahl neben die Fläche trifft nichts")
+    @DisplayName("A ray beside the surface hits nothing")
     void aimingBesideTheSurfaceMisses() {
-        // Weit nach rechts, über die halbe Blockbreite hinaus.
+        // Far to the right, beyond half the block width.
         assertNull(hitAtOrigin(0, 0, 3, 5, 0, -1));
     }
 
     @Test
-    @DisplayName("Ein Strahl von hinten trifft nichts")
+    @DisplayName("A ray from behind hits nothing")
     void aimingFromBehindMisses() {
-        // Hinter der Fläche, nach vorn zielend: kein Treffer der Vorderseite.
+        // Behind the surface, aiming forward: no hit on the front side.
         assertNull(hitAtOrigin(0, 0, -3, 0, 0, -1));
     }
 
     @Test
-    @DisplayName("Ein gedrehtes Display trifft dort, wo der Renderer malt")
+    @DisplayName("A rotated display hits where the renderer draws")
     void aRotatedSurfaceIsConsistent() {
-        // Fläche mit Gierwinkel 90 (schaut nach Westen, Welt −x). Ein Strahl
-        // aus −x nach +x, mittig, muss die Mitte treffen.
+        // Surface with yaw 90 (looks west, world −x). A ray
+        // from −x toward +x, centered, must hit the center.
         double[] hit = SurfacePicking.hit(0, 0, 0, 90f, 0f, 1f, 1f, PW, PH,
                 -3, 0, 0, 1, 0, 0);
 
@@ -93,7 +93,7 @@ class SurfacePickingTest {
     }
 
     @Test
-    @DisplayName("Ein paralleler Strahl trifft die Ebene nie")
+    @DisplayName("A parallel ray never meets the plane")
     void aParallelRayNeverMeetsThePlane() {
         assertNull(hitAtOrigin(0, 0, 3, 1, 0, 0));
     }

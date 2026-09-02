@@ -3,32 +3,31 @@ package dev.devpanda.bamboocef.web.frame;
 import java.util.List;
 
 /**
- * Ein Bild des Browsers.
+ * An image of the browser.
  *
- * <p><b>Ein Bild besitzt seine Bildpunkte.</b> Das ist keine Vorliebe,
- * sondern folgt aus JCEF: Sein {@code onPaint} reicht einen
- * {@code ByteBuffer} herein, den der native Teil mit
- * {@code NewDirectByteBuffer} direkt auf Chromiums Speicher legt — ohne
- * Kopie. Nach der Rückkehr aus dem Aufruf darf Chromium diesen Speicher
- * wiederverwenden. Ein Bild, das den Puffer nur festhält, zeigt beim nächsten
- * Blick auf etwas anderes oder auf nichts.
+ * <p><b>An image owns its pixels.</b> That is not a preference but follows from
+ * JCEF: its {@code onPaint} hands in a {@code ByteBuffer} that the native side
+ * places directly onto Chromium's memory with {@code NewDirectByteBuffer} —
+ * without a copy. After the call returns, Chromium may reuse that memory. An
+ * image that merely holds on to the buffer shows something else, or nothing, at
+ * the next glance.
  *
- * <p>Deshalb kopiert die Implementierung im Aufruf, und deshalb hat ein Bild
- * ein {@link #close()}: Direkte Puffer liegen außerhalb des Java-Speichers,
- * und der Sammler räumt sie spät oder nie ab. Bei achteinhalb Megabyte je Bild
- * ist „spät" dasselbe wie „nie".
+ * <p>That is why the implementation copies within the call, and why an image
+ * has a {@link #close()}: direct buffers live outside the Java heap, and the
+ * collector reclaims them late or never. At eight and a half megabytes per
+ * image, "late" is the same as "never".
  *
- * <p><b>Dieser Typ bedeutet Besitz.</b> Was nur geliehen ist — der Puffer aus
- * einem laufenden {@code onPaint} — heißt {@link BorrowedFrame} und ist
- * absichtlich <i>nicht</i> mit diesem verwandt. Damit kann ein geliehener
- * Puffer nirgends landen, wo er den Aufruf überleben müsste: Der Übersetzer
- * weist es ab, und niemand muss sich an eine Regel erinnern.
+ * <p><b>This type means ownership.</b> What is only borrowed — the buffer from
+ * a running {@code onPaint} — is called {@link BorrowedFrame} and is
+ * deliberately <i>not</i> related to this one. That way a borrowed buffer can
+ * end up nowhere that would require it to outlive the call: the compiler
+ * rejects it, and nobody has to remember a rule.
  *
- * <p>Was hier <b>nicht</b> steht, ist die Art der Bildpunkte. Kein
- * {@code ByteBuffer}, kein Texturname, kein Handle. Ein Bild ist Maß und
- * Änderung; woraus es besteht, weiß nur, wer es erzeugt hat und wer es
- * verbraucht — und genau deshalb kann später ein Bild dazukommen, das auf der
- * Grafikkarte liegt und nie im Hauptspeicher war.
+ * <p>What is <b>not</b> stated here is the kind of pixels. No
+ * {@code ByteBuffer}, no texture name, no handle. An image is size and change;
+ * what it is made of is known only to whoever produces it and whoever consumes
+ * it — and precisely for that reason an image can be added later that lives on
+ * the graphics card and was never in main memory.
  */
 public interface BrowserFrame extends AutoCloseable {
 
@@ -37,20 +36,20 @@ public interface BrowserFrame extends AutoCloseable {
     int height();
 
     /**
-     * Welche Bereiche sich seit dem vorigen Bild geändert haben.
+     * Which regions have changed since the previous image.
      *
-     * <p>Nie leer: Ein Bild ohne Änderung ist kein Bild.
+     * <p>Never empty: an image without a change is not an image.
      */
     List<DirtyRegion> dirty();
 
-    /** Deckt die Änderung das ganze Bild ab? */
+    /** Does the change cover the whole image? */
     default boolean full() {
         List<DirtyRegion> regions = dirty();
         return regions.size() == 1
                 && regions.get(0).equals(DirtyRegion.whole(width(), height()));
     }
 
-    /** Gibt die Bildpunkte frei. Mehrfaches Schließen ist erlaubt. */
+    /** Releases the pixels. Closing more than once is allowed. */
     @Override
     void close();
 }

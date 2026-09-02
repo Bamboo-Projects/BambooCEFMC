@@ -6,42 +6,41 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Setzt den Mauszeiger, den die Seite gerade haben möchte.
+ * Sets the mouse cursor the page currently wants.
  *
- * <p><b>Warum das hier steht.</b> Die Tabelle dahinter stand im
- * CinemaMod-Fork von JCEF; upstream hat sie nicht — dort meldet
- * {@code onCursorChange} eine nackte Zahl. Sie gehört deshalb uns und steht in
- * {@link CursorType}.
+ * <p><b>Why this lives here.</b> The table behind it was in the CinemaMod fork
+ * of JCEF; upstream does not have it — there {@code onCursorChange} reports a
+ * bare number. It therefore belongs to us and lives in {@link CursorType}.
  *
- * <p><b>Und die Zahl ist nicht überall dieselbe.</b> Upstreams nativer Teil
- * übersetzt vorher nach {@link java.awt.Cursor}; zurückgerechnet wird das in
- * {@code AwtCursors}, bevor es hier ankommt. Was hier eintrifft, ist immer die
- * Ordnungszahl von Chromium.
+ * <p><b>And the number is not the same everywhere.</b> Upstream's native side
+ * translates it to {@link java.awt.Cursor} first; that is converted back in
+ * {@code AwtCursors} before it arrives here. What arrives here is always
+ * Chromium's ordinal.
  *
- * <p>Übrig bleibt das Aufbewahren: {@code glfwCreateStandardCursor} legt jedes
- * Mal einen neuen Zeiger an, und einer je Mausbewegung über einen Link wäre
- * ein Leck, das man erst nach Stunden bemerkt.
+ * <p>What remains is the keeping: {@code glfwCreateStandardCursor} creates a
+ * new cursor every time, and one per mouse movement over a link would be a leak
+ * that only shows up after hours.
  *
- * <p><b>Was Chromium nicht kennt, bleibt der Pfeil.</b> Ein Teil der Zeiger —
- * Zellenkreuz, Fortschritt, Kontextmenü — hat in GLFW keine Entsprechung und
- * trägt dort eine Null. Einen davon zu erzwingen hieße, einen falschen zu
- * zeigen; der Pfeil ist die ehrlichere Antwort.
+ * <p><b>What Chromium does not know stays the arrow.</b> Some of the cursors —
+ * cell cross, progress, context menu — have no equivalent in GLFW and carry a
+ * zero there. Forcing one of them would mean showing a wrong one; the arrow is
+ * the more honest answer.
  */
 public final class BrowserCursor {
 
-    /** Angelegte GLFW-Zeiger, damit nicht jede Bewegung einen neuen erzeugt. */
+    /** Created GLFW cursors, so that not every movement makes a new one. */
     private final Map<Integer, Long> handles = new HashMap<>();
 
     private int shownType = -1;
 
     /**
-     * Zeigt den Zeiger zu einer Chromium-Kennung.
+     * Shows the cursor for a Chromium identifier.
      *
-     * <p>Muss im Render-Thread laufen — GLFW verträgt keine Fensteraufrufe von
-     * anderswo.
+     * <p>Must run on the render thread — GLFW does not tolerate window calls
+     * from elsewhere.
      *
-     * @param window     das Fenster von GLFW
-     * @param cursorType die Kennung, wie Chromium sie meldet
+     * @param window     the GLFW window
+     * @param cursorType the identifier as Chromium reports it
      */
     public void apply(long window, int cursorType) {
         if (cursorType == shownType) {
@@ -50,15 +49,15 @@ public final class BrowserCursor {
         shownType = cursorType;
         CursorType wanted = CursorType.fromId(cursorType);
         if (wanted == CursorType.NONE) {
-            // Eine Seite, die den Zeiger versteckt, meint das ernst — etwa ein
-            // Video im Vollbild oder ein eigener Zeiger im Dokument.
+            // A page that hides the cursor means it — a video in fullscreen,
+            // say, or a cursor of its own in the document.
             GLFW.glfwSetInputMode(window, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_HIDDEN);
             return;
         }
         GLFW.glfwSetInputMode(window, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
         long handle = handleFor(wanted);
-        // Null heißt bei GLFW: nimm den Pfeil. Genau richtig für alles, wofür
-        // es keinen eigenen Zeiger gibt.
+        // Zero means, for GLFW: take the arrow. Exactly right for everything
+        // that has no cursor of its own.
         GLFW.glfwSetCursor(window, handle);
     }
 
@@ -70,10 +69,10 @@ public final class BrowserCursor {
     }
 
     /**
-     * Gibt den gewohnten Zeiger zurück.
+     * Restores the usual cursor.
      *
-     * <p>Beim Schließen unerlässlich: Ein Textcursor, der über der Spielwelt
-     * stehen bleibt, sieht nach einem kaputten Spiel aus.
+     * <p>Indispensable on close: a text cursor left standing over the game
+     * world looks like a broken game.
      */
     public void reset(long window) {
         shownType = -1;
@@ -81,7 +80,7 @@ public final class BrowserCursor {
         GLFW.glfwSetCursor(window, 0L);
     }
 
-    /** Gibt die angelegten Zeiger frei. */
+    /** Releases the created cursors. */
     public void close(long window) {
         reset(window);
         for (long handle : handles.values()) {

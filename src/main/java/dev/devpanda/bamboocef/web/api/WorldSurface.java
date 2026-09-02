@@ -1,29 +1,29 @@
 package dev.devpanda.bamboocef.web.api;
 
 /**
- * Eine Fläche in der Welt: an Ort, Ausrichtung und Größe gehängt.
+ * A surface in the world: hung on a location, an orientation, and a size.
  *
- * <p><b>Ort und Größe in Blöcken, Ausrichtung in Grad.</b> Der Ort ist der
- * Mittelpunkt der Fläche in Weltkoordinaten. Der Gierwinkel folgt
- * Minecrafts Konvention (Süden 0, Westen 90, Norden 180, Osten 270): Eine
- * Fläche mit {@code yaw = facing.toYRot()} schaut in dieselbe Richtung wie
- * ein Block mit dieser Ausrichtung — und ist von dort aus lesbar. Von hinten
- * zeigt sie ihr Spiegelbild, wie eine Scheibe.
+ * <p><b>Location and size in blocks, orientation in degrees.</b> The location
+ * is the center of the surface in world coordinates. The yaw follows
+ * Minecraft's convention (South 0, West 90, North 180, East 270): a surface
+ * with {@code yaw = facing.toYRot()} looks in the same direction as a block
+ * with that orientation — and is readable from there. From behind it shows
+ * its mirror image, like a pane of glass.
  *
- * <p>Die Auflösung der Seite kommt aus dem {@link SurfaceSpec} in Pixeln;
- * die Ausdehnung in Blöcken ist davon unabhängig. Eine Fläche von zwei
- * Blöcken Breite mit 512 Pixeln ist scharf, eine von zwanzig nicht.
+ * <p>The page's resolution comes from the {@link SurfaceSpec} in pixels; the
+ * extent in blocks is independent of it. A surface two blocks wide with 512
+ * pixels is sharp, one of twenty is not.
  *
- * <p><b>Was die Entfernung entscheidet.</b> Bis zwölf Blöcke malt die Seite
- * mit mittlerem Takt, bis {@link #maxDistance()} langsam, dahinter gar
- * nicht — und wird auch nicht gezeichnet. Das entscheidet die Entfernung
- * zur Kamera, nicht die Blickrichtung: Eine Seite hinter dem Spieler läuft
- * weiter, eine ferne steht still.
+ * <p><b>What the distance decides.</b> Up to twelve blocks the page draws at a
+ * medium cadence, up to {@link #maxDistance()} slowly, beyond that not at
+ * all — and it is not drawn either. That is decided by the distance to the
+ * camera, not the view direction: a page behind the player keeps running, a
+ * distant one stands still.
  *
- * <p>Eingaben gibt es hier nicht; die Fläche darunter nimmt sie von Hand
- * entgegen ({@link #surface()}), wer sie ihr geben will.
+ * <p>There is no input here; the surface beneath takes it by hand
+ * ({@link #surface()}), for whoever wants to give it some.
  *
- * <p>Fassung 1. Was hier steht, bleibt.
+ * <p>Version 1. What is here stays.
  */
 public interface WorldSurface extends AutoCloseable {
 
@@ -37,30 +37,30 @@ public interface WorldSurface extends AutoCloseable {
 
     void moveTo(double x, double y, double z);
 
-    /** Gierwinkel in Grad, Minecrafts Konvention. */
+    /** Yaw in degrees, Minecraft's convention. */
     float yaw();
 
-    /** Neigung in Grad; positiv kippt die Oberkante nach hinten. */
+    /** Pitch in degrees; positive tilts the top edge backward. */
     float pitch();
 
     void rotate(float yaw, float pitch);
 
-    /** Breite in Blöcken. */
+    /** Width in blocks. */
     float width();
 
-    /** Höhe in Blöcken. */
+    /** Height in blocks. */
     float height();
 
     void resize(float width, float height);
 
-    /** Ab dieser Entfernung zur Kamera, in Blöcken, ruht die Seite. */
+    /** From this distance to the camera, in blocks, the page rests. */
     double maxDistance();
 
     void maxDistance(double blocks);
 
     boolean visible();
 
-    /** Unsichtbar heißt: nicht gezeichnet, und die Seite ruht. */
+    /** Invisible means: not drawn, and the page rests. */
     void setVisible(boolean visible);
 
     boolean alive();

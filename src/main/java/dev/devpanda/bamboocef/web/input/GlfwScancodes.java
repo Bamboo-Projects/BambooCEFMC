@@ -1,16 +1,16 @@
 package dev.devpanda.bamboocef.web.input;
 
 /**
- * Der Scancode von GLFW, zerlegt in das, was Windows erwartet.
+ * The scancode from GLFW, split into what Windows expects.
  *
- * <p><b>Die eine Zahl trägt zwei Angaben.</b> Windows unterscheidet
- * Pfeiltasten und Ziffernblock nicht über den Scancode — beide teilen sich die
- * unteren acht Bit — sondern über ein Erweiterungs-Bit, das in echten
- * Tastenmeldungen als Präfix {@code 0xE0} und im {@code lParam} als Bit 24
- * steht. GLFW packt dieses Kennzeichen stattdessen in Bit 8.
+ * <p><b>The one number carries two pieces of information.</b> Windows does not
+ * distinguish arrow keys and numpad through the scancode — both share the lower
+ * eight bits — but through an extension bit that appears in real key messages
+ * as the prefix {@code 0xE0} and in the {@code lParam} as bit 24. GLFW packs
+ * this marker into bit 8 instead.
  *
- * <p><b>Gemessen, nicht hergeleitet</b> ({@code tools/runtime/probe/ScanProbe.java},
- * 31. August 2026):
+ * <p><b>Measured, not derived</b> ({@code tools/runtime/probe/ScanProbe.java},
+ * August 31, 2026):
  *
  * <pre>
  *   UP       0x0148 = 0x100 | 0x48        KP_8     0x0048
@@ -21,30 +21,30 @@ package dev.devpanda.bamboocef.web.input;
  *   KP_ENTER 0x011C = 0x100 | 0x1C        ENTER    0x001C
  * </pre>
  *
- * <p><b>Was passiert, wenn das Bit verlorengeht,</b> ist ebenfalls gemessen
- * ({@code tools/runtime/probe/KeyProbe.java}): Pfeil-hoch käme als
- * {@code keyCode 104} an — die Acht des Ziffernblocks. Der Editor schriebe
- * eine Ziffer, statt den Cursor zu bewegen.
+ * <p><b>What happens when the bit is lost</b> is likewise measured
+ * ({@code tools/runtime/probe/KeyProbe.java}): arrow-up would arrive as
+ * {@code keyCode 104} — the eight of the numpad. The editor would write a digit
+ * instead of moving the cursor.
  *
- * <p>Diese Klasse ist bewusst plattformabhängig und deshalb von
- * {@link GlfwKeys} getrennt: Die Zerlegung gilt für Windows. Linux und macOS
- * bringen eigene Scancodes mit und sind nicht Version 1.
+ * <p>This class is deliberately platform-dependent and therefore separate from
+ * {@link GlfwKeys}: the decomposition holds for Windows. Linux and macOS bring
+ * their own scancodes and are not version 1.
  */
 public final class GlfwScancodes {
 
-    /** Das Bit, in dem GLFW unter Windows „erweiterte Taste" führt. */
+    /** The bit in which GLFW records "extended key" on Windows. */
     private static final int EXTENDED_FLAG = 0x100;
 
-    /** Die unteren acht Bit — der Scancode, den Windows im lParam erwartet. */
+    /** The lower eight bits — the scancode Windows expects in the lParam. */
     public static int base(int glfwScancode) {
         return glfwScancode & 0xFF;
     }
 
     /**
-     * Ob Windows die Taste als erweitert führt.
+     * Whether Windows records the key as extended.
      *
-     * <p>Wahr für Pfeile, Einfügen, Entfernen, Pos1, Ende, Bild auf und ab,
-     * rechtes Strg, rechtes Alt und die Eingabetaste des Ziffernblocks.
+     * <p>True for arrows, Insert, Delete, Home, End, Page Up and Page Down,
+     * right Ctrl, right Alt and the numpad Enter key.
      */
     public static boolean extended(int glfwScancode) {
         return (glfwScancode & EXTENDED_FLAG) != 0;

@@ -13,13 +13,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Das geliehene Bild — und die Grenze, die der Übersetzer zieht.
+ * The borrowed frame — and the boundary the compiler draws.
  *
- * <p>Der wichtigste Prüflauf dieser Datei ist einer, den man nicht schreiben
- * kann: {@code slot.offer(borrowed)} lässt sich nicht übersetzen, weil
- * {@link BorrowedFrame} kein {@link BrowserFrame} ist. Genau dafür ist die
- * Trennung da — ein geliehener Puffer soll nirgends landen können, wo er den
- * Aufruf überleben müsste.
+ * <p>The most important test run of this file is one you cannot write:
+ * {@code slot.offer(borrowed)} does not compile, because
+ * {@link BorrowedFrame} is not a {@link BrowserFrame}. That is exactly what the
+ * separation is for — a borrowed buffer must not be able to land anywhere it would
+ * have to outlive the call.
  */
 class BorrowedFrameTest {
 
@@ -33,7 +33,7 @@ class BorrowedFrameTest {
     }
 
     @Test
-    @DisplayName("Ohne Angabe gilt das ganze Bild als geändert")
+    @DisplayName("With no value given the whole frame counts as changed")
     void noRegionsMeansEverything() {
         BorrowedFrame frame = new BorrowedFrame(bufferOf(4, 4, (byte) 1), 4, 4, List.of());
 
@@ -42,7 +42,7 @@ class BorrowedFrameTest {
     }
 
     @Test
-    @DisplayName("Ein Cursor ist nicht das ganze Bild")
+    @DisplayName("A cursor is not the whole frame")
     void aCursorIsNotEverything() {
         BorrowedFrame frame = new BorrowedFrame(bufferOf(8, 8, (byte) 1), 8, 8,
                 List.of(new DirtyRegion(3, 3, 1, 1)));
@@ -52,7 +52,7 @@ class BorrowedFrameTest {
     }
 
     @Test
-    @DisplayName("Jeder Leser bekommt eine eigene Sicht")
+    @DisplayName("Every reader gets its own view")
     void everyReaderGetsItsOwnView() {
         BorrowedFrame frame = new BorrowedFrame(bufferOf(2, 2, (byte) 7), 2, 2, List.of());
 
@@ -63,14 +63,14 @@ class BorrowedFrameTest {
     }
 
     @Test
-    @DisplayName("Der Weg zum Besitz ist eine Kopie, und er überlebt die Quelle")
+    @DisplayName("The path to ownership is a copy, and it survives the source")
     void becomingOwnedSurvivesTheSource() {
         ByteBuffer chromium = bufferOf(2, 2, (byte) 0x22);
         BorrowedFrame borrowed = new BorrowedFrame(chromium, 2, 2, List.of());
 
         CpuBrowserFrame owned = borrowed.toOwned(null);
 
-        // Chromium nimmt sich seinen Speicher zurück.
+        // Chromium takes its memory back.
         chromium.clear();
         while (chromium.hasRemaining()) {
             chromium.put((byte) 0x99);
@@ -81,7 +81,7 @@ class BorrowedFrameTest {
     }
 
     @Test
-    @DisplayName("Die Kopie darf einen vorhandenen Puffer wiederverwenden")
+    @DisplayName("The copy may reuse an existing buffer")
     void becomingOwnedCanReuseABuffer() {
         CpuBrowserFrame recycled = CpuBrowserFrame.allocate(2, 2);
         BorrowedFrame borrowed = new BorrowedFrame(bufferOf(2, 2, (byte) 5), 2, 2, List.of());
@@ -93,7 +93,7 @@ class BorrowedFrameTest {
     }
 
     @Test
-    @DisplayName("Kein Bild ohne Bildpunkte und ohne Maße")
+    @DisplayName("No frame without pixels and without dimensions")
     void nonsenseIsRefused() {
         assertThrows(IllegalArgumentException.class,
                 () -> new BorrowedFrame(null, 2, 2, List.of()));

@@ -4,27 +4,27 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Was zu einem Tastendruck gehört, geht denselben Weg wie er.
+ * What belongs to a key press takes the same path as the press itself.
  *
- * <p><b>Der Filter wird genau einmal gefragt: beim Drücken.</b> Das Zeichen,
- * das GLFW danach liefert, die Wiederholung einer gehaltenen Taste und ihr
- * Loslassen folgen dieser einen Entscheidung. Wer den Filter bei jedem
- * Ereignis neu fragt, bekommt zwei Fehler, die beide erst im Spiel auffallen:
+ * <p><b>The filter is asked exactly once: on the press.</b> The character
+ * GLFW delivers afterward, the repeat of a held key, and its release all
+ * follow this one decision. Whoever asks the filter anew on every event gets
+ * two bugs, both of which only show up in the game:
  *
  * <ul>
- *   <li>Das Spiel sieht W gedrückt, die Seite sieht W losgelassen — der
- *       Spieler läuft und hört nicht mehr auf.</li>
- *   <li>Die Taste ging ans Spiel, das Zeichen an die Seite — im Textfeld
- *       steht ein „w“, das niemand dort tippen wollte.</li>
+ *   <li>The game sees W pressed, the page sees W released — the player runs
+ *       and never stops.</li>
+ *   <li>The key went to the game, the character to the page — the text field
+ *       holds a "w" that no one meant to type there.</li>
  * </ul>
  *
- * <p>Nicht threadsicher und muss es nicht sein: Tastatur-Ereignisse kommen
- * im Renderthread an, eines nach dem anderen.
+ * <p>Not thread-safe, and it need not be: keyboard events arrive on the
+ * render thread, one after another.
  */
 final class KeyRouting {
 
     private final KeyFilter filter;
-    /** Tasten, deren Drücken an die Fläche ging und die noch gehalten sind. */
+    /** Keys whose press went to the surface and that are still held. */
     private final Set<Integer> routedDown = new HashSet<>();
     private boolean lastPressRouted;
 
@@ -33,13 +33,13 @@ final class KeyRouting {
     }
 
     /**
-     * Drücken oder Wiederholen.
+     * Press or repeat.
      *
-     * @return ob die Fläche die Taste bekommt
+     * @return whether the surface gets the key
      */
     boolean press(int glfwKey, int modifiers) {
-        // Eine gehaltene Taste bleibt bei dem, der sie beim Drücken bekam —
-        // auch wenn inzwischen eine Umschalttaste dazukam.
+        // A held key stays with whoever got it on the press —
+        // even if a modifier key has since joined.
         boolean routed = routedDown.contains(glfwKey) || filter.routes(glfwKey, modifiers);
         if (routed) {
             routedDown.add(glfwKey);
@@ -49,21 +49,21 @@ final class KeyRouting {
     }
 
     /**
-     * Loslassen.
+     * Release.
      *
-     * @return ob die Fläche das Loslassen bekommt — genau dann, wenn sie das
-     *         Drücken bekam
+     * @return whether the surface gets the release — exactly when it got the
+     *         press
      */
     boolean release(int glfwKey) {
         return routedDown.remove(glfwKey);
     }
 
-    /** Bekommt die Fläche das Zeichen, das GLFW nach dem letzten Drücken liefert? */
+    /** Does the surface get the character GLFW delivers after the last press? */
     boolean typed() {
         return lastPressRouted;
     }
 
-    /** Alles vergessen — wenn der Fokus geht, ist nichts mehr gehalten. */
+    /** Forget everything — when focus leaves, nothing is held anymore. */
     void releaseAll() {
         routedDown.clear();
         lastPressRouted = false;

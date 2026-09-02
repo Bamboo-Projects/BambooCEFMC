@@ -6,25 +6,23 @@ import org.slf4j.LoggerFactory;
 import java.util.function.Supplier;
 
 /**
- * Die Web-Runtime: hochfahren, Zustand nennen, herunterfahren.
+ * The web runtime: bring up, report state, shut down.
  *
- * <p><b>Diese Klasse fasst Chromium nicht an.</b> Kein Import, kein Feld,
- * keine Signatur aus {@code org.cef} — der Unterbau kommt als
- * {@link WebBackend} herein. Der Grund ist kein Geschmack: Eine Klasse, die
- * einen solchen Typ nennt, verlangt ihn beim Laden. Wem die Laufzeitumgebung
- * fehlt, der bekäme beim Start der Mod einen {@code NoClassDefFoundError} —
- * und ein fehlender Browser, der den Client zerlegt, ist mehr als ein
- * fehlender Browser.
+ * <p><b>This class does not touch Chromium.</b> No import, no field, no
+ * signature from {@code org.cef} — the backend comes in as a
+ * {@link WebBackend}. The reason is not taste: a class that names such a type
+ * demands it at load time. Whoever is missing the runtime would get a
+ * {@code NoClassDefFoundError} at mod startup — and a missing browser that
+ * takes the client apart is more than a missing browser.
  *
- * <p><b>Nichts hier wirft.</b> Jeder Weg endet in einem
- * {@link WebRuntimeStatus}, auch der, an dem etwas kaputt ist. Das ist die
- * Zusicherung, unter der die Runtime überhaupt in diese Mod darf: Ein Browser,
- * der nicht startet, kostet eine Oberfläche und nicht das Spiel.
+ * <p><b>Nothing here throws.</b> Every path ends in a
+ * {@link WebRuntimeStatus}, even the one where something is broken. That is the
+ * assurance under which the runtime is allowed into this mod at all: a browser
+ * that does not start costs a user interface and not the game.
  *
- * <p>Der Zustand wird <b>einmal</b> ermittelt und gemerkt. Wer es erneut
- * versuchen will — nach einem nachgeholten Download etwa —, ruft
- * {@link #retry(Supplier)}; ob sich das lohnt, sagt
- * {@link WebRuntimeState#worthRetrying()}.
+ * <p>The state is determined and remembered <b>once</b>. Whoever wants to try
+ * again — after a caught-up download, say — calls {@link #retry(Supplier)};
+ * whether it is worthwhile is told by {@link WebRuntimeState#worthRetrying()}.
  */
 public final class WebRuntime {
 
@@ -37,12 +35,12 @@ public final class WebRuntime {
     }
 
     /**
-     * Fährt hoch, falls noch nicht geschehen.
+     * Brings up, if not already done.
      *
-     * <p>Der Aufrufer reicht herein, wie ein Unterbau entsteht. Diese Klasse
-     * weiß nicht, was dahintersteht — und soll es nicht wissen.
+     * <p>The caller passes in how a backend is built. This class does not know
+     * what stands behind it — and is not supposed to know.
      *
-     * @param start baut den Unterbau, oder wirft
+     * @param start builds the backend, or throws
      */
     public static synchronized WebRuntimeStatus start(Supplier<WebBackend> start) {
         if (status.state() != WebRuntimeState.NOT_STARTED) {
@@ -52,10 +50,10 @@ public final class WebRuntime {
     }
 
     /**
-     * Noch einmal, nachdem sich etwas geändert haben könnte.
+     * Once more, after something may have changed.
      *
-     * <p>Nur sinnvoll, wenn der letzte Zustand einen zweiten Versuch wert war.
-     * Eine fehlende Plattform wird auch beim zehnten Mal nicht auftauchen.
+     * <p>Only sensible if the last state was worth a second attempt. A missing
+     * platform will not turn up on the tenth try either.
      */
     public static synchronized WebRuntimeStatus retry(Supplier<WebBackend> start) {
         if (!status.state().worthRetrying()) {
@@ -74,13 +72,13 @@ public final class WebRuntime {
             backend = built;
             return remember(WebRuntimeStatus.of(WebRuntimeState.READY, built.name()));
         } catch (WebRuntimeUnavailable known) {
-            // Ein Zustand, den jemand vorhergesehen hat — der übliche Fall.
+            // A state that someone foresaw — the usual case.
             return remember(known.status());
         } catch (Throwable broken) {
-            // Alles andere: fehlende Systembibliothek, ein Archiv, das sich
-            // nicht auspacken ließ, ein NoClassDefFoundError aus org.cef.
-            // Throwable und nicht Exception — genau die Fehler, die den Client
-            // sonst mitnehmen, sind keine Exceptions.
+            // Everything else: a missing system library, an archive that could
+            // not be unpacked, a NoClassDefFoundError from org.cef. Throwable
+            // and not Exception — precisely the errors that would otherwise take
+            // the client down are not exceptions.
             LOG.warn("Die Web-Runtime ist nicht hochgekommen; das Spiel läuft ohne sie", broken);
             return remember(WebRuntimeStatus.of(WebRuntimeState.FAILED,
                     broken.getClass().getSimpleName() + ": " + broken.getMessage()));
@@ -97,58 +95,58 @@ public final class WebRuntime {
         return found;
     }
 
-    /** Woran man ist. */
+    /** Where things stand. */
     public static synchronized WebRuntimeStatus status() {
         return status;
     }
 
-    /** Kann gerade ein Browser entstehen? */
+    /** Can a browser be created right now? */
     public static synchronized boolean isAvailable() {
         return status.usable() && backend != null;
     }
 
-    /** Der Unterbau, oder {@code null}. Nur für die, die ihn wirklich brauchen. */
+    /** The backend, or {@code null}. Only for those who really need it. */
     public static synchronized WebBackend backend() {
         return isAvailable() ? backend : null;
     }
 
     /**
-     * Fährt herunter.
+     * Shuts down.
      *
-     * <p>Auch das darf nicht werfen: Beim Beenden des Spiels ist eine
-     * Ausnahme aus einem Browser das Letzte, was jemand sehen will.
+     * <p>This too must not throw: when the game is quitting, an exception out of
+     * a browser is the last thing anyone wants to see.
      */
     /**
-     * Wie lange auf Chromiums Bestätigungen gewartet wird.
+     * How long Chromium's acknowledgements are waited for.
      *
-     * <p>Großzügig genug für den Normalfall — im Prüfstand kam die Bestätigung
-     * nach wenigen Runden — und kurz genug, dass niemand denkt, das Spiel
-     * hänge. Ohne Frist könnte ein einziger Browser, der nie bestätigt, das
-     * Beenden für immer aufhalten.
+     * <p>Generous enough for the normal case — on the test bench the
+     * acknowledgement came after a few rounds — and short enough that no one
+     * thinks the game is hanging. Without a deadline, a single browser that
+     * never acknowledges could hold up the quit forever.
      */
     private static final long CLOSE_TIMEOUT_MILLIS = 2000;
 
     public static synchronized void shutdown() {
-        // <b>Erst zurücksetzen, dann schließen.</b> Andersherum bliebe nach
-        // einem gescheiterten Start der alte Grund für immer stehen: Es gäbe
-        // keinen Unterbau zu schließen, und die Methode käme zurück, ohne den
-        // Zustand anzufassen. Ein zweiter Versuch wäre danach unmöglich.
+        // <b>Reset first, then close.</b> The other way round, after a failed
+        // start the old reason would stand forever: there would be no backend to
+        // close, and the method would return without touching the state. A
+        // second attempt would be impossible after that.
         WebBackend closing = backend;
         backend = null;
         status = WebRuntimeStatus.of(WebRuntimeState.NOT_STARTED);
 
-        // <b>Die Reihenfolge ist der ganze Inhalt dieser Methode.</b>
+        // <b>The order is the whole content of this method.</b>
         //
-        //   1. alle Browser bitten, zuzugehen
-        //   2. weiterpumpen, bis Chromium jede Schließung bestätigt hat
-        //   3. erst dann den Unterbau abräumen
+        //   1. ask all browsers to close
+        //   2. keep pumping until Chromium has acknowledged every close
+        //   3. only then tear down the backend
         //
-        // Wer bei 3 anfängt, räumt CEF ab, während es noch Browser schließen
-        // wollte — und genau daraus entstehen die Hilfsprozesse, die
-        // stehenbleiben. close(true) ist eine Bitte, keine Tat.
+        // Whoever starts at 3 tears CEF down while it still wanted to close
+        // browsers — and that is exactly what produces the helper processes
+        // that stay put. close(true) is a request, not a deed.
         //
-        // <b>Das läuft im Renderthread</b>, und das muss es: Gepumpt wird
-        // dort, und nur wer pumpt, bekommt die Bestätigungen zu sehen.
+        // <b>This runs on the render thread</b>, and it has to: the pump runs
+        // there, and only whoever pumps gets to see the acknowledgements.
         LOG.info("Web-Runtime fährt herunter — im Thread {}, offen: {}",
                 Thread.currentThread().getName(), BrowserManager.count());
         try {

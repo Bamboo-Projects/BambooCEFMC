@@ -23,44 +23,43 @@ import java.nio.file.Path;
 import java.util.Locale;
 
 /**
- * Beweist, dass das Bild richtig herum und richtig gemischt auf dem Schirm
- * landet.
+ * Proves that the image lands on screen the right way up and correctly
+ * blended.
  *
- * <p><b>Zwei Fragen, die getrennt aussehen und zusammengehören.</b> Ob die
- * Textur richtig herum ist, hat der frühere Selbsttest schon geprüft — aber
- * nur bis zur Textur. Zwischen Textur und Schirm liegen die
- * Texturkoordinaten, und wer sie spiegelt, macht genau das rückgängig, was
- * vorher stimmte. Deshalb wird hier vom fertigen Bild zurückgelesen und nicht
- * von der Textur.
+ * <p><b>Two questions that look separate and belong together.</b> Whether the
+ * texture is the right way up the earlier self-test already checked — but only
+ * as far as the texture. Between texture and screen lie the texture
+ * coordinates, and whoever mirrors them undoes exactly what was correct
+ * before. That is why this reads back from the finished image and not from the
+ * texture.
  *
- * <p><b>Vier Ecken, vier Farben.</b> Rot oben links, Grün oben rechts, Blau
- * unten links, Gelb unten rechts. Ein senkrecht gespiegeltes Bild vertauscht
- * Rot mit Blau, ein waagerecht gespiegeltes Rot mit Grün, und ein gedrehtes
- * beides. Jede Verwechslung hat damit ihren eigenen Fingerabdruck.
+ * <p><b>Four corners, four colours.</b> Red top left, green top right, blue
+ * bottom left, yellow bottom right. A vertically mirrored image swaps red with
+ * blue, a horizontally mirrored one red with green, and a rotated one both.
+ * Every mix-up thus has its own fingerprint.
  *
- * <p><b>Und ein Streifen, der die Mischung entscheidet.</b> Über schwarzem
- * Grund:
+ * <p><b>And a strip that decides the blending.</b> Over a black ground:
  *
  * <table border="1">
- *   <caption>Was herauskommen muss</caption>
- *   <tr><th>Feld</th><th>richtig</th><th>mit der üblichen Mischung</th></tr>
- *   <tr><td>Weiß zu 50 %</td><td>128</td><td>64</td></tr>
- *   <tr><td>Rot zu 50 %</td><td>128, 0, 0</td><td>64, 0, 0</td></tr>
- *   <tr><td>ganz durchsichtig</td><td>0</td><td>0</td></tr>
- *   <tr><td>deckendes Weiß</td><td>255</td><td>255</td></tr>
+ *   <caption>What must come out</caption>
+ *   <tr><th>Field</th><th>correct</th><th>with the usual blending</th></tr>
+ *   <tr><td>White at 50 %</td><td>128</td><td>64</td></tr>
+ *   <tr><td>Red at 50 %</td><td>128, 0, 0</td><td>64, 0, 0</td></tr>
+ *   <tr><td>fully transparent</td><td>0</td><td>0</td></tr>
+ *   <tr><td>opaque white</td><td>255</td><td>255</td></tr>
  * </table>
  *
- * <p>Die mittlere Spalte ist das, was
- * {@code ONE, ONE_MINUS_SRC_ALPHA} über vormultiplizierten Farben ergibt; die
- * rechte, was {@code SRC_ALPHA, ONE_MINUS_SRC_ALPHA} daraus machte. Über
- * <b>schwarzem</b> Grund liegen die beiden weit auseinander — über weißem
- * fielen beide auf 255 und der Prüflauf wäre blind. Deshalb Schwarz.
+ * <p>The middle column is what {@code ONE, ONE_MINUS_SRC_ALPHA} yields over
+ * premultiplied colours; the right one, what
+ * {@code SRC_ALPHA, ONE_MINUS_SRC_ALPHA} made of it. Over a <b>black</b> ground
+ * the two lie far apart — over a white one both would fall to 255 and the test
+ * run would be blind. Hence black.
  */
 public final class RenderProof extends Screen {
 
     private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/RenderProof");
 
-    /** Wie weit ein Wert danebenliegen darf. Chromium rundet, wir auch. */
+    /** How far a value may be off. Chromium rounds, so do we. */
     private static final int TOLERANCE = 14;
 
     private static final String PAGE = """
@@ -93,11 +92,11 @@ public final class RenderProof extends Screen {
             """;
 
     /**
-     * Ob der Nachweis in dieser Sitzung schon durch ist.
+     * Whether the proof has already gone through in this session.
      *
-     * <p>Damit sich eine Kette bauen lässt: erst der Textur-Selbsttest, dann
-     * dieser hier, dann die Messung. Zwei Browser gleichzeitig teilten sich
-     * die Bildrate, und jede Messung berichtete die Hälfte als Grenze.
+     * <p>So that a chain can be built: first the texture self-test, then this
+     * one, then the measurement. Two browsers at once would share the frame
+     * rate, and each measurement would report half of it as the limit.
      */
     private static boolean finished;
 
@@ -112,7 +111,7 @@ public final class RenderProof extends Screen {
         super(Component.literal("Bildnachweis"));
     }
 
-    /** Öffnet den Nachweis, wenn eine Runtime da ist. */
+    /** Opens the proof when a runtime is present. */
     public static boolean openIfPossible(Minecraft client) {
         WebRuntimeStatus status = WebSupport.ensureStarted();
         if (!status.usable()) {
@@ -124,7 +123,7 @@ public final class RenderProof extends Screen {
         return true;
     }
 
-    /** Ob der Nachweis durch ist — für alles, was danach kommen soll. */
+    /** Whether the proof has gone through — for everything meant to follow. */
     public static boolean finished() {
         return finished;
     }
@@ -156,15 +155,15 @@ public final class RenderProof extends Screen {
         if (session == null || view == null) {
             return;
         }
-        // <b>Schwarz, und zwar deckend.</b> Der übliche verdunkelte Hintergrund
-        // eines Bildschirms ist selbst durchscheinend — darunter läge die
-        // Spielwelt, und die Rechnung ginge nicht mehr auf.
+        // <b>Black, and opaque at that.</b> A screen's usual darkened
+        // background is itself translucent — beneath it would lie the game
+        // world, and the arithmetic would no longer add up.
         graphics.fill(0, 0, width, height, 0xFF000000);
         compositor.draw(graphics, view, session.textureId(), null);
 
         if (session.paints() == 0) {
-            // Geduld, aber nicht endlos: Ein Nachweis, der auf ein Bild
-            // wartet, das nie kommt, hält alles auf, was danach käme.
+            // Patience, but not endless: a proof that waits for a frame that
+            // never comes holds up everything that would follow.
             if (System.nanoTime() - openedNanos > 20_000_000_000L) {
                 LOG.warn("Bildnachweis: nach zwanzig Sekunden kam kein Bild von {}",
                         session.currentUrl());
@@ -173,8 +172,8 @@ public final class RenderProof extends Screen {
             }
             return;
         }
-        // Ein Bild zeichnen lassen, bevor gelesen wird: Im selben Aufruf steht
-        // das Ergebnis noch nicht sicher im Puffer.
+        // Let one frame be drawn before reading: within the same call the
+        // result is not yet reliably in the buffer.
         framesDrawn++;
         if (framesDrawn >= 2 && !checked) {
             checked = true;
@@ -188,7 +187,7 @@ public final class RenderProof extends Screen {
         ByteBuffer pixels = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
 
         boolean allWell = true;
-        // Mitten in den Eckfeldern, die je 30 Prozent messen.
+        // In the middle of the corner fields, which measure 30 percent each.
         allWell &= at(pixels, fbWidth, fbHeight, 0.15, 0.15, "oben links", 255, 0, 0);
         allWell &= at(pixels, fbWidth, fbHeight, 0.85, 0.15, "oben rechts", 0, 255, 0);
         allWell &= at(pixels, fbWidth, fbHeight, 0.15, 0.85, "unten links", 0, 0, 255);
@@ -211,12 +210,12 @@ public final class RenderProof extends Screen {
     }
 
     /**
-     * Liest einen Bildpunkt aus dem fertigen Bild und vergleicht ihn.
+     * Reads a pixel from the finished image and compares it.
      *
-     * <p>Die senkrechte Umkehrung beim Lesen ist kein Teil dessen, was hier
-     * geprüft wird: {@code glReadPixels} zählt immer von unten, das ist eine
-     * Festlegung von OpenGL und keine Frage der Bildlage. Geprüft wird, was
-     * <b>davor</b> passiert.
+     * <p>The vertical inversion on reading is not part of what is checked here:
+     * {@code glReadPixels} always counts from the bottom, that is an OpenGL
+     * convention and not a question of image orientation. What is checked is
+     * what happens <b>before</b> that.
      */
     private boolean at(ByteBuffer pixels, int fbWidth, int fbHeight,
                        double acrossFraction, double downFraction,

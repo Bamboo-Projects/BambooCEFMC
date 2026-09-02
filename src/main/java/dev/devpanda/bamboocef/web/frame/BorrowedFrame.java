@@ -4,24 +4,22 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
- * Ein geliehenes Bild: gültig nur, solange der Aufruf läuft.
+ * A borrowed image: valid only while the call is running.
  *
- * <p><b>Kein {@link BrowserFrame}.</b> Das ist die ganze Absicht dieser
- * Klasse. Sie ist mit dem besitzenden Bild nicht verwandt, und deshalb kann
- * niemand sie in ein {@link FrameSlot} legen — der Übersetzer lässt es nicht
- * zu. Eine Regel, die man einhalten muss, wird irgendwann gebrochen; eine, die
- * sich nicht brechen lässt, nicht.
+ * <p><b>Not a {@link BrowserFrame}.</b> That is the whole point of this class.
+ * It is unrelated to the owning image, and so nobody can put it into a
+ * {@link FrameSlot} — the compiler will not allow it. A rule you have to keep
+ * gets broken eventually; one that cannot be broken does not.
  *
- * <p>Woher die Leihe kommt: JCEFs {@code onPaint} reicht einen
- * {@code ByteBuffer} herein, den der native Teil mit
- * {@code NewDirectByteBuffer} direkt auf Chromiums Speicher legt. Nach der
- * Rückkehr aus dem Aufruf darf Chromium ihn wiederverwenden. Wer ihn
- * aufhebt, liest später fremde Daten — und merkt es nicht, weil dort meistens
- * etwas Plausibles steht.
+ * <p>Where the loan comes from: JCEF's {@code onPaint} hands in a
+ * {@code ByteBuffer} that the native side places directly onto Chromium's
+ * memory with {@code NewDirectByteBuffer}. After the call returns, Chromium may
+ * reuse it. Whoever keeps it reads someone else's data later — and does not
+ * notice, because what sits there is usually something plausible.
  *
- * <p><b>Erlaubt ist genau eines:</b> ihn im selben Aufruf zu lesen. Hochladen
- * zählt dazu. Alles andere — merken, weitergeben, über einen Thread schicken —
- * ist ein Fehler, und {@link #toOwned} ist der einzige Weg daraus.
+ * <p><b>Exactly one thing is allowed:</b> reading it within the same call.
+ * Uploading counts. Everything else — remembering it, passing it on, sending it
+ * across a thread — is a bug, and {@link #toOwned} is the only way out.
  */
 public final class BorrowedFrame {
 
@@ -58,28 +56,28 @@ public final class BorrowedFrame {
         return dirty;
     }
 
-    /** Deckt die Änderung das ganze Bild ab? */
+    /** Does the change cover the whole image? */
     public boolean full() {
         return dirty.size() == 1 && dirty.get(0).equals(DirtyRegion.whole(width, height));
     }
 
     /**
-     * Die geliehenen Bildpunkte.
+     * The borrowed pixels.
      *
-     * <p>Eine eigene Sicht, damit zwei Leser sich nicht die Position
-     * verschieben. Der Speicher dahinter gehört weiterhin Chromium.
+     * <p>A view of its own, so that two readers do not shift each other's
+     * position. The memory behind it still belongs to Chromium.
      */
     public ByteBuffer pixels() {
         return pixels.duplicate();
     }
 
     /**
-     * Macht eine Kopie, die den Aufruf überlebt.
+     * Makes a copy that outlives the call.
      *
-     * <p>Der einzige Weg vom geliehenen zum besitzenden Bild — und er kostet,
-     * was eine Kopie kostet. Wer im Aufruf hochlädt, braucht ihn nicht.
+     * <p>The only way from the borrowed to the owning image — and it costs what
+     * a copy costs. Whoever uploads within the call does not need it.
      *
-     * @param into ein Bild, dessen Puffer wiederverwendet wird
+     * @param into an image whose buffer is reused
      */
     public CpuBrowserFrame toOwned(CpuBrowserFrame into) {
         CpuBrowserFrame target = into == null

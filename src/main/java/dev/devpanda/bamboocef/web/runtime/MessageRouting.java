@@ -5,17 +5,15 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * Welche Sitzung eine Nachricht der Seite bekommt.
+ * Which session gets a message from the page.
  *
- * <p><b>Über die Kennung des Browsers, nicht über seine Gleichheit.</b> Zwei
- * Browser können gleich aussehen und sind doch zwei; die Zuordnung hängt an
- * der Kennung selbst. Deshalb eine {@link IdentityHashMap} und kein
- * gewöhnliches {@code equals}.
+ * <p><b>By the browser's identity, not by its equality.</b> Two browsers can
+ * look alike and yet be two; the mapping hangs on the identity itself. Hence an
+ * {@link IdentityHashMap} and not an ordinary {@code equals}.
  *
- * <p>Der Kern ohne Chromium: Was hier hereinkommt, ist ein Schlüssel
- * ({@code Object}) und ein Empfänger. Die Verdrahtung an CEF liegt in
- * {@link WebMessages} — hier steht nur, wer wen bekommt, und das ist ohne
- * Chromium prüfbar.
+ * <p>The core without Chromium: what comes in here is a key ({@code Object}) and
+ * a receiver. The wiring to CEF lives in {@link WebMessages} — here only who
+ * gets whom is set out, and that is testable without Chromium.
  */
 final class MessageRouting {
 
@@ -34,9 +32,9 @@ final class MessageRouting {
     }
 
     /**
-     * Reicht eine Nachricht an ihren Empfänger.
+     * Hands a message to its receiver.
      *
-     * @return ob es einen gab und die Nachricht Inhalt hatte
+     * @return whether there was one and the message had content
      */
     boolean dispatch(Object browser, String message) {
         if (message == null) {

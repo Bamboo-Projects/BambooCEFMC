@@ -1,91 +1,90 @@
 package dev.devpanda.bamboocef.web;
 
 /**
- * Warum es gerade einen Browser gibt — oder keinen.
+ * Why there currently is a browser — or none.
  *
- * <p><b>Ein Zustand je Grund und kein {@code boolean}.</b> „Web geht nicht" ist keine
- * Auskunft: Wem die Laufzeitumgebung fehlt, der braucht einen anderen Satz als
- * wer hinter einem Firmen-Proxy sitzt, und beide einen anderen als jemand auf
- * einer Plattform, für die es keine Binärdateien gibt. Ein zusammengefasstes
- * {@code false} macht aus drei Fragen eine unbeantwortbare.
+ * <p><b>One state per reason and not a {@code boolean}.</b> "Web does not work"
+ * is no information: whoever is missing the runtime needs a different sentence
+ * than whoever sits behind a corporate proxy, and both need a different one
+ * than someone on a platform for which there are no binaries. A collapsed
+ * {@code false} turns three questions into one that cannot be answered.
  *
- * <p>Keiner dieser Zustände ist ein Fehler der Mod. Das Spiel läuft in jedem
- * von ihnen weiter — was fehlt, ist eine Oberfläche, nicht das Netz, nicht
- * die Maschinen, nicht die Sprache.
+ * <p>None of these states is a fault of the mod. The game runs on in every one
+ * of them — what is missing is a user interface, not the network, not the
+ * machines, not the language.
  */
 public enum WebRuntimeState {
 
-    /** Noch nicht versucht. Der erste Zustand jeder Sitzung. */
+    /** Not yet attempted. The first state of every session. */
     NOT_STARTED,
 
     /**
-     * Die Laufzeitumgebung liegt nicht neben dem Spiel.
+     * The runtime does not sit next to the game.
      *
-     * <p>Chromium wiegt 379 Megabyte und steckt deshalb nicht im Jar dieser
-     * Mod. Wer es nachlädt, hat beim nächsten Start einen Browser.
+     * <p>Chromium weighs 379 megabytes and therefore is not in this mod's jar.
+     * Whoever downloads it has a browser on the next start.
      *
-     * <p>Gesetzt von {@link RuntimeInstall}, wenn ein über {@code fn.runtime.dir}
-     * genannter Ordner leer ist oder das Manifest keine Adresse zum Nachladen
-     * kennt.
+     * <p>Set by {@link RuntimeInstall} when a folder named via
+     * {@code fn.runtime.dir} is empty or the manifest knows no address to
+     * download from.
      */
     RUNTIME_MISSING,
 
     /**
-     * Für diese Plattform gibt es keine Binärdateien.
+     * There are no binaries for this platform.
      *
-     * <p>Kein Nachinstallieren hilft. Das muss anders klingen als ein
-     * fehlender Download, sonst sucht jemand stundenlang an der falschen
-     * Stelle.
+     * <p>No reinstalling helps. This has to sound different from a missing
+     * download, or someone searches for hours in the wrong place.
      *
-     * <p>Gesetzt von {@link RuntimeInstall}, wenn das Manifest für diese
-     * Plattform keinen Eintrag hat. Gebaut ist bisher nur {@code windows-x86_64}.
+     * <p>Set by {@link RuntimeInstall} when the manifest has no entry for this
+     * platform. So far only {@code windows-x86_64} is built.
      */
     UNSUPPORTED,
 
     /**
-     * Chromium ist noch nicht auf der Platte.
+     * Chromium is not yet on disk.
      *
-     * <p>Gesetzt von {@link RuntimeInstall}, sobald der Download im Hintergrund
-     * angestoßen ist. Hinter einem Proxy, ohne Netz oder wenn die Ablage steht,
-     * bleibt es dabei — und das ist ein Zustand, der beim nächsten Versuch
-     * anders ausgehen kann.
+     * <p>Set by {@link RuntimeInstall} as soon as the download has been kicked
+     * off in the background. Behind a proxy, without a network, or when the
+     * storage is down, it stays that way — and that is a state that can turn out
+     * differently on the next attempt.
      */
     NOT_DOWNLOADED,
 
     /**
-     * Der Start ist gescheitert.
+     * The start failed.
      *
-     * <p>Alles, was übrig bleibt: fehlende Systembibliotheken, ein
-     * abgebrochener Download, eine kaputte Installation. Die Begründung steht
-     * im {@link WebRuntimeStatus}.
+     * <p>Everything that is left: missing system libraries, an aborted
+     * download, a broken installation. The reason is in the
+     * {@link WebRuntimeStatus}.
      */
     FAILED,
 
     /**
-     * Chromium war da und ist heruntergefahren.
+     * Chromium was there and has shut down.
      *
-     * <p>Ein Endzustand: CEF lässt sich je Prozess nur einmal starten. Er
-     * entsteht beim Beenden des Spiels, wenn nach dem Herunterfahren noch ein
-     * Bild gemalt wird und jemand dabei einen Browser will — der bekommt diese
-     * Auskunft statt eines Neustartversuchs, der als Fehler mit Stapel im
-     * Protokoll endete.
+     * <p>A final state: CEF can be started only once per process. It arises
+     * when the game is quitting, if a frame is still painted after shutdown and
+     * someone wants a browser in the process — that one gets this information
+     * instead of a restart attempt, which used to end as an error with a stack
+     * trace in the log.
      */
     SHUT_DOWN,
 
-    /** Es läuft. */
+    /** It is running. */
     READY;
 
-    /** Kann in diesem Zustand ein Browser entstehen? */
+    /** Can a browser be created in this state? */
     public boolean usable() {
         return this == READY;
     }
 
     /**
-     * Lohnt ein zweiter Versuch?
+     * Is a second attempt worthwhile?
      *
-     * <p>Ein fehlender Download kann beim nächsten Mal da sein, eine fehlende
-     * Plattform nie. Wer das nicht trennt, versucht es entweder ewig oder
-     * einmal zu selten.
+     * <p>A missing download may be there next time, a missing platform never.
+     * Whoever does not separate the two either tries forever or one time too
+     * few.
      */
     public boolean worthRetrying() {
         return this == NOT_DOWNLOADED || this == FAILED;

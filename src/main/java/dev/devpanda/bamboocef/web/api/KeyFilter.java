@@ -3,41 +3,40 @@ package dev.devpanda.bamboocef.web.api;
 import java.util.Arrays;
 
 /**
- * Welche Tasten eine Fläche bekommt — und welche das Spiel behält.
+ * Which keys a surface gets — and which the game keeps.
  *
- * <p><b>Der Grund, warum es das gibt.</b> Ein Editor braucht jede Taste; ein
- * Schnellmenü braucht Escape und die Pfeiltasten, und W, A, S und D gehören
- * dem Spieler. Eine Fläche, die nur alles oder nichts bekommen kann, ist für
- * den zweiten Fall unbrauchbar — und der ist der häufigere.
+ * <p><b>The reason this exists.</b> An editor needs every key; a quick menu
+ * needs Escape and the arrow keys, and W, A, S, and D belong to the player.
+ * A surface that can only get all or nothing is useless for the second case —
+ * and that one is the more common.
  *
- * <p><b>Die Entscheidung fällt vor dem Weiterreichen, nicht danach.</b> Wer
- * eine Taste erst an Chromium schickt und dann hofft, dass Minecraft sie auch
- * noch sieht, bekommt beides halb: Die Seite reagiert, und der Spieler läuft
- * trotzdem los.
+ * <p><b>The decision is made before forwarding, not after.</b> Whoever first
+ * sends a key to Chromium and then hopes that Minecraft still sees it too gets
+ * both halfway: the page reacts, and the player runs off anyway.
  *
- * <p>Die Tastennummern sind die von GLFW, dieselben, die Minecraft benutzt —
- * {@code GLFW_KEY_ESCAPE} und Verwandte. Absichtlich keine eigene Aufzählung:
- * Wer eine Fläche einbaut, hat die Zahlen ohnehin vor sich.
+ * <p>The key numbers are GLFW's, the same ones Minecraft uses —
+ * {@code GLFW_KEY_ESCAPE} and relatives. Deliberately no enumeration of its
+ * own: whoever builds in a surface has the numbers in front of them anyway.
  */
 @FunctionalInterface
 public interface KeyFilter {
 
     /**
-     * Bekommt die Fläche diese Taste?
+     * Does the surface get this key?
      *
-     * @param glfwKey   die Taste nach GLFW
-     * @param modifiers gedrückte Umschalttasten, ebenfalls nach GLFW
+     * @param glfwKey   the key per GLFW
+     * @param modifiers the modifier keys held, likewise per GLFW
      */
     boolean routes(int glfwKey, int modifiers);
 
-    /** Alles geht an die Fläche — was ein Editor braucht. */
+    /** Everything goes to the surface — what an editor needs. */
     KeyFilter ALL = (key, modifiers) -> true;
 
-    /** Nichts geht an die Fläche. Sie ist dann ein Bild zum Ansehen. */
+    /** Nothing goes to the surface. It is then a picture to look at. */
     KeyFilter NONE = (key, modifiers) -> false;
 
     /**
-     * Nur diese Tasten, unabhängig von Umschalttasten.
+     * Only these keys, regardless of modifier keys.
      *
      * <pre>
      * KeyFilter.only(GLFW.GLFW_KEY_ESCAPE, GLFW.GLFW_KEY_UP, GLFW.GLFW_KEY_DOWN)
@@ -50,10 +49,10 @@ public interface KeyFilter {
     }
 
     /**
-     * Alles außer diesen Tasten.
+     * Everything except these keys.
      *
-     * <p>Für den Fall, dass eine Fläche fast alles will: Ein Editor, dem der
-     * Spieler trotzdem mit Escape entkommen soll, ist
+     * <p>For the case where a surface wants almost everything: an editor the
+     * player should still be able to escape with Escape is
      * {@code KeyFilter.except(GLFW_KEY_ESCAPE)}.
      */
     static KeyFilter except(int... keys) {
@@ -62,38 +61,38 @@ public interface KeyFilter {
         return (key, modifiers) -> Arrays.binarySearch(blocked, key) < 0;
     }
 
-    /** Dieser Filter <b>und</b> jener — eine Taste muss durch beide passen. */
+    /** This filter <b>and</b> that one — a key must pass through both. */
     default KeyFilter and(KeyFilter other) {
         return (key, modifiers) -> routes(key, modifiers) && other.routes(key, modifiers);
     }
 
-    /** Dieser Filter <b>oder</b> jener. */
+    /** This filter <b>or</b> that one. */
     default KeyFilter or(KeyFilter other) {
         return (key, modifiers) -> routes(key, modifiers) || other.routes(key, modifiers);
     }
 
     /**
-     * Diese Tasten zusätzlich.
+     * These keys in addition.
      *
-     * <p>Der häufigste Wunsch nach einer Gruppe: fast die richtige, nur noch
-     * eine Taste dazu. {@code Keys.ARROWS.plus(GLFW_KEY_ENTER)} liest sich
-     * besser als eine zweite Gruppe daneben.
+     * <p>The most common wish after a group: almost the right one, just one
+     * more key on top. {@code Keys.ARROWS.plus(GLFW_KEY_ENTER)} reads better
+     * than a second group beside it.
      */
     default KeyFilter plus(int... keys) {
         return or(only(keys));
     }
 
     /**
-     * Diese Tasten nicht.
+     * Not these keys.
      *
-     * <p>Das Gegenstück: {@code KeyFilter.ALL.minus(GLFW_KEY_ESCAPE)} ist ein
-     * Editor, aus dem der Spieler herauskommt.
+     * <p>The counterpart: {@code KeyFilter.ALL.minus(GLFW_KEY_ESCAPE)} is an
+     * editor the player can get out of.
      */
     default KeyFilter minus(int... keys) {
         return and(except(keys));
     }
 
-    /** Genau das Gegenteil dieses Filters. */
+    /** Exactly the opposite of this filter. */
     default KeyFilter negate() {
         return (key, modifiers) -> !routes(key, modifiers);
     }

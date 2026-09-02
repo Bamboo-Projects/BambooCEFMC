@@ -13,56 +13,55 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Ein Bildschirm, hinter dem Minecraft weiterläuft — im Dokument, nicht
- * dahinter.
+ * A screen behind which Minecraft keeps running — in the document, not behind
+ * it.
  *
- * <p><b>Warum Minecrafts Bild ein Element der Seite sein muss.</b> Die
- * naheliegende Idee wäre, den Browser durchsichtig zu machen und Minecraft
- * einfach darunter zu lassen. Für ein weiches Glas reicht das nicht: Nach der
- * CSS-Spezifikation umfasst das, was ein {@code backdrop-filter} filtert,
- * ausschließlich Inhalt <b>dieses Dokuments</b>. Was hinter dem Browserfenster
- * liegt, gehört nicht dazu — der Filter liefe über Transparenz und ergäbe
- * nichts.
+ * <p><b>Why Minecraft's image has to be an element of the page.</b> The
+ * obvious idea would be to make the browser transparent and simply leave
+ * Minecraft beneath it. For soft glass that is not enough: per the CSS
+ * specification, what a {@code backdrop-filter} filters covers exclusively
+ * content of <b>this document</b>. What lies behind the browser window is not
+ * part of it — the filter would run over transparency and yield nothing.
  *
- * <p>Also wird Minecrafts Bild aufgenommen und als unterstes Element
- * eingesetzt. Ab da ist es für Chromium gewöhnlicher Seiteninhalt, und alles,
- * was CSS kann, gilt dafür.
+ * <p>So Minecraft's image is captured and inserted as the bottommost element.
+ * From then on it is ordinary page content for Chromium, and everything CSS
+ * can do applies to it.
  *
- * <p><b>Zwei Takte, die nichts miteinander zu tun haben.</b> Wie oft ein neuer
- * Hintergrund entsteht, entscheidet {@link Mode}. Wie oft der Browser malt,
- * entscheidet die Seite selbst — bei einem ruhenden Editor gar nicht. Ein
- * Hintergrund mit zwei Bildern je Sekunde bedeutet also nicht, dass irgendetwas
- * anderes mit zwei Bildern je Sekunde liefe.
+ * <p><b>Two beats that have nothing to do with each other.</b> How often a new
+ * backdrop comes into being {@link Mode} decides. How often the browser
+ * paints, the page decides itself — for a resting editor not at all. A
+ * backdrop at two frames per second therefore does not mean that anything else
+ * runs at two frames per second.
  *
- * <p><b>Der Austausch geschieht ohne Neuladen.</b> Ein einzelner
- * JavaScript-Aufruf setzt die Adresse des Bildes neu; die Seite bleibt stehen,
- * mit allem, was darauf getippt wurde. Das ist ausdrücklich keine Brücke
- * zwischen Java und der Seite — es geht nur in eine Richtung, kennt genau
- * einen Befehl, und die Seite kann nichts zurückrufen.
+ * <p><b>The swap happens without a reload.</b> A single JavaScript call sets
+ * the image's address anew; the page stays up, with everything typed into it.
+ * This is explicitly not a bridge between Java and the page — it goes in one
+ * direction only, knows exactly one command, and the page can call nothing
+ * back.
  */
 public class BackdropScreen extends BrowserScreen {
 
     private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/BackdropScreen");
 
-    /** Wie oft ein neuer Hintergrund entsteht. */
+    /** How often a new backdrop comes into being. */
     public enum Mode {
 
         /**
-         * Einmal beim Öffnen, danach nie wieder.
+         * Once on opening, never again after that.
          *
-         * <p>Für einen Editor womöglich genug: Wer schreibt, sieht ohnehin auf
-         * den Text und nicht durch ihn hindurch. Und ein Standbild kostet nach
-         * dem ersten Bild exakt nichts.
+         * <p>Possibly enough for an editor: whoever is writing looks at the
+         * text anyway and not through it. And a still image costs exactly
+         * nothing after the first frame.
          */
         STATIC(0),
 
-        /** Zweimal je Sekunde — sichtbar ruckelnd, aber lebendig. */
+        /** Twice per second — visibly stuttering, but alive. */
         LOW_2(2),
 
-        /** Fünfmal je Sekunde. */
+        /** Five times per second. */
         LOW_5(5),
 
-        /** Zehnmal je Sekunde. */
+        /** Ten times per second. */
         LOW_10(10);
 
         private final int framesPerSecond;
@@ -81,11 +80,11 @@ public class BackdropScreen extends BrowserScreen {
     }
 
     /**
-     * Die Seite: Minecrafts Bild unten, Glas darüber.
+     * The page: Minecraft's image at the bottom, glass on top.
      *
-     * <p>Bewusst ohne Skript für den Bildwechsel — der kommt von außen. Eine
-     * Seite, die selbst in kurzen Abständen nachfragt, fragte auch dann, wenn
-     * es nichts Neues gibt.
+     * <p>Deliberately without a script for the image swap — that comes from
+     * outside. A page that itself polled at short intervals would poll even
+     * when there is nothing new.
      */
     private static final String PAGE = """
             <!doctype html><html lang="de"><head><meta charset="utf-8"><style>
@@ -145,8 +144,8 @@ public class BackdropScreen extends BrowserScreen {
             """;
 
     /**
-     * Nicht selbst angelegt, sondern der eine, an dem Chromiums Anmeldung
-     * hängt. Ein eigener wäre nie gefragt worden.
+     * Not created ourselves, but the one that Chromium's registration hangs
+     * off. One of our own would never have been queried.
      */
     private final FrameStore store = FrameSchemes.store();
     private final WorldCapture capture = new WorldCapture();
@@ -167,7 +166,7 @@ public class BackdropScreen extends BrowserScreen {
         this.format = format;
     }
 
-    /** Legt die Seite ab und öffnet den Bildschirm. */
+    /** Writes the page out and opens the screen. */
     public static void open(Minecraft client, Mode mode, double scale,
                             WorldCapture.Format format) throws Exception {
         Path file = Files.createTempFile("fn-backdrop-screen", ".html");
@@ -186,30 +185,30 @@ public class BackdropScreen extends BrowserScreen {
                 LOG.warn("Chromium hat das Schema nicht angenommen — kein Hintergrund");
             }
         }
-        // <b>Nach einer Größenänderung ist der alte Hintergrund falsch.</b> Er
-        // hätte das Seitenverhältnis von vorher, und object-fit würde ihn
-        // beschneiden oder strecken. Der nächste Durchgang nimmt neu auf.
+        // <b>After a resize the old backdrop is wrong.</b> It would have the
+        // aspect ratio from before, and object-fit would crop or stretch it.
+        // The next pass captures anew.
         lastCaptureNanos = 0;
     }
 
     /**
-     * Nimmt auf, wenn es an der Zeit ist.
+     * Captures when it is time.
      *
-     * <p>Der einzige Punkt im ganzen Ablauf, an dem Minecrafts Bild noch
-     * unberührt im Puffer steht — und an dem der eigene Browser noch nicht
-     * darin ist.
+     * <p>The only point in the whole sequence at which Minecraft's image still
+     * stands untouched in the buffer — and at which our own browser is not yet
+     * in it.
      */
     @Override
     protected void beforeDrawing() {
         if (!schemeReady || !hasSession()) {
             return;
         }
-        // <b>Nicht, solange die Seite lädt.</b> Der Austausch geht über einen
-        // Aufruf in das Dokument hinein, und vor dem Ende des Ladens gibt es
-        // dieses Dokument nicht. Der Aufruf verpuffte dann — ohne Fehler, ohne
-        // Spur —, und bei einem Standbild gäbe es keinen zweiten Versuch.
-        // Genau so ist es hier zuerst ausgegangen: ein leerer Rahmen und
-        // Glasflächen, die Schwarz filterten.
+        // <b>Not while the page is loading.</b> The swap goes via a call into
+        // the document, and before loading finishes this document does not
+        // exist. The call would then fizzle out — no error, no trace — and for
+        // a still image there would be no second attempt. That is exactly how
+        // it first turned out here: an empty frame and glass panes filtering
+        // black.
         if (pageLoading()) {
             return;
         }
@@ -228,13 +227,12 @@ public class BackdropScreen extends BrowserScreen {
     }
 
     /**
-     * Setzt die Adresse des Bildes neu.
+     * Sets the image's address anew.
      *
-     * <p>Die Nummer in der Adresse ist das, was Chromium zum Nachladen bringt:
-     * Ohne sie hielte es die Adresse für dieselbe und zeigte sein
-     * zwischengespeichertes Bild weiter. Der Handler schickt zusätzlich ein
-     * {@code no-store} mit — welches der beiden Mittel allein genügt, ist eine
-     * eigene Messung wert.
+     * <p>The generation in the address is what makes Chromium reload: without
+     * it, it would consider the address the same and keep showing its cached
+     * image. The handler additionally sends a {@code no-store} — which of the
+     * two means suffices on its own is worth a measurement of its own.
      */
     private void showBackground(long generation) {
         String script = "window.fnSetBackground && window.fnSetBackground('"
@@ -243,11 +241,11 @@ public class BackdropScreen extends BrowserScreen {
     }
 
     /**
-     * Welche Adresse für dieses Bild gesetzt wird.
+     * Which address is set for this image.
      *
-     * <p>Überschreibbar, damit sich prüfen lässt, was ohne die Nummer
-     * geschieht — das ist die Frage nach Chromiums Zwischenspeicher, und sie
-     * beantwortet sich nur, indem man die Nummer wegnimmt.
+     * <p>Overridable, so that what happens without the generation can be
+     * checked — that is the question about Chromium's cache, and it answers
+     * itself only by taking the generation away.
      */
     protected String backgroundUrlFor(long generation) {
         return FrameSchemes.urlFor(generation);
@@ -296,8 +294,8 @@ public class BackdropScreen extends BrowserScreen {
     public void removed() {
         super.removed();
         capture.close();
-        // <b>Der Ablageort wird nicht geleert.</b> Er gehört der Sitzung und
-        // nicht diesem Bildschirm; ihn hier abzuräumen nähme dem nächsten sein
-        // Bild, ohne dass die Anmeldung davon wüsste.
+        // <b>The store is not cleared.</b> It belongs to the session and not
+        // to this screen; clearing it here would take the next one's image
+        // away, without the registration knowing about it.
     }
 }

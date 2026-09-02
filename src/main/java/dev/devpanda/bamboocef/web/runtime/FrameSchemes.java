@@ -5,44 +5,43 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Meldet Chromium an, wer {@code mc://frame/…} beantwortet.
+ * Registers with Chromium who answers {@code mc://frame/…}.
  *
- * <p><b>Nach der Initialisierung, nicht davor — und das ist belegt.</b> MCEF
- * meldet sein eigenes {@code mod://} unmittelbar nach {@code CefUtil.init()}
- * an, im selben Aufruf, in dem es Chromium hochfährt. Ein Schema-Handler
- * lässt sich also nachträglich anmelden; das ist keine Vermutung, sondern der
- * Weg, den MCEF selbst geht. Und er trägt auch für ein Bild <b>innerhalb</b>
- * einer Seite, die von woanders kommt — auch das ist nachgewiesen.
+ * <p><b>After initialization, not before — and that is documented.</b> MCEF
+ * registers its own {@code mod://} immediately after {@code CefUtil.init()}, in
+ * the same call in which it brings Chromium up. A scheme handler can therefore
+ * be registered afterwards; that is not a guess but the path MCEF itself takes.
+ * And it also holds for an image <b>inside</b> a page that comes from elsewhere
+ * — that too has been demonstrated.
  *
- * <p><b>Ein Ablageort für die ganze Sitzung, und das ist keine Bequemlichkeit.</b>
- * Chromium nimmt eine Anmeldung je Schema entgegen, und was dabei hinterlegt
- * wird, gilt bis zum Ende. Wer später einen zweiten Ablageort anmeldet,
- * bekommt ein freundliches „ja" und wird trotzdem nie gefragt: Die zuerst
- * eingetragene Fabrik bleibt stehen.
+ * <p><b>One store for the whole session, and that is no convenience.</b>
+ * Chromium accepts one registration per scheme, and what is deposited there
+ * holds until the end. Whoever later registers a second store gets a friendly
+ * "yes" and is nonetheless never asked: the factory entered first stays put.
  *
- * <p>Genau das ist hier passiert und hat teuer gekostet. Der Nachweis meldete
- * seinen eigenen Ablageort an, räumte ihn beim Schließen ab — und die Messung
- * danach bekam nie ein Bild, weil an der Anmeldung noch der leergeräumte
- * Ablageort hing. Der Fehler sah aus wie ein Adressproblem und war keines;
- * zwei Korrekturen an der Adressform gingen ins Leere, bevor die Ursache
- * dastand. Was ihn schließlich zeigte, war Chromiums eigene Konsole.
+ * <p>That is exactly what happened here and cost dearly. The proof registered
+ * its own store, cleared it on close — and the measurement afterwards never got
+ * a frame, because the emptied store still hung on the registration. The bug
+ * looked like an address problem and was none; two corrections to the address
+ * form came to nothing before the cause stood revealed. What finally showed it
+ * was Chromium's own console.
  *
- * <p>Deshalb gibt es den Ablageort <b>hier</b> und nur einmal. Wer ein Bild
- * hineinlegen will, holt ihn sich mit {@link #store()}.
+ * <p>That is why the store exists <b>here</b> and only once. Whoever wants to
+ * put a frame into it gets it with {@link #store()}.
  */
 public final class FrameSchemes {
 
     private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/FrameSchemes");
 
-    /** Der eine Ablageort. Er lebt so lange wie Chromiums Anmeldung. */
+    /** The one store. It lives as long as Chromium's registration. */
     private static final FrameStore STORE = new FrameStore();
 
     /**
-     * Dieselbe Adresse ohne Nummer — für die Probe auf den Zwischenspeicher.
+     * The same address without a number — for the cache probe.
      *
-     * <p>Chromium sieht dann jedes Mal dieselbe Adresse. Ob es trotzdem
-     * nachlädt, entscheidet allein der Kopf {@code Cache-Control: no-store},
-     * den der Ablageort mitschickt.
+     * <p>Chromium then sees the same address every time. Whether it reloads
+     * anyway is decided solely by the {@code Cache-Control: no-store} header
+     * that the store sends along.
      */
     public static final String SCHEME_URL_WITHOUT_GENERATION =
             FrameScheme.SCHEME + "://" + FrameScheme.DOMAIN + "/current";
@@ -52,24 +51,24 @@ public final class FrameSchemes {
     private FrameSchemes() {
     }
 
-    /** Der Ablageort, in den jeder sein Bild legt. */
+    /** The store into which everyone puts their frame. */
     public static FrameStore store() {
         return STORE;
     }
 
     /**
-     * Meldet den Ablageort an, falls noch nicht geschehen.
+     * Registers the store, if not already done.
      *
-     * @return ob Chromium die Anmeldung angenommen hat
+     * @return whether Chromium accepted the registration
      */
     public static synchronized boolean register() {
         if (registered) {
             return true;
         }
         try {
-            // Bei der Gelegenheit: Chromiums Konsole ins Protokoll. Was in der
-            // Seite schiefgeht, soll nicht nur die Seite wissen — ohne diese
-            // Zeile wäre der Fehler oben nie gefunden worden.
+            // While we are at it: Chromium's console into the log. What goes
+            // wrong in the page should not be known only to the page — without
+            // this line the bug above would never have been found.
             WebConsole.attach();
             boolean accepted = CefHost.app().registerSchemeHandlerFactory(
                     FrameScheme.SCHEME, FrameScheme.DOMAIN,
@@ -86,11 +85,11 @@ public final class FrameSchemes {
     }
 
     /**
-     * Die Adresse für das neueste Bild, mit Nummer gegen den Zwischenspeicher.
+     * The address for the newest frame, with a number against the cache.
      *
-     * <p>Welche Nummer darin steht, ist dem Ablageort gleichgültig — er gibt
-     * immer das neueste Bild heraus. Sie ist nur dazu da, dass Chromium die
-     * Adresse für eine neue hält.
+     * <p>Which number is in it is immaterial to the store — it always hands out
+     * the newest frame. It is only there so that Chromium takes the address for
+     * a new one.
      */
     public static String urlFor(long generation) {
         return FrameScheme.SCHEME + "://" + FrameScheme.DOMAIN + "/current?v=" + generation;

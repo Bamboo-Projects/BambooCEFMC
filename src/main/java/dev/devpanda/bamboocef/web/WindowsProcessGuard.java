@@ -15,43 +15,42 @@ import org.slf4j.Logger;
 import java.util.List;
 
 /**
- * Die Windows-Klammer: ein Job Object, das beim Sterben alles mitnimmt.
+ * The Windows bracket: a job object that takes everything with it when it dies.
  *
- * <p><b>Warum JNA und nicht das Fremdfunktions-Werkzeug aus Java 22.</b> Das
- * Spiel läuft auf Java 21. Dort ist die Fremdfunktionsschnittstelle eine
- * Vorschau und verlangt {@code --enable-preview} — einen JVM-Schalter, den
- * Spieler nicht setzen und den eine Mod nicht erzwingen kann. JNA liegt
- * ohnehin im Laufzeitpfad, weil Minecraft es über OSHI mitbringt.
+ * <p><b>Why JNA and not the foreign-function tool from Java 22.</b> The game
+ * runs on Java 21. There the foreign function interface is a preview and
+ * demands {@code --enable-preview} — a JVM switch that players do not set and a
+ * mod cannot force. JNA is on the runtime path anyway, because Minecraft brings
+ * it in via OSHI.
  *
- * <p><b>Warum ein eigenes Interface.</b> JNAs {@code Kernel32} kennt die
- * Job-Object-Funktionen nicht — nachgesehen, nicht vermutet. Es sind drei.
+ * <p><b>Why a custom interface.</b> JNA's {@code Kernel32} does not know the
+ * job-object functions — looked up, not assumed. There are three.
  *
- * <p><b>Die Handhabe wird absichtlich nie geschlossen.</b> Genau daran hängt
- * die Wirkung: Windows beendet die Gruppe, wenn die letzte Handhabe auf den
- * Job verschwindet. Beim Sterben des Prozesses tut sie das von selbst — auch
- * beim härtesten Abbruch, denn Handhaben schließt das Betriebssystem, nicht
- * das Programm.
+ * <p><b>The handle is deliberately never closed.</b> That is exactly what the
+ * effect hangs on: Windows terminates the group when the last handle onto the
+ * job disappears. When the process dies it does so by itself — even on the
+ * hardest abort, because it is the operating system that closes handles, not
+ * the program.
  */
 final class WindowsProcessGuard {
 
     private static final Logger LOG = LogUtils.getLogger();
 
-    /** {@code JobObjectExtendedLimitInformation} aus {@code JOBOBJECTINFOCLASS}. */
+    /** {@code JobObjectExtendedLimitInformation} from {@code JOBOBJECTINFOCLASS}. */
     private static final int EXTENDED_LIMIT_INFORMATION = 9;
 
-    /** Beendet alle Prozesse im Job, sobald die letzte Handhabe darauf zugeht. */
+    /** Terminates all processes in the job as soon as the last handle onto it closes. */
     private static final int LIMIT_KILL_ON_JOB_CLOSE = 0x2000;
 
-    /** Die erwartete Größe der Struktur auf einem 64-Bit-Windows. */
+    /** The expected size of the structure on a 64-bit Windows. */
     private static final int EXPECTED_SIZE = 144;
 
     /**
-     * Die Handhabe auf den Job — als Feld, damit sie niemand einsammelt.
+     * The handle onto the job — as a field, so that no one collects it.
      *
-     * <p>Würde sie eingesammelt und geschlossen, beendete Windows in genau
-     * diesem Augenblick den eigenen Prozess samt allem darin. Das Feld ist
-     * kein Zustand, den jemand liest; es ist der einzige Grund, warum die
-     * Handhabe leben bleibt.
+     * <p>Were it collected and closed, Windows would, at that very moment,
+     * terminate its own process along with everything in it. The field is not a
+     * state that anyone reads; it is the only reason the handle stays alive.
      */
     @SuppressWarnings("unused")
     private static HANDLE job;
@@ -74,14 +73,13 @@ final class WindowsProcessGuard {
     /**
      * {@code JOBOBJECT_EXTENDED_LIMIT_INFORMATION}.
      *
-     * <p>Gebraucht wird davon ein einziges Feld — {@code limitFlags}. Der Rest
-     * steht hier, weil die Struktur als Ganzes übergeben wird und ihre Größe
-     * Teil des Aufrufs ist. Die Zahlen sind alle null; das heißt „keine
-     * Grenze".
+     * <p>Only a single field of it is used — {@code limitFlags}. The rest stands
+     * here because the structure is passed as a whole and its size is part of
+     * the call. The numbers are all zero; that means "no limit".
      *
-     * <p>Die Feldarten sind für 64-Bit gewählt: {@code SIZE_T} und
-     * {@code ULONG_PTR} sind dort acht Bytes. Ob die Rechnung aufgeht, prüft
-     * {@link #install()} an der Größe, statt es zu glauben.
+     * <p>The field types are chosen for 64-bit: {@code SIZE_T} and
+     * {@code ULONG_PTR} are eight bytes there. Whether the arithmetic works out,
+     * {@link #install()} checks against the size rather than believing it.
      */
     @Structure.FieldOrder({
             "perProcessUserTimeLimit", "perJobUserTimeLimit", "limitFlags",
@@ -109,7 +107,7 @@ final class WindowsProcessGuard {
         public long readTransferCount;
         public long writeTransferCount;
         public long otherTransferCount;
-        // Der Rest von JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+        // The rest of JOBOBJECT_EXTENDED_LIMIT_INFORMATION
         public long processMemoryLimit;
         public long jobMemoryLimit;
         public long peakProcessMemoryUsed;
@@ -121,18 +119,17 @@ final class WindowsProcessGuard {
     }
 
     /**
-     * Spannt die Klammer auf.
+     * Opens the bracket.
      *
-     * @return was daraus geworden ist, in einem Satz fürs Protokoll
+     * @return what came of it, in one sentence for the log
      */
     static String install() {
         HANDLE self = Kernel32.INSTANCE.GetCurrentProcess();
 
-        // <b>Erst nachsehen, ob schon jemand geklammert hat.</b> Ein Launcher
-        // darf das, und seit Windows 8 lassen sich Jobs verschachteln — davor
-        // schlug jeder zweite Versuch fehl. Die Antwort gehört ins Protokoll,
-        // weil sie einen Fehlschlag weiter unten erklärt, statt ihn zu einem
-        // Rätsel zu machen.
+        // <b>First check whether someone has already bracketed.</b> A launcher
+        // may do so, and since Windows 8 jobs can be nested — before that every
+        // second attempt failed. The answer belongs in the log, because it
+        // explains a failure further down instead of making it a riddle.
         String already = "unbekannt";
         try {
             IntByReference inJob = new IntByReference();
@@ -145,10 +142,9 @@ final class WindowsProcessGuard {
 
         ExtendedLimitInformation limits = new ExtendedLimitInformation();
         if (limits.size() != EXPECTED_SIZE) {
-            // Kein Abbruch: Ein falsches Bild von der Struktur darf den Start
-            // nicht kosten. Ohne Wächter bleibt im schlimmsten Fall ein
-            // Prozess stehen — mit einem falsch belegten Aufruf könnte
-            // Schlimmeres passieren.
+            // No abort: a wrong picture of the structure must not cost the
+            // start. Without a guard, at worst a process stays put — with a
+            // wrongly laid-out call, worse could happen.
             return "nicht aufgespannt — die Struktur misst " + limits.size()
                     + " statt " + EXPECTED_SIZE + " Bytes (schon im Job: " + already + ")";
         }
@@ -177,9 +173,9 @@ final class WindowsProcessGuard {
         try {
             JobApi.INSTANCE.AssignProcessToJobObject(created, self);
         } catch (LastErrorException failed) {
-            // Fehler 5 ist Zugriff verweigert und heißt hier fast immer: Ein
-            // äußerer Job lässt sich nicht verschachteln. Das ist eine
-            // Umgebungsfrage, kein Fehler im Programm.
+            // Error 5 is access denied and here almost always means: an outer
+            // job cannot be nested. That is an environment question, not a bug
+            // in the program.
             return "AssignProcessToJobObject scheiterte mit Fehler " + failed.getErrorCode()
                     + (failed.getErrorCode() == 5 ? " (Zugriff verweigert — vermutlich hält ein "
                             + "äußerer Job den Prozess und lässt keine Verschachtelung zu)" : "")

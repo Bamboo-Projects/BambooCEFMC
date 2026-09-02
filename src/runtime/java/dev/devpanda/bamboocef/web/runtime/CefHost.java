@@ -5,35 +5,34 @@ import org.cef.CefApp;
 import org.cef.CefClient;
 
 /**
- * Woher Chromium kommt — in dieser Fassung: aus unserer eigenen
- * Laufzeitumgebung.
+ * Where Chromium comes from — in this variant: from our own runtime.
  *
- * <p><b>Diese Klasse lag bis B8 zweimal vor</b>, unter demselben Namen, in
- * zwei Quellverzeichnissen — eine gegen MCEF, eine gegen upstream java-cef.
- * Ein Schalter im Buildskript entschied. Seit MCEF draußen ist, gibt es nur
- * noch {@code src/runtime/java}, und der Schalter ist weg.
+ * <p><b>This class existed twice up to B8</b>, under the same name, in two
+ * source directories — one built against MCEF, one against upstream java-cef.
+ * A switch in the build script decided. Since MCEF is gone there is only
+ * {@code src/runtime/java} left, and the switch is gone with it.
  *
- * <p><b>Warum es überhaupt zwei Quellverzeichnisse waren und keine
- * Verzweigung.</b> MCEF und upstream java-cef bringen beide das vollständige
- * Paket {@code org.cef} mit — 170 Klassen, gleiche Namen, anderer Inhalt. Sie
- * können nicht nebeneinander im Klassenpfad liegen. Damit war jede Lösung
- * innerhalb einer Übersetzungseinheit ausgeschlossen; die Trennung musste vor
- * den Compiler. Das Verzeichnis ist geblieben: Es hält sichtbar, was
- * {@code org.cef} überhaupt berührt.
+ * <p><b>Why there were two source directories in the first place and not a
+ * branch.</b> MCEF and upstream java-cef both ship the complete
+ * {@code org.cef} package — 170 classes, same names, different content. They
+ * cannot sit next to each other on the class path. That ruled out any solution
+ * within a single compilation unit; the split had to happen before the
+ * compiler. The directory has stayed: it keeps visible what touches
+ * {@code org.cef} at all.
  */
 public final class CefHost {
 
-    /** Der Client, an dem Browser und Handler hängen. */
+    /** The client that browsers and handlers hang off. */
     public static CefClient client() {
         return FnCefRuntime.client();
     }
 
-    /** Die Anwendung, an der Schemata angemeldet werden. */
+    /** The application that schemes are registered with. */
     public static CefApp app() {
         return FnCefRuntime.app();
     }
 
-    /** Der Unterbau, so wie ihn {@code WebSupport} anfordert. */
+    /** The backend, exactly as {@code WebSupport} requests it. */
     public static WebBackend backend() {
         return FnRuntimeBackend.create();
     }

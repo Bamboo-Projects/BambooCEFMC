@@ -16,56 +16,54 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Ein Bildschirm, der eine Webseite zeigt und bedienbar macht.
+ * A screen that shows a web page and makes it usable.
  *
- * <p><b>Zur Escape-Taste, und warum sie nicht Minecraft gehört.</b> Die
- * bequeme Annahme wäre: Escape schließt den Bildschirm, wie überall in
- * Minecraft. Für eine Weboberfläche ist das falsch — ein aufgeklapptes
- * Auswahlfeld schließt sich mit Escape, ein Dialog ebenso, und ein Editor
- * bricht damit seine Vervollständigung ab. Wer Escape abfängt, nimmt der Seite
- * eine Taste, die sie selbst braucht, und der Spieler merkt nur, dass „das
- * Menü sich nicht schließen lässt".
+ * <p><b>On the Escape key, and why it does not belong to Minecraft.</b> The
+ * convenient assumption would be: Escape closes the screen, as everywhere in
+ * Minecraft. For a web UI that is wrong — an open dropdown closes with Escape,
+ * so does a dialog, and an editor cancels its autocompletion with it. Whoever
+ * intercepts Escape takes from the page a key it needs itself, and the player
+ * only notices that "the menu will not close".
  *
- * <p>Die Entscheidung: <b>Escape geht an die Seite.</b> Für den Rückweg gibt
- * es {@link #RELEASE_KEY} — sie gibt den Fokus an Minecraft zurück, und dann
- * schließt Escape wie gewohnt. Zwei Zustände statt einer Sonderregel, und
- * dasselbe Modell trägt später eine Fläche in der Welt: Auch die bekommt den
- * Fokus und gibt ihn wieder her.
+ * <p>The decision: <b>Escape goes to the page.</b> For the way back there is
+ * {@link #RELEASE_KEY} — it hands the focus back to Minecraft, and then Escape
+ * closes as usual. Two states instead of a special rule, and the same model
+ * later carries a surface in the world: it too takes the focus and gives it
+ * back again.
  *
- * <p><b>Aufgeräumt wird in {@code removed()}, nicht in {@code onClose()}.</b>
- * Wer einen anderen Bildschirm öffnet, während dieser läuft, bekommt kein
- * {@code onClose()} — der Browser bliebe offen, unsichtbar, und malte weiter.
- * {@code removed()} kommt in jedem Fall.
+ * <p><b>Cleanup happens in {@code removed()}, not in {@code onClose()}.</b>
+ * Whoever opens another screen while this one is running gets no
+ * {@code onClose()} — the browser would stay open, invisible, and keep
+ * painting. {@code removed()} comes in every case.
  *
- * <p><b>Das Schließen betrifft nur diesen Browser.</b> Chromium selbst bleibt
- * stehen — und das gilt weiter, seit es uns gehört: Andere Browser derselben
- * Mod hängen daran, und Hochfahren kostet Sekunden. Abgeräumt wird beim
- * Verlassen des Spiels, an einer Stelle, nicht bei jedem geschlossenen
- * Bildschirm.
+ * <p><b>Closing affects only this browser.</b> Chromium itself stays up — and
+ * that still holds now that it belongs to us: other browsers of the same mod
+ * hang off it, and starting up costs seconds. It is torn down on leaving the
+ * game, in one place, not at every closed screen.
  */
 public class BrowserScreen extends Screen {
 
     private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/BrowserScreen");
 
     /**
-     * Die Taste, die den Fokus zurückholt.
+     * The key that reclaims the focus.
      *
-     * <p>F10, weil Vanilla sie nicht belegt und Weboberflächen sie selten
-     * brauchen. Escape wäre die naheliegende Wahl und ist genau deshalb keine.
+     * <p>F10, because vanilla does not bind it and web UIs rarely need it.
+     * Escape would be the obvious choice and is precisely for that reason not
+     * one.
      */
     public static final int RELEASE_KEY = GLFW.GLFW_KEY_F10;
 
     /**
-     * Die Taste, die den Messabschnitt abschließt.
+     * The key that closes off the measurement section.
      *
-     * <p>Sie schreibt ins Protokoll, was seit dem letzten Druck an Bildern und
-     * Bytes angefallen ist, und fängt von vorn an. So lässt sich eine einzelne
-     * Handlung messen — nur scrollen, nur tippen — ohne dass sich die
-     * Abschnitte vermischen.
+     * <p>It writes to the log what has accrued in frames and bytes since the
+     * last press, and starts over. This way a single action can be measured —
+     * scrolling only, typing only — without the sections mixing.
      */
     public static final int MEASURE_KEY = GLFW.GLFW_KEY_F9;
 
-    /** Wie lange der Hinweis auf die Rückholtaste stehen bleibt. */
+    /** How long the hint about the reclaim key stays up. */
     private static final long HINT_MILLIS = 6000L;
 
     private final String url;
@@ -78,16 +76,16 @@ public class BrowserScreen extends Screen {
     private final BrowserCursor cursor = new BrowserCursor();
 
     /**
-     * Der zuletzt gewünschte Zeiger, gemerkt statt sofort gesetzt.
+     * The most recently requested cursor, remembered rather than set at once.
      *
-     * <p>Chromium meldet Zeigerwechsel auch aus eigenen Threads. GLFW verträgt
-     * Fensteraufrufe nur aus dem Render-Thread; gemerkt und beim Zeichnen
-     * angewandt ist der Weg ohne Absturz.
+     * <p>Chromium reports cursor changes from its own threads too. GLFW
+     * tolerates window calls only from the render thread; remembered and
+     * applied at drawing time is the route without a crash.
      */
     private volatile int wantedCursor = -1;
     private int appliedCursor = -1;
 
-    /** Welche Zeigerarten schon einmal gemeldet wurden — je Art eine Zeile. */
+    /** Which cursor kinds have already been reported — one line per kind. */
     private final java.util.Set<Integer> seenCursors = new java.util.HashSet<>();
 
     private long openedMillis;
@@ -103,7 +101,7 @@ public class BrowserScreen extends Screen {
         this.transparent = transparent;
     }
 
-    /** Ob überhaupt ein Browser zu haben ist — vor dem Öffnen zu fragen. */
+    /** Whether a browser can be had at all — to be asked before opening. */
     public static WebRuntimeStatus availability() {
         return WebSupport.ensureStarted();
     }
@@ -125,24 +123,23 @@ public class BrowserScreen extends Screen {
             session.onCursor(type -> wantedCursor = type);
             session.setFocused(true);
         } else {
-            // <b>Hier hängt die Größenänderung.</b> Minecraft ruft bei jeder
-            // Fenster- oder Skalierungsänderung {@code resize()}, und das ruft
-            // {@code init()} erneut. Eine eigene Überschreibung von
-            // {@code resize()} bräuchte es nur, um dasselbe noch einmal zu
-            // tun. Der Browser bleibt stehen und bekommt ein neues Maß.
+            // <b>This is where resizing hangs.</b> On every window or scaling
+            // change Minecraft calls {@code resize()}, and that calls
+            // {@code init()} again. An override of {@code resize()} of our own
+            // would only be needed to do the same thing once more. The browser
+            // stays up and gets a new dimension.
             session.resize(view.browserWidth(), view.browserHeight());
         }
     }
 
     /**
-     * Läuft, bevor irgendetwas gezeichnet wird.
+     * Runs before anything is drawn.
      *
-     * <p><b>Die einzige Stelle, an der Minecrafts eigenes Bild noch
-     * unberührt im Puffer steht.</b> Welt und Bedienoberfläche sind fertig,
-     * dieser Bildschirm hat noch keinen Strich getan. Wer das Bild
-     * aufnehmen will, muss es hier tun — eine Zeile später hat
-     * {@code renderBackground} es verdunkelt, und ein Bild später läge der
-     * Browser darin.
+     * <p><b>The only point at which Minecraft's own image still stands
+     * untouched in the buffer.</b> World and UI are finished, this screen has
+     * not drawn a single stroke yet. Whoever wants to capture the image must do
+     * it here — one line later {@code renderBackground} has darkened it, and
+     * one frame later the browser would be in it.
      */
     protected void beforeDrawing() {
     }
@@ -166,11 +163,11 @@ public class BrowserScreen extends Screen {
     }
 
     /**
-     * Wo das aufgeklappte Feld auf dem Schirm liegt.
+     * Where the dropdown popup lies on screen.
      *
-     * <p>Über dieselbe Umrechnung wie die Maus: Chromium meldet die Lage in
-     * seinen eigenen Pixeln, und wer sie anders umrechnet als den Mauszeiger,
-     * zeichnet das Feld neben die Stelle, an der es angeklickt wird.
+     * <p>Via the same conversion as the mouse: Chromium reports the position in
+     * its own pixels, and whoever converts it differently from the mouse
+     * cursor draws the popup next to the spot where it is clicked.
      */
     private BrowserCompositor.PopupPlacement popupPlacement() {
         if (!session.popupVisible()) {
@@ -188,14 +185,14 @@ public class BrowserScreen extends Screen {
         if (wanted != appliedCursor && focus == BrowserFocus.BROWSER) {
             cursor.apply(minecraft.getWindow().getWindow(), wanted);
             appliedCursor = wanted;
-            // Jede Art einmal ins Protokoll: Ob die Zeigerwechsel überhaupt
-            // ankommen, sieht man sonst nur, indem man hinsieht — und
-            // „hinsehen" ist die Antwort, die dieser ganze Spike vermeidet.
+            // Each kind to the log once: whether the cursor changes arrive at
+            // all can otherwise only be seen by looking — and "looking" is the
+            // answer this whole spike avoids.
             //
-            // <b>Mit -Ptrace jeden Wechsel, nicht nur jede neue Art.</b> Ein
-            // Zeiger, der an der falschen Stelle steht, lässt sich sonst nicht
-            // von einem unterscheiden, der nur nicht zurückgesetzt wurde: Die
-            // zweite Anforderung derselben Art stünde nirgends.
+            // <b>With -Ptrace every change, not only every new kind.</b> A
+            // cursor sitting in the wrong place cannot otherwise be told apart
+            // from one that simply was not reset: the second request for the
+            // same kind would appear nowhere.
             boolean firstOfKind = seenCursors.add(wanted);
             if (firstOfKind || Boolean.getBoolean("fn.cef.trace")) {
                 LOG.info("Mauszeiger: Chromium wünscht {} ({})",
@@ -205,11 +202,11 @@ public class BrowserScreen extends Screen {
     }
 
     /**
-     * Der Hinweis auf die Rückholtaste, für die ersten Sekunden.
+     * The hint about the reclaim key, for the first few seconds.
      *
-     * <p>Eine Taste, die man kennen muss und nirgends steht, ist keine
-     * Lösung — sie ist eine Falle. Nach ein paar Sekunden verschwindet der
-     * Hinweis, weil er dann nur noch im Weg wäre.
+     * <p>A key you have to know and that appears nowhere is not a solution — it
+     * is a trap. After a few seconds the hint disappears, because by then it
+     * would only be in the way.
      */
     private void drawHint(GuiGraphics graphics) {
         long shown = System.currentTimeMillis() - openedMillis;
@@ -224,16 +221,15 @@ public class BrowserScreen extends Screen {
         graphics.drawString(font, text, 6, 3, (alpha << 24) | 0xFFFFFF, false);
     }
 
-    // ---- Fokus -------------------------------------------------------------
+    // ---- Focus -------------------------------------------------------------
 
     /**
-     * Escape schließt nicht von selbst.
+     * Escape does not close on its own.
      *
-     * <p>Solange die Seite den Fokus hat, gehört das erste Escape ihr; ein
-     * zweites unmittelbar danach schließt. Ist der Fokus bei Minecraft, wird
-     * Escape in {@link #keyPressed} von Hand behandelt. Minecrafts eigene
-     * Behandlung würde beim ersten Escape schließen und der Seite nichts
-     * lassen.
+     * <p>As long as the page has the focus, the first Escape belongs to it; a
+     * second one immediately after closes. If the focus is with Minecraft,
+     * Escape is handled by hand in {@link #keyPressed}. Minecraft's own
+     * handling would close on the first Escape and leave the page nothing.
      */
     @Override
     public boolean shouldCloseOnEsc() {
@@ -241,10 +237,10 @@ public class BrowserScreen extends Screen {
     }
 
     /**
-     * Das Spiel läuft weiter.
+     * The game keeps running.
      *
-     * <p>Ein Editor ist kein Pausenmenü: Wer ein Programm schreibt, während
-     * eine Maschine läuft, will sie laufen sehen.
+     * <p>An editor is not a pause menu: whoever writes a program while a
+     * machine is running wants to see it run.
      */
     @Override
     public boolean isPauseScreen() {
@@ -256,7 +252,7 @@ public class BrowserScreen extends Screen {
             return;
         }
         focus = wanted;
-        openedMillis = System.currentTimeMillis();      // Hinweis wieder zeigen
+        openedMillis = System.currentTimeMillis();      // show the hint again
         if (session != null) {
             session.setFocused(wanted == BrowserFocus.BROWSER);
         }
@@ -266,25 +262,25 @@ public class BrowserScreen extends Screen {
         }
     }
 
-    // ---- Tastatur ----------------------------------------------------------
+    // ---- Keyboard ----------------------------------------------------------
 
     /**
-     * Ob das letzte Ereignis ein Escape war.
+     * Whether the last event was an Escape.
      *
-     * <p><b>Warum es das braucht.</b> Escape gehört zwei Empfängern: Monaco
-     * schließt damit seine Vorschlagsliste, sein Suchfeld, seine Übersicht —
-     * und ein Minecraft-Bildschirm schließt sich damit. Beides gleichzeitig
-     * geht nicht, und wer den Fokus hat, bekommt sonst alles.
+     * <p><b>Why it is needed.</b> Escape belongs to two recipients: Monaco
+     * closes its suggestion list, its search box, its overview with it — and a
+     * Minecraft screen closes with it. Both at once is impossible, and whoever
+     * has the focus otherwise gets everything.
      *
-     * <p>Bisher bekam die Seite jedes Escape, und der Zweig, der schließt, war
-     * nie erreichbar. Jetzt gilt: <b>Das erste Escape gehört der Seite, ein
-     * zweites unmittelbar danach schließt den Bildschirm.</b> Jede andere
-     * Eingabe dazwischen — Taste oder Mausklick — setzt den Zähler zurück,
-     * denn dann hat der Benutzer weitergearbeitet und meinte kein Schließen.
+     * <p>Until now the page got every Escape, and the branch that closes was
+     * never reachable. Now the rule is: <b>the first Escape belongs to the
+     * page, a second one immediately after closes the screen.</b> Any other
+     * input in between — key or mouse click — resets the counter, because then
+     * the user has kept working and meant no close.
      *
-     * <p>Java kann nicht wissen, ob Monaco gerade etwas offen hat. Diese Regel
-     * braucht es auch nicht: Wer etwas geschlossen hat, drückt nicht sofort
-     * noch einmal.
+     * <p>Java cannot know whether Monaco has something open at the moment. Nor
+     * does this rule need to: whoever has closed something does not immediately
+     * press again.
      */
     private boolean escapePending;
 
@@ -302,9 +298,9 @@ public class BrowserScreen extends Screen {
         if (session != null && focus.routesKeyboard()) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
                 if (escapePending) {
-                    // Das zweite Escape. Das erste hatte die Seite; wenn sie
-                    // damit etwas geschlossen hat, hätte der Benutzer danach
-                    // weitergearbeitet und nicht noch einmal Escape gedrückt.
+                    // The second Escape. The first went to the page; if it
+                    // closed something with it, the user would have kept
+                    // working afterwards and not pressed Escape once more.
                     escapePending = false;
                     onClose();
                     return true;
@@ -314,9 +310,9 @@ public class BrowserScreen extends Screen {
                 escapePending = false;
             }
             session.keyPressed(keyCode, scanCode, modifiers);
-            // <b>Nicht an super weitergeben.</b> Sonst sieht der Bildschirm
-            // dieselbe Taste noch einmal, und was die Seite gerade
-            // entgegengenommen hat, löst zusätzlich etwas in Minecraft aus.
+            // <b>Do not pass on to super.</b> Otherwise the screen sees the
+            // same key once more, and what the page has just accepted
+            // additionally triggers something in Minecraft.
             return true;
         }
         escapePending = false;
@@ -340,12 +336,11 @@ public class BrowserScreen extends Screen {
     }
 
     /**
-     * Getippter Text.
+     * Typed text.
      *
-     * <p>Der einzige Weg, auf dem Umlaute, ß und das Eurozeichen richtig
-     * ankommen: Minecraft hat das Zeichen vom Betriebssystem bekommen,
-     * einschließlich Tastaturbelegung. Aus Tastencodes ließe es sich nicht
-     * zurückrechnen.
+     * <p>The only route by which umlauts, ß and the euro sign arrive
+     * correctly: Minecraft got the character from the operating system,
+     * keyboard layout included. It could not be back-computed from key codes.
      */
     @Override
     public boolean charTyped(char typed, int modifiers) {
@@ -359,7 +354,7 @@ public class BrowserScreen extends Screen {
         return super.charTyped(typed, modifiers);
     }
 
-    // ---- Maus --------------------------------------------------------------
+    // ---- Mouse -------------------------------------------------------------
 
     @Override
     public void mouseMoved(double mouseX, double mouseY) {
@@ -371,7 +366,7 @@ public class BrowserScreen extends Screen {
             session.mouseMoved(view.toBrowserX(mouseX), view.toBrowserY(mouseY),
                     heldModifiers());
         } else if (insideLastFrame) {
-            // Genau einmal beim Verlassen, nicht bei jeder Bewegung außerhalb.
+            // Exactly once on leaving, not on every movement outside.
             session.mouseLeft(view.toBrowserX(mouseX), view.toBrowserY(mouseY));
         }
         insideLastFrame = inside;
@@ -379,14 +374,14 @@ public class BrowserScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        // Wer klickt, arbeitet weiter und meint mit dem nächsten Escape nicht
-        // das Schließen des Bildschirms.
+        // Whoever clicks keeps working and does not mean, with the next Escape,
+        // to close the screen.
         escapePending = false;
         if (session == null || view == null || !view.contains(mouseX, mouseY)) {
             return super.mouseClicked(mouseX, mouseY, button);
         }
-        // Ein Klick in die Fläche holt den Fokus zurück — sonst müsste man ihn
-        // nach dem Zurückgeben mit einer Taste wiederholen.
+        // A click into the surface reclaims the focus — otherwise one would
+        // have to repeat it with a key after giving it back.
         setFocus(BrowserFocus.BROWSER);
         session.mousePressed(view.toBrowserX(mouseX), view.toBrowserY(mouseY),
                 button, heldModifiers(), System.currentTimeMillis());
@@ -404,11 +399,11 @@ public class BrowserScreen extends Screen {
     }
 
     /**
-     * Ziehen ist eine Bewegung mit gedrückter Taste.
+     * Dragging is a movement with a button held down.
      *
-     * <p>Minecraft meldet es als eigene Art von Ereignis, Chromium kennt nur
-     * Bewegungen — welche Tasten dabei unten sind, steht in den Flaggen. Die
-     * Sitzung führt sie mit, deshalb genügt hier eine gewöhnliche Bewegung.
+     * <p>Minecraft reports it as its own kind of event, Chromium knows only
+     * movements — which buttons are down is in the flags. The session carries
+     * them along, so an ordinary movement suffices here.
      */
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button,
@@ -432,25 +427,25 @@ public class BrowserScreen extends Screen {
         return true;
     }
 
-    // ---- Messung -----------------------------------------------------------
+    // ---- Measurement -------------------------------------------------------
 
     /**
-     * Schreibt den Messabschnitt ins Protokoll und beginnt einen neuen.
+     * Writes the measurement section to the log and begins a new one.
      *
-     * <p>Die Frage dahinter ist nicht, ob der Bildweg schnell ist — das ist
-     * gemessen. Die Frage ist, ob gewöhnliches Bedienen unerwartet große
-     * Bereiche schmutzig macht. Ein Scrollen, das jedes Mal die ganze Seite
-     * neu malt, kostet so viel wie eine Animation, und man sähe es nicht.
+     * <p>The question behind it is not whether the frame path is fast — that is
+     * measured. The question is whether ordinary use makes unexpectedly large
+     * regions dirty. A scroll that repaints the whole page every time costs as
+     * much as an animation, and one would not see it.
      */
     private void reportAndResetMeasurement() {
         reportSection(null);
     }
 
     /**
-     * Wie {@link #reportAndResetMeasurement()}, aber mit Namen.
+     * Like {@link #reportAndResetMeasurement()}, but with a name.
      *
-     * <p>Für einen Ablauf, der die Abschnitte selbst kennt: „Rollen" sagt im
-     * Protokoll mehr als „Abschnitt 3".
+     * <p>For a run that knows the sections itself: "Rollen" says more in the
+     * log than "Abschnitt 3".
      */
     protected void reportSection(String label) {
         if (session == null) {
@@ -491,44 +486,43 @@ public class BrowserScreen extends Screen {
         session.popupTexture().resetStats();
     }
 
-    /** Ob überhaupt ein Browser läuft. */
+    /** Whether a browser is running at all. */
     protected boolean hasSession() {
         return session != null;
     }
 
-    /** Der laufende Browser, für alles, was mehr braucht als die Messwerte. */
+    /** The running browser, for everything that needs more than the metrics. */
     protected dev.devpanda.bamboocef.web.runtime.BrowserSession session() {
         return session;
     }
 
-    /** Wie viele Bilder der Browser bisher geliefert hat. */
+    /** How many frames the browser has delivered so far. */
     protected long paints() {
         return session == null ? 0L : session.paints();
     }
 
-    /** Wie lange es von einer Eingabe bis zum Bild dauert. */
+    /** How long it takes from an input to the frame. */
     protected dev.devpanda.bamboocef.web.measure.DurationSamples inputLatency() {
         return session == null
                 ? new dev.devpanda.bamboocef.web.measure.DurationSamples()
                 : session.inputLatency();
     }
 
-    /** Die Messwerte des Bildwegs zurück nach Minecraft. */
+    /** The metrics of the frame path back to Minecraft. */
     protected dev.devpanda.bamboocef.web.texture.GlTextureBackend texture() {
         return session == null ? null : session.texture();
     }
 
     /**
-     * Die gerade gedrückten Umschalttasten, als GLFW-Flaggen.
+     * The currently pressed modifier keys, as GLFW flags.
      *
-     * <p><b>Ohne sie ist die halbe Maus tot.</b> Steuerung und Mausrad zoomen
-     * einen Editor, Umschalt und Klick erweitern eine Auswahl, Alt und Klick
-     * setzt einen zweiten Schreibcursor. Wer die Flaggen bei Mausereignissen
-     * auf null lässt, nimmt der Seite all das — und es sieht aus, als könne
-     * sie es nicht.
+     * <p><b>Without them half the mouse is dead.</b> Ctrl and mouse wheel zoom
+     * an editor, Shift and click extend a selection, Alt and click set a second
+     * text cursor. Whoever leaves the flags at zero for mouse events takes all
+     * that from the page — and it looks as if it cannot do it.
      *
-     * <p>Bei Tastenereignissen liefert Minecraft die Flaggen mit; bei
-     * Mausereignissen nicht, dort sind sie zu erfragen.
+     * <p>For key events Minecraft supplies the flags; for mouse events it does
+     * not, and there they have to be queried.
      */
     protected static int heldModifiers() {
         int modifiers = 0;
@@ -545,13 +539,13 @@ public class BrowserScreen extends Screen {
     }
 
     /**
-     * Eine Taste samt Steuerung, wie sie von einer Tastatur käme.
+     * A key together with a modifier, as it would come from a keyboard.
      *
-     * <p><b>Der Scancode ist auf Windows nicht optional.</b> Der native Teil
-     * baut den Windows-Tastencode mit {@code MapVirtualKey} <b>aus dem
-     * Scancode</b>; eine Null darin ergibt einen Tastencode von null, und
-     * Chromium sieht eine Taste, die es nicht gibt. Bei echter Eingabe liefert
-     * Minecraft ihn mit — wer Tasten selbst erzeugt, muss ihn erfragen.
+     * <p><b>The scancode is not optional on Windows.</b> The native part builds
+     * the Windows key code with {@code MapVirtualKey} <b>from the scancode</b>;
+     * a zero in it yields a key code of zero, and Chromium sees a key that does
+     * not exist. On real input Minecraft supplies it — whoever generates keys
+     * themselves has to query it.
      */
     protected void sendKeyCombination(int glfwKey, int modifiers) {
         int scanCode = GLFW.glfwGetKeyScancode(glfwKey);
@@ -559,12 +553,12 @@ public class BrowserScreen extends Screen {
         keyReleased(glfwKey, scanCode, modifiers);
     }
 
-    /** Ob die Seite noch lädt — vorher verpufft jeder Aufruf in sie hinein. */
+    /** Whether the page is still loading — before that, any call into it fizzles out. */
     protected boolean pageLoading() {
         return session == null || session.loading();
     }
 
-    /** Reicht eine Zeile JavaScript an die Seite durch. */
+    /** Passes a line of JavaScript through to the page. */
     protected void runScript(String code) {
         if (session != null) {
             session.runScript(code);
@@ -572,10 +566,10 @@ public class BrowserScreen extends Screen {
     }
 
     /**
-     * Verkleinert die Fläche auf einen Anteil der vollen Größe.
+     * Shrinks the surface to a fraction of the full size.
      *
-     * <p>Für die Messung: Eine Größenänderung lässt Chromium die ganze Seite
-     * neu rechnen, und was das an Übertragung kostet, will gemessen sein.
+     * <p>For the measurement: a resize makes Chromium recompute the whole page,
+     * and what that costs in transfer wants to be measured.
      */
     protected void resizeTo(double factor) {
         if (session == null) {
@@ -588,14 +582,14 @@ public class BrowserScreen extends Screen {
         session.resize(view.browserWidth(), view.browserHeight());
     }
 
-    // ---- Ende --------------------------------------------------------------
+    // ---- End ---------------------------------------------------------------
 
     /**
-     * Aufräumen — und zwar hier.
+     * Cleanup — and right here.
      *
-     * <p>{@code onClose()} kommt nur, wenn dieser Bildschirm sich selbst
-     * schließt. Wer stattdessen einen anderen öffnet, lässt ihn hier zurück.
-     * Ein Browser, der das überlebt, malt weiter und wird nie wieder gesehen.
+     * <p>{@code onClose()} comes only when this screen closes itself. Whoever
+     * opens another one instead leaves it behind here. A browser that survives
+     * that keeps painting and is never seen again.
      */
     @Override
     public void removed() {

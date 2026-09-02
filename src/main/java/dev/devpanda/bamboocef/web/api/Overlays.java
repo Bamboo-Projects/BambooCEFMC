@@ -11,21 +11,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Alle offenen Overlays — Zeichenreihenfolge, Fokus und die Haken, über die
- * das Spiel sie erreicht.
+ * All open overlays — draw order, focus, and the hooks through which the game
+ * reaches them.
  *
- * <p><b>Innen, kein Versprechen.</b> Die Klasse ist öffentlich, weil der
- * Client-Einstieg und das Mixin sie rufen müssen; sie gehört nicht zur
- * zugesagten Schnittstelle und darf sich ändern.
+ * <p><b>Internal, not a guarantee.</b> The class is public because the client
+ * entry point and the mixin have to call it; it is not part of the guaranteed
+ * interface and may change.
  *
- * <p>Alles hier läuft im Renderthread: Zeichnen, Takt, und auch die
- * Tastatur — Minecraft reicht GLFWs Rückrufe dorthin weiter.
+ * <p>Everything here runs on the render thread: drawing, ticking, and the
+ * keyboard too — Minecraft forwards GLFW's callbacks there.
  */
 public final class Overlays {
 
     private static final Logger LOG = LogUtils.getLogger();
 
-    /** In der Reihenfolge des Öffnens — die spätere liegt obenauf. */
+    /** In the order they were opened — the later one lies on top. */
     private static final List<OverlayImpl> overlays = new ArrayList<>();
     private static OverlayImpl focused;
 
@@ -46,7 +46,7 @@ public final class Overlays {
         }
     }
 
-    /** Nur eines hat Fokus. Wer ihn bekommt, nimmt ihn dem anderen. */
+    /** Only one has focus. Whoever gets it takes it from the other. */
     static void noteFocus(OverlayImpl overlay, OverlayFocus wanted) {
         if (wanted == OverlayFocus.NONE) {
             if (focused == overlay) {
@@ -65,9 +65,9 @@ public final class Overlays {
         return focused;
     }
 
-    // ---- Haken für den Client ------------------------------------------------------
+    // ---- Hooks for the client ------------------------------------------------------
 
-    /** Aus der Oberflächenschicht, nach allem, was Minecraft dort malt. */
+    /** From the GUI layer, after everything Minecraft draws there. */
     public static void draw(GuiGraphics graphics) {
         if (overlays.isEmpty()) {
             return;
@@ -78,7 +78,7 @@ public final class Overlays {
         }
     }
 
-    /** Je Takt: Was seinen Browser verloren hat, wird abgeräumt. */
+    /** Each tick: whatever has lost its browser is cleaned up. */
     public static void tick() {
         if (overlays.isEmpty()) {
             return;
@@ -100,18 +100,17 @@ public final class Overlays {
         return overlays.size();
     }
 
-    // ---- Haken für die Tastatur (aus dem Mixin) ------------------------------------
+    // ---- Hooks for the keyboard (from the mixin) -----------------------------------
 
     /**
-     * Eine Taste, bevor Minecraft sie sieht.
+     * A key before Minecraft sees it.
      *
-     * <p><b>Nur ohne offenen Bildschirm.</b> Ein Bildschirm bekommt seine
-     * Tasten auf dem gewohnten Weg — auch der eigene für den Mausfokus.
-     * Und {@link BrowserScreen#RELEASE_KEY F10} beendet jeden Fokus, gleich,
-     * was der Filter sagt: Es muss einen Weg hinaus geben, den keine Fläche
-     * abstellen kann.
+     * <p><b>Only without an open screen.</b> A screen gets its keys the usual
+     * way — including the one of its own for the mouse focus. And
+     * {@link BrowserScreen#RELEASE_KEY F10} ends any focus, no matter what the
+     * filter says: there must be a way out that no surface can turn off.
      *
-     * @return ob die Taste bei einem Overlay bleibt
+     * @return whether the key stays with an overlay
      */
     public static boolean keyPress(int glfwKey, int scanCode, int action, int modifiers) {
         OverlayImpl target = focused;
@@ -132,7 +131,7 @@ public final class Overlays {
         return target.keyPress(glfwKey, scanCode, action, modifiers);
     }
 
-    /** Ein Zeichen, bevor Minecraft es sieht. */
+    /** A character before Minecraft sees it. */
     public static boolean charTyped(int codePoint, int modifiers) {
         OverlayImpl target = focused;
         if (target == null) {

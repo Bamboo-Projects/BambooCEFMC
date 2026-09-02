@@ -1,56 +1,53 @@
 package dev.devpanda.bamboocef.web.frame;
 
 /**
- * Ein Postfach für genau ein Bild: das neueste gewinnt.
+ * A mailbox for exactly one image: the newest wins.
  *
- * <p><b>Keine Warteschlange.</b> Wenn der Browser schneller malt, als
- * Minecraft zeichnet, ist das vorletzte Bild wertlos — es zeigt eine
- * Vergangenheit, die niemand mehr sehen will. Eine wachsende Schlange
- * verwandelt diesen Vorsprung in Verzögerung: Der Spieler tippt, und der
- * Cursor kommt drei Bilder später. Deshalb verdrängt jedes neue Bild das
- * wartende.
+ * <p><b>No queue.</b> When the browser paints faster than Minecraft draws, the
+ * second-to-last image is worthless — it shows a past that nobody wants to see
+ * any more. A growing queue turns that lead into lag: the player types, and the
+ * cursor arrives three frames later. That is why every new image displaces the
+ * waiting one.
  *
- * <p><b>Der Besitz wandert sichtbar.</b> {@link #offer} gibt zurück, was es
- * verdrängt hat, und {@link #poll} übergibt, was es herausnimmt. Nach beiden
- * Aufrufen hält das Postfach nichts mehr davon; wer ein Bild in der Hand hat,
- * schließt es oder verwendet es wieder. Das ist umständlicher als ein
- * stillschweigendes {@code close()} im Postfach und der einzige Weg, ein
- * Bilderrecycling später ohne Umbau anzuhängen — und ohne Recycling
- * alloziert man bei 1080p achteinhalb Megabyte je Bild.
+ * <p><b>Ownership moves visibly.</b> {@link #offer} returns what it displaced,
+ * and {@link #poll} hands over what it takes out. After both calls the mailbox
+ * holds nothing more of it; whoever holds an image closes it or reuses it. That
+ * is more cumbersome than a silent {@code close()} inside the mailbox and the
+ * only way to attach image recycling later without a rebuild — and without
+ * recycling one allocates eight and a half megabytes per image at 1080p.
  *
- * <p><b>Zur Nebenläufigkeit:</b> {@code onPaint} kommt heute im Render-Thread
- * an — dort pumpt {@code WebPump} Chromiums Nachrichtenschleife, einmal je
- * Bild. Ein Postfach über Threadgrenzen ist damit <i>nicht nötig</i>. Es steht
- * trotzdem hier, und zwar für die zwei Fälle, die absehbar kommen: ein eigener
- * Nachrichtentakt, sobald wir Chromium mit {@code external_begin_frame} an
- * unseren Renderloop hängen, und der GPU-Pfad, bei dem der Aufruf gerade nicht
- * dort ankommt, wo die Textur liegt. Die Synchronisierung kostet einen
- * unbestrittenen Monitor je Bild.
+ * <p><b>On concurrency:</b> {@code onPaint} today arrives on the render thread
+ * — there {@code WebPump} pumps Chromium's message loop, once per frame. A
+ * mailbox across thread boundaries is therefore <i>not necessary</i>. It is
+ * here anyway, for the two cases that are foreseeable: a message tick of one's
+ * own, once we hook Chromium to our render loop with {@code external_begin_frame},
+ * and the GPU path, where the call does not arrive where the texture is. The
+ * synchronization costs one uncontended monitor per frame.
  */
 public final class FrameSlot implements AutoCloseable {
 
     private BrowserFrame pending;
     private boolean closed;
 
-    /** Wie viele Bilder verworfen wurden, weil das nächste schneller war. */
+    /** How many images were discarded because the next one was faster. */
     private long dropped;
 
     /**
-     * Legt ein Bild ab.
+     * Deposits an image.
      *
-     * @param frame das neue Bild, nicht {@code null}
-     * @return das Bild, das dabei verdrängt wurde, oder {@code null}. <b>Der
-     *         Aufrufer besitzt es danach</b> und muss es schließen oder
-     *         wiederverwenden.
+     * @param frame the new image, not {@code null}
+     * @return the image that was displaced in the process, or {@code null}.
+     *         <b>The caller owns it afterwards</b> and must close it or reuse
+     *         it.
      */
     public synchronized BrowserFrame offer(BrowserFrame frame) {
         if (frame == null) {
             throw new IllegalArgumentException("Ein Bild ohne Bild");
         }
         if (closed) {
-            // Nach dem Schließen nimmt das Postfach nichts mehr an. Das Bild
-            // gehört weiterhin dem Aufrufer — hier still zu schließen wäre ein
-            // Besitzwechsel, den niemand sieht.
+            // After closing, the mailbox accepts nothing more. The image still
+            // belongs to the caller — closing it silently here would be an
+            // ownership transfer that nobody sees.
             return frame;
         }
         BrowserFrame displaced = pending;
@@ -62,10 +59,10 @@ public final class FrameSlot implements AutoCloseable {
     }
 
     /**
-     * Nimmt das wartende Bild heraus.
+     * Takes out the waiting image.
      *
-     * @return das Bild, oder {@code null}, wenn seit dem letzten Abruf keines
-     *         kam. <b>Der Aufrufer besitzt es danach.</b>
+     * @return the image, or {@code null} if none arrived since the last
+     *         retrieval. <b>The caller owns it afterwards.</b>
      */
     public synchronized BrowserFrame poll() {
         BrowserFrame found = pending;
@@ -73,21 +70,21 @@ public final class FrameSlot implements AutoCloseable {
         return found;
     }
 
-    /** Wartet gerade ein Bild? Nur für Anzeigen — es kann sofort veraltet sein. */
+    /** Is an image waiting right now? Only for display — it can be stale at once. */
     public synchronized boolean hasFrame() {
         return pending != null;
     }
 
-    /** Wie viele Bilder verdrängt wurden. Ein Maß dafür, wie weit der Browser vorausläuft. */
+    /** How many images were displaced. A measure of how far the browser runs ahead. */
     public synchronized long dropped() {
         return dropped;
     }
 
     /**
-     * Schließt das Postfach und das Bild darin.
+     * Closes the mailbox and the image inside it.
      *
-     * <p>Das wartende Bild hat niemand sonst in der Hand — es abzuräumen ist
-     * hier kein versteckter Besitzwechsel, sondern der letzte, den es gibt.
+     * <p>Nobody else holds the waiting image — clearing it away here is not a
+     * hidden ownership transfer but the last one there is.
      */
     @Override
     public synchronized void close() {

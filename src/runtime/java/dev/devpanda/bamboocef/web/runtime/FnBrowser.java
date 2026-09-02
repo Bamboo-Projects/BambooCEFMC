@@ -28,82 +28,81 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 /**
- * Ein Browser ohne Fenster, dessen Bilder und Ereignisse wir selbst annehmen.
+ * A browser without a window, whose frames and events we accept ourselves.
  *
- * <p><b>Diese Fassung erbt von {@link CefBrowser_N} und nicht von
- * {@code CefBrowserOsr}.</b> Upstreams {@code CefBrowserOsr} ist nicht die
- * zusammengestrichene Klasse des CinemaMod-Forks: Ihr Konstruktor baut eine
- * AWT-{@code GLCanvas} über JOGL auf, malt in deren GL-Kontext und hält das
- * Rechteck der Ansicht privat. In einem Spiel, das seinen eigenen GL-Kontext
- * führt und JOGL nicht mitliefert, ist davon nichts brauchbar.
+ * <p><b>This variant inherits from {@link CefBrowser_N} and not from
+ * {@code CefBrowserOsr}.</b> Upstream's {@code CefBrowserOsr} is not the
+ * stripped-down class of the CinemaMod fork: its constructor builds an AWT
+ * {@code GLCanvas} via JOGL, paints into its GL context, and keeps the view
+ * rectangle private. In a game that runs its own GL context and does not ship
+ * JOGL, none of that is usable.
  *
- * <p>Was bleibt, ist die Ebene darunter. {@code CefBrowser_N} bringt
- * Erzeugung, Größenänderung und Eingabe mit; {@link CefRenderHandler} ist eine
- * Schnittstelle, die jeder selbst erfüllen kann. Der Prüfstand
- * {@code tools/runtime/probe/OsrBrowser.java} hat genau diese Bauform gemessen,
- * bevor sie hier gelandet ist.
+ * <p>What remains is the layer below. {@code CefBrowser_N} brings creation,
+ * resizing and input; {@link CefRenderHandler} is an interface anyone can
+ * fulfil themselves. The test rig
+ * {@code tools/runtime/probe/OsrBrowser.java} measured exactly this shape
+ * before it landed here.
  *
- * <p><b>Die Eingabe muss hier stehen und kann nirgends sonst.</b>
- * {@code sendKeyEventRaw}, {@code sendMouseEvent} und
- * {@code sendMouseWheelEvent} sind auf {@code CefBrowser_N}
- * {@code protected}. Nur wer erbt, kommt heran. Die Entscheidungen — welcher
- * Klick der wievielte war, welche Taste an wen geht — stehen deshalb
- * woanders, in Klassen ohne Chromium darin; hier steht nur die Übersetzung
- * und die Weitergabe.
+ * <p><b>The input has to live here and can live nowhere else.</b>
+ * {@code sendKeyEventRaw}, {@code sendMouseEvent} and
+ * {@code sendMouseWheelEvent} are {@code protected} on {@code CefBrowser_N}.
+ * Only a subclass can reach them. The decisions — which click was the nth one,
+ * which key goes to whom — therefore live elsewhere, in classes with no
+ * Chromium in them; here lives only the translation and the forwarding.
  *
- * <p><b>Der Puffer wird nur geliehen.</b> Was hinausgeht, ist ein
- * {@link BorrowedFrame} — gültig, solange dieser Aufruf läuft, und mit dem
- * besitzenden Bild absichtlich nicht verwandt.
+ * <p><b>The buffer is only borrowed.</b> What goes out is a
+ * {@link BorrowedFrame} — valid as long as this call runs, and deliberately
+ * unrelated to the image that owns it.
  */
 public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
 
     /**
-     * Was ein Browser meldet.
+     * What a browser reports.
      *
-     * <p>Alles hier kommt im Renderthread an, solange die Runtime Chromiums
-     * Nachrichtenschleife dort pumpt — außer {@link #cursorChanged(int)}, das
-     * auch von Chromiums eigenen Threads kommen kann.
+     * <p>Everything here arrives on the render thread, as long as the runtime
+     * pumps Chromium's message loop there — except {@link #cursorChanged(int)},
+     * which can also come from Chromium's own threads.
      */
     public interface Events {
 
-        /** Ein neues Bild der Hauptansicht. Der Puffer gilt nur in diesem Aufruf. */
+        /** A new frame of the main view. The buffer is valid only in this call. */
         void frame(BorrowedFrame frame);
 
         /**
-         * Ein neues Bild eines aufgeklappten Feldes.
+         * A new frame of a dropdown popup.
          *
-         * <p>Der Puffer ist so groß wie das Feld, nicht wie die Seite, und die
-         * geänderten Bereiche zählen von der Ecke des Feldes.
+         * <p>The buffer is the size of the popup, not the page, and the dirty
+         * regions count from the corner of the popup.
          */
         void popupFrame(BorrowedFrame frame);
 
-        /** Ein Feld klappt auf oder zu. */
+        /** A popup opens or closes. */
         void popupShown(boolean shown);
 
-        /** Wo das Feld liegt, in Browser-Pixeln der Hauptansicht. */
+        /** Where the popup lies, in browser pixels of the main view. */
         void popupPlaced(int x, int y, int width, int height);
 
-        /** Chromium hätte gern einen anderen Mauszeiger. */
+        /** Chromium would like a different mouse cursor. */
         void cursorChanged(int cefCursorType);
 
         /**
-         * Chromium hat das Schließen bestätigt.
+         * Chromium has confirmed the close.
          *
-         * <p>Kommt nach {@code close(true)} und aus der Nachrichtenschleife —
-         * also später, nicht sofort. Wer beim Herunterfahren darauf wartet,
-         * muss pumpen.
+         * <p>Comes after {@code close(true)} and out of the message loop — so
+         * later, not immediately. Whoever waits for it during shutdown must
+         * pump.
          */
         void browserClosed();
     }
 
     /**
-     * Ein Bauteil, das nie gezeigt wird.
+     * A component that is never shown.
      *
-     * <p><b>Warum nicht null.</b> {@code CefClient.onTakeFocus} ruft darauf
-     * {@code getParent()}, ohne zu prüfen — mit null endet der erste Tabulator
-     * im Editor in einer {@code NullPointerException}. Gemessen im Prüfstand,
-     * nicht vermutet. Die peerlose Komponente aus dem Eingabe-Adapter tut es:
-     * Sie hat keinen Vater, und die Fokuswanderung endet still.
+     * <p><b>Why not null.</b> {@code CefClient.onTakeFocus} calls
+     * {@code getParent()} on it without checking — with null the first tab in
+     * the editor ends in a {@code NullPointerException}. Measured in the test
+     * rig, not guessed. The peerless component from the input adapter does the
+     * job: it has no parent, and the focus traversal ends quietly.
      */
     private static final Component NO_SURFACE =
             dev.devpanda.bamboocef.web.input.AwtEventSource.SOURCE;
@@ -112,11 +111,11 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
     private final boolean transparent;
 
     /**
-     * Eine laufende Nummer je Browser.
+     * A running number per browser.
      *
-     * <p>Sie steht in jeder Spurzeile. Ohne sie lässt sich bei zwei
-     * gleichzeitig offenen Browsern nicht sagen, welcher gerade was tat — und
-     * genau das ist die Frage bei der Meldung, die ohne Stapel kommt.
+     * <p>It appears in every trace line. Without it, with two browsers open at
+     * once, there is no telling which one just did what — and that is exactly
+     * the question with the error that arrives without a stack trace.
      */
     private static final java.util.concurrent.atomic.AtomicInteger COUNTER =
             new java.util.concurrent.atomic.AtomicInteger();
@@ -126,16 +125,17 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
     private boolean firstPaintSeen;
 
     /**
-     * Schreibt einen Schritt im Leben dieses Browsers mit.
+     * Records one step in the life of this browser.
      *
-     * <p><b>Wozu.</b> Im neuen Weg erscheint bei jeder Browsererzeugung ein
-     * bis sieben Mal {@code Exception in thread "Render thread"} — ohne
-     * Stapel, ohne Meldung, ohne dass einer unserer Rückrufe etwas meldet.
-     * Solange sich die Herkunft nicht fassen lässt, hilft nur, den Zeitpunkt
-     * einzugrenzen: Wenn die Kopfzeilen im Protokoll immer zwischen denselben
-     * beiden Schritten stehen, ist das die halbe Antwort.
+     * <p><b>What for.</b> On the new route, every browser creation produces
+     * {@code Exception in thread "Render thread"} one to seven times — with no
+     * stack trace, no message, and without any of our callbacks reporting
+     * anything. As long as the origin cannot be pinned down, the only help is
+     * to narrow down the moment: if the header lines in the log always sit
+     * between the same two steps, that is half the answer.
      *
-     * <p>Hinter {@code -Dfn.cef.trace=true}, weil es im Alltag Lärm wäre.
+     * <p>Behind {@code -Dfn.cef.trace=true}, because in everyday use it would
+     * be noise.
      */
     private void trace(String step) {
         if (FnCefRuntime.TRACE) {
@@ -145,23 +145,23 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
         }
     }
 
-    // Umgeht CEF-Fehler 1437: Ein Rechteck der Größe null lässt Chromium gar
-    // nicht erst anfangen zu malen.
+    // Works around CEF bug 1437: a rectangle of size zero keeps Chromium from
+    // even starting to paint.
     private final Rectangle viewRect = new Rectangle(0, 0, 1, 1);
 
     /**
-     * Öffnet einen Browser am Client dieser Fassung.
+     * Opens a browser on this variant's client.
      *
-     * <p>Die Fabrik steht hier und nicht beim Aufrufer, weil es diese Klasse
-     * zweimal gibt — einmal auf MCEF, einmal auf der eigenen
-     * Laufzeitumgebung. Woher der Client kommt, weiß nur die jeweilige
-     * Fassung; alles davor bleibt davon unberührt.
+     * <p>The factory lives here and not at the caller, because this class
+     * exists twice — once on MCEF, once on our own runtime. Where the client
+     * comes from only the respective variant knows; everything above it stays
+     * untouched by that.
      */
     public static FnBrowser open(String url, boolean transparent, Events events) {
-        // Sechzig Bilder je Sekunde, gesetzt über CefBrowserSettings.
+        // Sixty frames per second, set via CefBrowserSettings.
         //
-        // Der Umgebungsvariablen-Behelf des Proof-of-Concept ist damit
-        // erledigt: Upstream kennt das Feld, der Fork kannte es nicht.
+        // This retires the proof-of-concept's environment-variable stopgap:
+        // upstream knows the field, the fork did not.
         CefBrowserSettings settings = new CefBrowserSettings();
         settings.windowless_frame_rate = 60;
         return new FnBrowser(CefHost.client(), url, transparent, settings, events);
@@ -174,7 +174,7 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
         this.events = events;
     }
 
-    // ---- Was CefBrowser_N von einer Unterklasse verlangt --------------------
+    // ---- What CefBrowser_N demands from a subclass --------------------------
 
     @Override
     public void createImmediately() {
@@ -182,9 +182,9 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
         if (getNativeRef("CefBrowser") != 0) {
             return;
         }
-        // Der Fensterhalter ist null, weil es kein Fenster gibt, und osr ist
-        // wahr — daran und nur daran erkennt CEF, dass es die Bilder liefern
-        // statt zeichnen soll.
+        // The window handle is null because there is no window, and osr is
+        // true — by that and only that does CEF recognise that it should
+        // deliver the frames rather than draw them.
         createBrowser(getClient(), 0, getUrl(), true, transparent, null, getRequestContext());
         trace("createBrowser zurück");
     }
@@ -200,10 +200,10 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
     }
 
     /**
-     * Entwicklerwerkzeuge als eingebetteter Browser gibt es nicht.
+     * There are no developer tools as an embedded browser.
      *
-     * <p>Der Weg über den Debug-Port bleibt offen und ist der, den wir
-     * benutzen — er braucht diese Methode nicht.
+     * <p>The route via the debug port stays open and is the one we use — it
+     * does not need this method.
      */
     @Override
     protected CefBrowser_N createDevToolsBrowser(CefClient client, String url,
@@ -211,20 +211,20 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
         return null;
     }
 
-    /** Ein Bildschirmfoto über den GL-Kontext gibt es nicht — es gibt keinen. */
+    /** There is no screenshot via the GL context — there is none. */
     @Override
     public CompletableFuture<BufferedImage> createScreenshot(boolean nativeResolution) {
         return CompletableFuture.completedFuture(null);
     }
 
-    // ---- Größe --------------------------------------------------------------
+    // ---- Size ---------------------------------------------------------------
 
     /**
-     * Setzt die Größe des unsichtbaren Fensters.
+     * Sets the size of the invisible window.
      *
-     * <p>Beides ist nötig: das Rechteck, das {@link #getViewRect} zurückgibt,
-     * und die Meldung an Chromium. Ohne das Rechteck malt es in der alten
-     * Größe weiter, ohne die Meldung malt es gar nicht neu.
+     * <p>Both are needed: the rectangle that {@link #getViewRect} returns, and
+     * the notification to Chromium. Without the rectangle it keeps painting at
+     * the old size, without the notification it does not repaint at all.
      */
     public void resize(int width, int height) {
         int safeWidth = Math.max(1, width);
@@ -245,7 +245,7 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
         return viewRect.height;
     }
 
-    // ---- Was hereinkommt ---------------------------------------------------
+    // ---- What comes in -----------------------------------------------------
 
     @Override
     public Rectangle getViewRect(CefBrowser browser) {
@@ -297,12 +297,12 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
     }
 
     /**
-     * Wo das aufgeklappte Feld hingehört.
+     * Where the dropdown popup belongs.
      *
-     * <p><b>Kann vor dem ersten Bild kommen und über den Rand hinausragen.</b>
-     * Chromium meldet die gewünschte Lage, nicht die zurechtgeschnittene.
-     * Beschnitten wird deshalb beim Zeichnen und nicht hier — was hier
-     * ankommt, ist die Wahrheit über das Feld und soll sie bleiben.
+     * <p><b>Can come before the first frame and stick out past the edge.</b>
+     * Chromium reports the desired position, not the clipped one. Clipping
+     * therefore happens at drawing time and not here — what arrives here is the
+     * truth about the popup and shall stay that way.
      */
     @Override
     public void onPopupSize(CefBrowser browser, Rectangle size) {
@@ -314,60 +314,59 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
 
 
     /**
-     * Chromium bestätigt das Schließen.
+     * Chromium confirms the close.
      *
-     * <p><b>Erst hier ist der Browser weg</b>, nicht schon bei
-     * {@code close(true)} — das ist eine Bitte. Die Bestätigung kommt aus der
-     * Nachrichtenschleife und damit aus dem Pumpthread.
+     * <p><b>Only here is the browser gone</b>, not already at
+     * {@code close(true)} — that is a request. The confirmation comes out of
+     * the message loop and thus from the pump thread.
      *
-     * <p>Der Aufruf an die Oberklasse muss zuerst kommen: Sie gibt dort
-     * eigene Verweise frei und markiert den Browser als geschlossen.
+     * <p>The call to the superclass has to come first: there it releases its
+     * own references and marks the browser as closed.
      */
     /**
-     * Ob gerade ein Fokuswechsel läuft.
+     * Whether a focus change is currently in progress.
      *
-     * <p>Kein Zustand, den jemand abfragt — nur die Bremse gegen den Kreis
-     * unten. Ein Feld ohne Nebenläufigkeitsschutz genügt: Fokus wird im
-     * Renderthread gesetzt, und die Rückmeldung kommt aus derselben
-     * Nachrichtenschleife.
+     * <p>Not a state anyone queries — only the brake against the loop below. A
+     * field without concurrency protection is enough: focus is set on the
+     * render thread, and the feedback comes out of the same message loop.
      */
     private boolean settingFocus;
 
     /**
-     * Setzt den Fokus — genau einmal je Anlass.
+     * Sets the focus — exactly once per occasion.
      *
-     * <p><b>Ohne die Bremse ist das eine Endlosschleife.</b> Gemessen im
-     * Spiel, als Stapel:
+     * <p><b>Without the brake this is an endless loop.</b> Measured in the
+     * game, as a stack trace:
      *
      * <pre>
      *   FnBrowser.setFocus(true)
-     *     → CefBrowser_N.setFocus → N_SetFocus (nativ)
+     *     → CefBrowser_N.setFocus → N_SetFocus (native)
      *         → CefClient.onGotFocus
-     *             → browser.setFocus(true)     zurück auf Anfang
+     *             → browser.setFocus(true)     back to the start
      * </pre>
      *
-     * <p>Sie läuft, bis der Stapel überläuft; der native Teil schluckt den
-     * {@code StackOverflowError} und macht weiter. Sichtbar war davon nur
-     * {@code Exception in thread "Render thread"} ohne Stapel — ein bis sieben
-     * Mal je Browsererzeugung, je nachdem wie oft der Bildschirm den Fokus
-     * setzt.
+     * <p>It runs until the stack overflows; the native part swallows the
+     * {@code StackOverflowError} and carries on. All that was visible of it was
+     * {@code Exception in thread "Render thread"} without a stack trace — one
+     * to seven times per browser creation, depending on how often the screen
+     * sets the focus.
      *
-     * <p><b>Der CinemaMod-Fork hat den Rückschlag nicht:</b> Dessen
-     * {@code CefClient.onGotFocus} reicht die Meldung nur an den
-     * Fokus-Handler weiter, upstream setzt zusätzlich den Fokus erneut. Das
-     * ist der Grund, warum derselbe Bildschirm auf MCEF keine einzige dieser
-     * Meldungen erzeugt.
+     * <p><b>The CinemaMod fork does not have the feedback loop:</b> its
+     * {@code CefClient.onGotFocus} only forwards the notification to the focus
+     * handler, whereas upstream additionally sets the focus again. That is the
+     * reason the same screen on MCEF produces not a single one of these
+     * messages.
      *
-     * <p>Der Kreis lässt sich nur hier brechen: Die andere Hälfte gehört
-     * upstream, und ein Patch dafür wäre ein Patch gegen fremdes
-     * Fokusverhalten statt gegen eine fehlende Möglichkeit.
+     * <p>The loop can only be broken here: the other half belongs to upstream,
+     * and a patch for it would be a patch against foreign focus behaviour
+     * rather than against a missing capability.
      */
     @Override
     public void setFocus(boolean enable) {
         if (settingFocus) {
-            // Das ist Chromiums Rückmeldung auf den Fokus, den wir gerade
-            // setzen. Sie noch einmal weiterzureichen hieße, sie ein drittes
-            // Mal zu bekommen.
+            // This is Chromium's feedback to the focus we are currently
+            // setting. Forwarding it once more would mean getting it a third
+            // time.
             return;
         }
         settingFocus = true;
@@ -394,12 +393,12 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
     }
 
     /**
-     * Chromium hätte gern einen anderen Mauszeiger.
+     * Chromium would like a different mouse cursor.
      *
-     * <p><b>Was hier ankommt, ist eine AWT-Kennung und kein CEF-Zeiger.</b>
-     * Der native Teil dieser Fassung übersetzt bereits — siehe
-     * {@link AwtCursors}. Weitergereicht wird die Ordnungszahl von Chromium,
-     * damit alles dahinter für beide Wege gleich aussieht.
+     * <p><b>What arrives here is an AWT identifier and not a CEF cursor.</b>
+     * The native part of this variant already translates — see
+     * {@link AwtCursors}. Chromium's ordinal is passed on, so that everything
+     * downstream looks the same for both routes.
      */
     @Override
     public boolean onCursorChange(CefBrowser browser, int cursorType) {
@@ -407,8 +406,8 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
             int cefType = AwtCursors.toCefCursorType(cursorType);
             guarded("onCursorChange", () -> events.cursorChanged(cefType));
         }
-        // Wahr heißt: Wir haben uns gekümmert. Chromium versucht sonst, selbst
-        // einen Zeiger zu setzen — auf ein Fenster, das es nicht gibt.
+        // True means: we have taken care of it. Otherwise Chromium tries to set
+        // a cursor itself — on a window that does not exist.
         return true;
     }
 
@@ -449,38 +448,38 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
         return regions;
     }
 
-    // ---- Was hinausgeht ----------------------------------------------------
+    // ---- What goes out -----------------------------------------------------
 
     /**
-     * Eine Mausbewegung.
+     * A mouse movement.
      *
-     * @param leaving wahr, wenn der Zeiger die Fläche verlässt — Chromium
-     *                braucht das, um Schwebezustände zurückzunehmen, sonst
-     *                bleibt der zuletzt berührte Knopf für immer hell
+     * @param leaving true when the cursor leaves the surface — Chromium needs
+     *                this to undo hover states, otherwise the last button
+     *                touched stays highlighted forever
      */
     public void moveMouse(int x, int y, int modifiers, boolean leaving) {
         int awt = AwtMouseEvents.toAwtModifiers(modifiers);
         if (leaving) {
             sendMouseEvent(AwtMouseEvents.exited(x, y, awt));
         } else {
-            // Mit gedrückter Taste ist es ein Ziehen und keine Bewegung.
-            // Chromium unterscheidet beides, und eine Textauswahl entsteht
-            // nur beim Ziehen.
+            // With a button held down it is a drag and not a move. Chromium
+            // distinguishes the two, and a text selection only comes about
+            // during a drag.
             sendMouseEvent(AwtMouseEvents.moved(x, y, awt,
                     AwtMouseEvents.anyButtonDown(modifiers)));
         }
     }
 
     /**
-     * Eine Maustaste geht herunter oder herauf.
+     * A mouse button goes down or up.
      *
-     * <p><b>Kein eigenes {@code MOUSE_CLICKED}.</b> Chromium baut den Klick
-     * aus Herunter und Herauf; ein zusätzliches Ereignis wäre ein zweiter
-     * Klick und verfälschte Doppel- und Dreifachklicks.
+     * <p><b>No {@code MOUSE_CLICKED} of its own.</b> Chromium builds the click
+     * out of down and up; an additional event would be a second click and
+     * would falsify double and triple clicks.
      *
-     * @param cefButton  Chromiums Zählung, nicht Minecrafts
-     * @param clickCount 1, 2 oder 3 — daran und nur daran erkennt Chromium
-     *                   einen Doppelklick
+     * @param cefButton  Chromium's numbering, not Minecraft's
+     * @param clickCount 1, 2 or 3 — by that and only that does Chromium
+     *                   recognise a double click
      */
     public void clickMouse(int x, int y, boolean down, int cefButton,
                            int clickCount, int modifiers) {
@@ -493,24 +492,23 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
     }
 
     /**
-     * Das Rad dreht sich.
+     * The wheel turns.
      *
-     * <p>Der Aufrufer meldet die Strecke, schon mit dem Faktor drei je Rastung
-     * multipliziert. AWT trennt beides wieder: {@code wheelRotation} zählt die
-     * Rastungen, {@code scrollAmount} die Zeilen je Rastung, und der native
-     * Teil rechnet aus dem Produkt dasselbe Delta.
+     * <p>The caller reports the distance, already multiplied by the factor of
+     * three per notch. AWT splits the two apart again: {@code wheelRotation}
+     * counts the notches, {@code scrollAmount} the lines per notch, and the
+     * native part computes the same delta from the product.
      *
-     * <p><b>Das Vorzeichen geht unverändert durch</b> — gemessen, nicht
-     * geraten: {@code wheelRotation +1} erzeugt in der Seite
-     * {@code deltaY -2.0}, also hinauf, und Minecrafts Delta ist beim Drehen
-     * nach oben positiv.
+     * <p><b>The sign passes through unchanged</b> — measured, not guessed:
+     * {@code wheelRotation +1} produces {@code deltaY -2.0} in the page, so
+     * upward, and Minecraft's delta is positive when scrolling up.
      */
     public void scrollMouse(int x, int y, double amount, int modifiers) {
         int notches = (int) Math.round(amount / UNITS_PER_NOTCH);
         if (notches == 0) {
-            // Eine Bewegung, die zu klein für eine Rastung ist, darf trotzdem
-            // nicht verschwinden — sonst fühlt sich langsames Scrollen an, als
-            // reagierte die Seite nicht.
+            // A movement too small for a notch must still not vanish —
+            // otherwise slow scrolling feels as if the page were not
+            // responding.
             if (amount == 0) {
                 return;
             }
@@ -520,32 +518,33 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
                 AwtMouseEvents.toAwtModifiers(modifiers)));
     }
 
-    /** Zeilen je Rastung, von MCEF übernommen und dort erprobt. */
+    /** Lines per notch, adopted from MCEF and proven there. */
     private static final int UNITS_PER_NOTCH = 3;
 
     private static int tracedKeys;
 
     /**
-     * Fängt ab, was sonst in JNI verschwindet.
+     * Catches what would otherwise vanish into JNI.
      *
-     * <p><b>Eine Ausnahme aus einem Rückruf ist unsichtbar.</b> Der native
-     * Teil meldet sie über {@code ExceptionDescribe}; die Kopfzeile landet auf
-     * der nackten Standardfehlerausgabe, der Stapel im Protokoll — und weil
-     * beides verschiedene Wege nimmt, steht am Ende ein „Exception in thread"
-     * ohne alles dahinter. Gemessen genau so, beim ersten Lauf im Spiel.
+     * <p><b>An exception out of a callback is invisible.</b> The native part
+     * reports it via {@code ExceptionDescribe}; the header line lands on the
+     * bare standard error output, the stack trace in the log — and because the
+     * two take different paths, all that is left in the end is an "Exception in
+     * thread" with nothing behind it. Measured exactly like that, on the first
+     * run in the game.
      *
-     * <p>Deshalb wird hier gefangen und ordentlich geschrieben. Weiterwerfen
-     * hätte niemandem geholfen: Chromium kann mit einer Ausnahme aus einem
-     * Rückruf nichts anfangen und macht ohnehin weiter.
+     * <p>That is why it is caught here and written properly. Rethrowing would
+     * have helped no one: Chromium can do nothing with an exception out of a
+     * callback and carries on regardless.
      */
     private static final java.util.Set<String> SEEN = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     /**
-     * Schreibt jeden Rückruf einmal ins Protokoll.
+     * Writes each callback to the log once.
      *
-     * <p>Nur für die Fehlersuche: Welche Rückrufe Chromium in welcher
-     * Reihenfolge macht, steht in keiner Dokumentation, und eine Ausnahme aus
-     * einem davon kommt ohne Stapel an.
+     * <p>For debugging only: which callbacks Chromium makes in which order is
+     * documented nowhere, and an exception out of one of them arrives without
+     * a stack trace.
      */
     private static void countCall(String what) {
         if (FnCefRuntime.TRACE && SEEN.add(what)) {
@@ -564,14 +563,14 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
     }
 
     /**
-     * Schreibt die ersten Tastendrücke ins Protokoll — roh.
+     * Writes the first key presses to the log — raw.
      *
-     * <p><b>Wozu, obwohl der Prüfstand grün ist.</b> Dort kam der Scancode aus
-     * {@code glfwGetKeyScancode}; hier kommt er aus Minecrafts Tastenrückruf.
-     * Dass beide dieselbe Kodierung tragen, ist wahrscheinlich und
-     * unbewiesen — und fehlte das Bit 0x100 hier, wäre der Adapter im Spiel
-     * still falsch, obwohl jede Messung stimmt. Zehn Zeilen im Protokoll
-     * beantworten das einmal und für immer.
+     * <p><b>What for, even though the test rig is green.</b> There the scancode
+     * came from {@code glfwGetKeyScancode}; here it comes from Minecraft's key
+     * callback. That both carry the same encoding is likely and unproven — and
+     * if the 0x100 bit were missing here, the adapter would be quietly wrong in
+     * the game even though every measurement is correct. Ten lines in the log
+     * answer that once and for all.
      */
     private static void traceFirstKeys(int glfwKeyCode, int scanCode, int modifiers,
             boolean down) {
@@ -588,20 +587,20 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
     }
 
     /**
-     * Eine Taste geht herunter oder herauf.
+     * A key goes down or up.
      *
-     * <p><b>Warum {@code sendKeyEventRaw} und nicht {@code sendKeyEvent}.</b>
-     * Auf Windows liest der native Teil den Scancode aus dem Feld
-     * {@code java.awt.event.KeyEvent.scancode} — ein privates Feld, das nur
-     * der native AWT-Code füllt. Ein selbst gebautes Ereignis trägt dort null,
-     * und aus null macht {@code MapVirtualKey} für jede Taste den virtuellen
-     * Tastencode null: Chromium erkennt dann keine einzige Taste. Deshalb der
-     * Patch, der die Werte als Parameter nimmt.
+     * <p><b>Why {@code sendKeyEventRaw} and not {@code sendKeyEvent}.</b> On
+     * Windows the native part reads the scancode from the field
+     * {@code java.awt.event.KeyEvent.scancode} — a private field that only the
+     * native AWT code fills. A self-built event carries zero there, and out of
+     * zero {@code MapVirtualKey} makes the virtual key code zero for every key:
+     * Chromium then recognises not a single key. Hence the patch that takes the
+     * values as parameters.
      *
-     * <p><b>Und warum der Scancode zerlegt wird.</b> GLFW führt „erweiterte
-     * Taste" als Bit 8, Windows erwartet es an anderer Stelle. Pfeiltasten und
-     * Ziffernblock teilen sich die unteren acht Bit; wer das Kennzeichen
-     * verliert, bekommt für Pfeil-hoch die Acht des Ziffernblocks.
+     * <p><b>And why the scancode is taken apart.</b> GLFW carries "extended
+     * key" as bit 8, Windows expects it in a different place. Arrow keys and
+     * numpad share the lower eight bits; whoever loses the marker gets, for
+     * arrow-up, the eight of the numpad.
      */
     public void sendKey(int glfwKeyCode, int scanCode, int modifiers, boolean down) {
         traceFirstKeys(glfwKeyCode, scanCode, modifiers, down);
@@ -616,30 +615,29 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
         }
     }
 
-    /** Was Chromium für einen Zeilenumbruch sehen will. */
+    /** What Chromium wants to see for a line break. */
     private static final char CARRIAGE_RETURN = '\r';
 
     /**
-     * Ob nach diesem Tastendruck noch ein Wagenrücklauf gehört.
+     * Whether a carriage return still belongs after this key press.
      *
-     * <p><b>Die Eingabetaste ist die eine Taste, die beides braucht</b> — den
-     * Tastendruck <i>und</i> ein Zeichen. Upstreams eigener Quelltext sagt es
-     * im Zweig für Linux ausdrücklich: „We need to treat the enter key as a
-     * key press of character \r. This is apparently just how webkit handles it
-     * and what it expects." Unter Windows liefert das Betriebssystem nach der
-     * Tastenmeldung genau dafür eine Zeichenmeldung nach.
+     * <p><b>The Enter key is the one key that needs both</b> — the key press
+     * <i>and</i> a character. Upstream's own source says so explicitly in the
+     * branch for Linux: "We need to treat the enter key as a key press of
+     * character \r. This is apparently just how webkit handles it and what it
+     * expects." On Windows the operating system sends a character message after
+     * the key message for exactly this purpose.
      *
-     * <p>Bei uns kam sie nie an: {@code KEY_TYPED} entsteht ausschließlich aus
-     * Minecrafts {@code charTyped}, und das wird für die Eingabetaste nicht
-     * gerufen — sie ist kein druckbares Zeichen. Der Tastendruck kam an, der
-     * Zeilenumbruch nicht. Gefunden hat das die Handprüfung; die maschinelle
-     * Matrix hatte für die Eingabetaste den Tastencode geprüft und nicht den
-     * Text.
+     * <p>For us it never arrived: {@code KEY_TYPED} comes solely from
+     * Minecraft's {@code charTyped}, and that is not called for the Enter key —
+     * it is not a printable character. The key press arrived, the line break
+     * did not. The manual check found it; the automated matrix had checked the
+     * key code for the Enter key and not the text.
      *
-     * <p><b>Nicht mit Strg oder Alt.</b> Dann ist die Eingabetaste ein
-     * Tastenkürzel und kein Zeilenumbruch — ein Zeichen hinterherzuschicken
-     * schriebe eine Zeile, die niemand wollte. Umschalt bleibt erlaubt:
-     * Umschalt+Eingabe ist in einem Editor ein Zeilenumbruch wie jeder andere.
+     * <p><b>Not with Ctrl or Alt.</b> Then the Enter key is a keyboard shortcut
+     * and not a line break — sending a character after it would write a line
+     * nobody wanted. Shift stays allowed: Shift+Enter is a line break in an
+     * editor like any other.
      */
     private static boolean needsCarriageReturn(int glfwKeyCode, int modifiers) {
         boolean enter = glfwKeyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
@@ -649,20 +647,21 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
     }
 
     /**
-     * Ein getipptes Zeichen.
+     * A typed character.
      *
-     * <p><b>Nur aus {@code charTyped}, nie aus einem Tastencode abgeleitet.</b>
-     * Was auf einer deutschen Tastatur ein Umlaut ist, weiß das
-     * Betriebssystem. Wer zusätzlich aus dem Tastendruck ein Zeichen bauen
-     * wollte, bekäme jeden Buchstaben zweimal.
+     * <p><b>Only from {@code charTyped}, never derived from a key code.</b>
+     * What is an umlaut on a German keyboard, the operating system knows.
+     * Whoever additionally wanted to build a character from the key press would
+     * get every letter twice.
      *
-     * <p><b>Ohne Strg und Alt.</b> Gemessen: Ein Zeichen mit Strg kommt gar
-     * nicht an — Chromium deutet es als Steuerzeichen. Windows meldet AltGr
-     * als Strg + rechtes Alt, und damit hinge auf einer deutschen Tastatur an
-     * jedem {@code @}, {@code €}, {@code \}, {@code |} und {@code ~} ein Strg.
+     * <p><b>Without Ctrl and Alt.</b> Measured: a character with Ctrl does not
+     * arrive at all — Chromium interprets it as a control character. Windows
+     * reports AltGr as Ctrl + right Alt, and with that, on a German keyboard,
+     * every {@code @}, {@code €}, {@code \}, {@code |} and {@code ~} would have
+     * a Ctrl hanging off it.
      *
-     * <p>Die Grenze: {@code char} ist sechzehn Bit breit. Alles bis
-     * {@code U+FFFF} geht; Zeichen darüber kämen als zwei Hälften an.
+     * <p>The limit: {@code char} is sixteen bits wide. Everything up to
+     * {@code U+FFFF} works; characters above it would arrive as two halves.
      */
     public void sendChar(char typed, int modifiers) {
         sendKeyEventRaw(KeyEvent.KEY_TYPED,

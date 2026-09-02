@@ -8,10 +8,10 @@ import net.minecraft.client.gui.GuiGraphics;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Ein Overlay: eine {@link SessionSurface} und ein Rechteck in Bildschirmpunkten.
+ * An overlay: a {@link SessionSurface} and a rectangle in screen points.
  *
- * <p>Zeichnen, Fokus und Eingaben — alles, was über die Fläche hinausgeht.
- * Paketprivat: Nach außen zählt {@link WebOverlay}.
+ * <p>Drawing, focus, and input — everything that goes beyond the surface.
+ * Package-private: to the outside, {@link WebOverlay} is what counts.
  */
 final class OverlayImpl implements WebOverlay {
 
@@ -27,7 +27,7 @@ final class OverlayImpl implements WebOverlay {
         this.view = view;
     }
 
-    // ---- Lage -----------------------------------------------------------------
+    // ---- Position -------------------------------------------------------------
 
     @Override
     public WebSurface surface() {
@@ -69,14 +69,14 @@ final class OverlayImpl implements WebOverlay {
         surface.resize(view.browserWidth(), view.browserHeight());
     }
 
-    // ---- Zeichnen ---------------------------------------------------------------
+    // ---- Drawing ----------------------------------------------------------------
 
     /**
-     * Ein Bild — aus der Oberflächenschicht, unter jedem Bildschirm.
+     * One frame — from the GUI layer, beneath any screen.
      *
-     * <p><b>Die Skalierung wird hier geprüft, nicht gemeldet.</b> Es gibt
-     * kein Ereignis, das einen Wechsel der GUI-Skalierung ansagt; der
-     * Vergleich je Bild ist billiger als jede Suche nach einem Haken.
+     * <p><b>The scale is checked here, not announced.</b> There is no event
+     * that signals a change of the GUI scale; the per-frame comparison is
+     * cheaper than any search for a hook.
      */
     void draw(GuiGraphics graphics, double guiScale) {
         if (!visible || !alive()) {
@@ -114,7 +114,7 @@ final class OverlayImpl implements WebOverlay {
         }
     }
 
-    // ---- Fokus ------------------------------------------------------------------
+    // ---- Focus ------------------------------------------------------------------
 
     @Override
     public OverlayFocus focus() {
@@ -141,7 +141,7 @@ final class OverlayImpl implements WebOverlay {
         }
     }
 
-    /** Der Mausbildschirm ist weg, gleich warum — dann ist auch der Mausfokus weg. */
+    /** The mouse screen is gone, no matter why — then the mouse focus is gone too. */
     void mouseScreenGone() {
         if (focus == OverlayFocus.MOUSE) {
             focus = OverlayFocus.NONE;
@@ -150,12 +150,12 @@ final class OverlayImpl implements WebOverlay {
         }
     }
 
-    // ---- Eingaben aus der Tastaturschicht ----------------------------------------
+    // ---- Input from the keyboard layer -------------------------------------------
 
     /**
-     * Eine Taste, wie GLFW sie meldet.
+     * A key as GLFW reports it.
      *
-     * @return ob die Fläche sie behält
+     * @return whether the surface keeps it
      */
     boolean keyPress(int glfwKey, int scanCode, int action, int modifiers) {
         if (action == GLFW.GLFW_RELEASE) {
@@ -168,7 +168,7 @@ final class OverlayImpl implements WebOverlay {
         return surface.charTyped(typed, modifiers);
     }
 
-    // ---- Ende -------------------------------------------------------------------
+    // ---- End --------------------------------------------------------------------
 
     @Override
     public boolean alive() {

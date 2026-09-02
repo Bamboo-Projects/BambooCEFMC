@@ -26,45 +26,43 @@ import java.nio.file.Path;
 import java.util.Locale;
 
 /**
- * Beweist, dass Chromium wirklich Minecrafts Bild als Hintergrund filtert.
+ * Proves that Chromium really filters Minecraft's image as a backdrop.
  *
- * <p><b>Die Frage, die dieser Nachweis beantwortet.</b> Ein
- * {@code backdrop-filter} über einer durchsichtigen Seite sieht aus, als
- * funktioniere er — er filtert dann nur nichts. Nach der CSS-Spezifikation
- * umfasst das, was gefiltert wird, ausschließlich Inhalt des Dokuments; was
- * <b>hinter</b> dem Browserfenster liegt, gehört nicht dazu. Genau deshalb
- * muss Minecrafts Bild ein Element im Dokument sein und nicht der Untergrund,
- * auf den wir zeichnen.
+ * <p><b>The question this proof answers.</b> A {@code backdrop-filter} over a
+ * transparent page looks as if it works — it just filters nothing. Per the CSS
+ * specification, what gets filtered covers exclusively content of the
+ * document; what lies <b>behind</b> the browser window is not part of it. That
+ * is precisely why Minecraft's image has to be an element in the document and
+ * not the ground we draw onto.
  *
- * <p><b>Zwei Stufen, und die Reihenfolge ist wichtig.</b>
+ * <p><b>Two stages, and the order matters.</b>
  *
  * <ol>
- *   <li><b>Außerhalb der Glasflächen</b> wird gegen die bekannten
- *       Quadrantenfarben geprüft. Stimmt das nicht, ist das Bild gar nicht
- *       angekommen — oder liegt verschoben. Dann hat es keinen Sinn, das Glas
- *       zu prüfen.</li>
- *   <li><b>Innerhalb</b> muss die Farbe des Untergrunds durchscheinen. Der
- *       Unterschied ist gewaltig und lässt sich nicht verwechseln: Eine
- *       Glasfläche über Rot ergibt etwa {@code rgb(173, 7, 10)}, dieselbe
- *       Fläche über Schwarz {@code rgb(7, 7, 10)}. Wer nur behauptet, es sehe
- *       richtig aus, kann diese beiden nicht auseinanderhalten.</li>
+ *   <li><b>Outside the glass panes</b> it is checked against the known
+ *       quadrant colours. If that does not match, the image has not arrived at
+ *       all — or lies shifted. Then there is no point in checking the
+ *       glass.</li>
+ *   <li><b>Inside</b>, the colour of the ground has to shine through. The
+ *       difference is enormous and cannot be mistaken: a glass pane over red
+ *       yields about {@code rgb(173, 7, 10)}, the same pane over black
+ *       {@code rgb(7, 7, 10)}. Whoever merely claims it looks right cannot
+ *       tell these two apart.</li>
  * </ol>
  *
- * <p><b>Der schärfste Einzelnachweis steht in der Mitte:</b> eine Glasfläche
- * über der Grenze zwischen Rot und Grün. Dort müssen <b>beide</b> Kanäle
- * deutlich über null liegen. Über Schwarz oder Transparenz ist das unmöglich,
- * gleich wie stark gefiltert wird.
+ * <p><b>The sharpest single proof is in the middle:</b> a glass pane over the
+ * boundary between red and green. There <b>both</b> channels have to be
+ * clearly above zero. Over black or transparency that is impossible, no matter
+ * how strongly it is filtered.
  *
- * <p>Das Hintergrundbild ist hier <b>künstlich</b> und nicht aus der Welt: Vier
- * bekannte Farben lassen sich nachrechnen, ein Waldstück nicht. Ob der Weg aus
- * der echten Welt funktioniert, ist eine andere Frage und wird woanders
- * gemessen.
+ * <p>The backdrop image here is <b>artificial</b> and not from the world: four
+ * known colours can be recomputed, a patch of forest cannot. Whether the route
+ * from the real world works is a different question and is measured elsewhere.
  */
 public final class BackdropProof extends Screen {
 
     private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/BackdropProof");
 
-    /** Wie weit eine unverdeckte Farbe danebenliegen darf. */
+    /** How far an unoccluded colour may be off. */
     private static final int TOLERANCE = 16;
 
     private static final String PAGE = """
@@ -123,7 +121,7 @@ public final class BackdropProof extends Screen {
     private long openedNanos;
     private boolean schemeAccepted;
 
-    /** Ab wann die Probe auf den Zwischenspeicher zu lesen ist. */
+    /** From when the cache probe is to be read. */
     private long cacheProbeAtNanos;
     private boolean cacheProbeDone;
 
@@ -135,7 +133,7 @@ public final class BackdropProof extends Screen {
         return finished;
     }
 
-    /** Öffnet den Nachweis, wenn eine Runtime da ist. */
+    /** Opens the proof when a runtime is present. */
     public static boolean openIfPossible(Minecraft client) {
         WebRuntimeStatus status = WebSupport.ensureStarted();
         if (!status.usable()) {
@@ -173,9 +171,9 @@ public final class BackdropProof extends Screen {
             Path file = Files.createTempFile("fn-backdrop", ".html");
             Files.writeString(file, page, StandardCharsets.UTF_8);
             file.toFile().deleteOnExit();
-            // Deckend: Die Seite bringt ihren Hintergrund selbst mit. Wäre der
-            // Browser durchsichtig, filterte das Glas im Ladeloch die Leere,
-            // und der Nachweis müsste beides unterscheiden können.
+            // Opaque: the page brings its own background. Were the browser
+            // transparent, during the loading gap the glass would filter the
+            // void, and the proof would have to be able to tell the two apart.
             session = BrowserSession.open(file.toUri().toString(), false,
                     view.browserWidth(), view.browserHeight(),
                     BrowserVisibility.FOREGROUND);
@@ -188,17 +186,17 @@ public final class BackdropProof extends Screen {
     }
 
     /**
-     * Legt ein Bild aus vier bekannten Farben ab.
+     * Stores an image made of four known colours.
      *
-     * <p>Rot oben links, Grün oben rechts, Blau unten links, Weiß unten
-     * rechts — dieselbe Anordnung wie beim Bildnachweis, damit eine
-     * Verwechslung denselben Fingerabdruck hinterlässt.
+     * <p>Red top left, green top right, blue bottom left, white bottom
+     * right — the same arrangement as in the render proof, so that a mix-up
+     * leaves the same fingerprint.
      *
-     * @return die Nummer der Aufnahme, oder null bei einem Fehlschlag
+     * @return the generation of the capture, or 0 on failure
      */
     private long putQuadrants(int imageWidth, int imageHeight) {
-        // Das Format ist ABGR, nicht RGBA — der Name der Methode täuscht, der
-        // Name ihres Parameters sagt die Wahrheit.
+        // The format is ABGR, not RGBA — the method's name deceives, the name
+        // of its parameter tells the truth.
         final int red = 0xFF0000FF;
         final int green = 0xFF00FF00;
         final int blue = 0xFFFF0000;
@@ -244,8 +242,8 @@ public final class BackdropProof extends Screen {
             return;
         }
         framesDrawn++;
-        // Drei Bilder abwarten: Das Bild wird nachgeladen, und die erste
-        // Zeichnung zeigt die Seite womöglich noch ohne es.
+        // Wait for three frames: the image is loaded lazily, and the first
+        // draw may still show the page without it.
         if (framesDrawn >= 3 && !checked) {
             checked = true;
             check();
@@ -279,7 +277,8 @@ public final class BackdropProof extends Screen {
 
         LOG.info("Hintergrundnachweis, Stufe 2 — filtert das Glas den Bildinhalt?");
         boolean glass = true;
-        // Über Rot: Rot muss klar durchkommen. Über Schwarz käme rgb(7,7,10).
+        // Over red: red has to come through clearly. Over black it would be
+        // rgb(7,7,10).
         glass &= dominant(pixels, fbWidth, fbHeight, 0.18, 0.18,
                 "Glas mit Blur über Rot", 'r');
         glass &= dominant(pixels, fbWidth, fbHeight, 0.72, 0.18,
@@ -300,17 +299,17 @@ public final class BackdropProof extends Screen {
     }
 
     /**
-     * Stufe 3: Hält Chromium an einem Bild fest, das es schon kennt?
+     * Stage 3: does Chromium hold on to an image it already knows?
      *
-     * <p><b>Die Messung allein beantwortet das nicht.</b> Dass die Zahl der
-     * Übertragungen gleich bleibt, kann auch daran liegen, dass die Seite aus
-     * anderen Gründen neu gezeichnet wird. Bewiesen ist es erst, wenn ein
-     * <b>anderes Bild</b> unter derselben Adresse ankommt und man es sieht.
+     * <p><b>The measurement alone does not answer that.</b> That the number of
+     * transfers stays the same may also be because the page is redrawn for
+     * other reasons. It is only proven once a <b>different image</b> arrives
+     * under the same address and one sees it.
      *
-     * <p>Deshalb: ein einfarbiges Bild ablegen, die Adresse <b>ohne</b> Nummer
-     * setzen und nachsehen, welche Farbe an einer freien Stelle steht. Kommt
-     * die neue, genügt der Kopf {@code no-store}, und die Nummer ist eine
-     * Bequemlichkeit statt einer Notwendigkeit.
+     * <p>So: store a single-colour image, set the address <b>without</b> the
+     * generation, and check which colour sits at an unoccluded spot. If the new
+     * one comes, the {@code no-store} header is enough, and the generation is a
+     * convenience rather than a necessity.
      */
     private void startCacheProbe() {
         if (!putSolidMagenta(view.browserWidth(), view.browserHeight())) {
@@ -325,7 +324,7 @@ public final class BackdropProof extends Screen {
         cacheProbeAtNanos = System.nanoTime() + 1_500_000_000L;
     }
 
-    /** Ein Bild, das mit keiner Quadrantenfarbe zu verwechseln ist. */
+    /** An image that cannot be mistaken for any quadrant colour. */
     private boolean putSolidMagenta(int imageWidth, int imageHeight) {
         final int magenta = 0xFFFF00FF;         // ABGR: A=FF, B=FF, G=00, R=FF
         try (NativeImage image = new NativeImage(imageWidth, imageHeight, false)) {
@@ -370,7 +369,7 @@ public final class BackdropProof extends Screen {
         onClose();
     }
 
-    /** Eine unverdeckte Stelle muss genau die Quadrantenfarbe zeigen. */
+    /** An unoccluded spot has to show exactly the quadrant colour. */
     private boolean exact(ByteBuffer pixels, int fbWidth, int fbHeight,
                           double across, double down, String what,
                           int red, int green, int blue) {
@@ -384,11 +383,12 @@ public final class BackdropProof extends Screen {
     }
 
     /**
-     * Hinter dem Glas muss der erwartete Kanal deutlich führen.
+     * Behind the glass the expected channel has to lead clearly.
      *
-     * <p>Die Schwellen sind grob und sollen es sein: Was hier zu unterscheiden
-     * ist, sind nicht zwei ähnliche Farben, sondern <b>Farbe gegen fast
-     * Schwarz</b>. Ein Panel über Schwarz käme auf etwa sieben in jedem Kanal.
+     * <p>The thresholds are coarse and are meant to be: what has to be
+     * distinguished here is not two similar colours, but <b>colour against
+     * near-black</b>. A panel over black would come to about seven in each
+     * channel.
      */
     private boolean dominant(ByteBuffer pixels, int fbWidth, int fbHeight,
                              double across, double down, String what, char channel) {
@@ -403,7 +403,7 @@ public final class BackdropProof extends Screen {
         return ok;
     }
 
-    /** Hinter dem Glas über Weiß muss alles hell sein. */
+    /** Behind the glass over white everything has to be bright. */
     private boolean bright(ByteBuffer pixels, int fbWidth, int fbHeight,
                            double across, double down, String what) {
         int[] found = read(pixels, fbWidth, fbHeight, across, down);
@@ -413,10 +413,10 @@ public final class BackdropProof extends Screen {
     }
 
     /**
-     * Über einer Farbgrenze müssen beide Farben zu sehen sein.
+     * Over a colour boundary both colours have to be visible.
      *
-     * <p>Der schärfste Nachweis dieser Datei: Ein gefiltertes Nichts kann
-     * niemals zwei verschiedene Kanäle gleichzeitig anheben.
+     * <p>The sharpest proof in this file: a filtered nothing can never raise
+     * two different channels at the same time.
      */
     private boolean twoChannels(ByteBuffer pixels, int fbWidth, int fbHeight,
                                 double across, double down, String what) {
@@ -427,7 +427,7 @@ public final class BackdropProof extends Screen {
         return ok;
     }
 
-    /** Auch durch zwei Schichten muss noch etwas vom Bild übrig sein. */
+    /** Even through two layers something of the image has to be left. */
     private boolean notBlack(ByteBuffer pixels, int fbWidth, int fbHeight,
                              double across, double down, String what) {
         int[] found = read(pixels, fbWidth, fbHeight, across, down);
@@ -474,8 +474,8 @@ public final class BackdropProof extends Screen {
             session.close();
             session = null;
         }
-        // Nicht geleert: Der Ablageort gehört der Sitzung, und die Messung
-        // danach braucht ihn.
+        // Not cleared: the store belongs to the session, and the measurement
+        // afterwards needs it.
         super.removed();
     }
 }

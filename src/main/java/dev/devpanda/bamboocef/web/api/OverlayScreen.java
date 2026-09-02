@@ -10,19 +10,19 @@ import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Der Bildschirm hinter dem Mausfokus.
+ * The screen behind the mouse focus.
  *
- * <p><b>Ein Bildschirm, weil die Maus nur so frei wird.</b> Ohne offenen
- * Bildschirm greift Minecraft den Zeiger beim nächsten Klick wieder
- * (MouseHandler.onPress). Dieser Bildschirm zeichnet nichts — das Overlay
- * malt sich weiter aus der Oberflächenschicht — und tut nur eines: Maus und
- * Tasten an die Fläche reichen.
+ * <p><b>A screen, because that is the only way the mouse becomes free.</b>
+ * Without an open screen, Minecraft grabs the pointer again on the next click
+ * (MouseHandler.onPress). This screen draws nothing — the overlay keeps
+ * painting itself from the GUI layer — and does only one thing: pass mouse and
+ * keys to the surface.
  *
- * <p><b>Der Spieler steht, solange der Zeiger frei ist</b> — wie in jeder
- * Oberfläche. Ein Weiterreichen der Bewegungstasten über KeyMapping.set war
- * gebaut und hat nichts bewegt: NeoForge schaltet Belegungen für das Spiel
- * ab, sobald ein Bildschirm offen ist. Was der Filter nicht nimmt, verfällt
- * hier; Escape ohne Filter gibt die Maus zurück.
+ * <p><b>The player stands still as long as the pointer is free</b> — as in
+ * every interface. Forwarding the movement keys via KeyMapping.set was built
+ * and moved nothing: NeoForge disables key bindings for the game as soon as a
+ * screen is open. What the filter does not take is lost here; Escape without a
+ * filter gives the mouse back.
  */
 final class OverlayScreen extends Screen {
 
@@ -37,7 +37,7 @@ final class OverlayScreen extends Screen {
         this.target = target;
     }
 
-    /** Schließt den Bildschirm, wenn er zu diesem Overlay gehört. */
+    /** Closes the screen if it belongs to this overlay. */
     static void closeFor(OverlayImpl overlay) {
         Minecraft client = Minecraft.getInstance();
         if (client.screen instanceof OverlayScreen screen && screen.target == overlay) {
@@ -53,8 +53,8 @@ final class OverlayScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // Kein Hintergrund, keine Fläche: Beides malt schon die Oberflächen-
-        // schicht. Hier bleibt nur der Zeiger.
+        // No background, no surface: both are already drawn by the GUI
+        // layer. Only the pointer remains here.
         int wanted = wantedCursor;
         if (wanted != appliedCursor) {
             cursor.apply(minecraft.getWindow().getWindow(), wanted);
@@ -80,7 +80,7 @@ final class OverlayScreen extends Screen {
         return target.surface();
     }
 
-    // ---- Maus -------------------------------------------------------------------
+    // ---- Mouse ------------------------------------------------------------------
 
     @Override
     public void mouseMoved(double mouseX, double mouseY) {
@@ -98,8 +98,8 @@ final class OverlayScreen extends Screen {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         BrowserView view = view();
         if (!view.contains(mouseX, mouseY)) {
-            // Ein Klick daneben gibt die Maus zurück — so, wie man ein Menü
-            // schließt, indem man woandershin klickt.
+            // A click beside it gives the mouse back — the way you close a
+            // menu by clicking somewhere else.
             target.focus(OverlayFocus.NONE);
             return true;
         }
@@ -131,7 +131,7 @@ final class OverlayScreen extends Screen {
         return true;
     }
 
-    // ---- Tasten -----------------------------------------------------------------
+    // ---- Keys -------------------------------------------------------------------
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
@@ -179,7 +179,7 @@ final class OverlayScreen extends Screen {
         return modifiers;
     }
 
-    // ---- Ende -------------------------------------------------------------------
+    // ---- End --------------------------------------------------------------------
 
     @Override
     public void removed() {

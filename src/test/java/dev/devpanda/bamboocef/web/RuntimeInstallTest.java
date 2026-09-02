@@ -21,17 +21,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Wo die Laufzeitumgebung gesucht und wie sie geholt wird.
+ * Where the runtime environment is searched for and how it is fetched.
  *
- * <p><b>Warum diese Prüfläufe wichtiger sind als die meisten.</b> Im
- * Entwicklungslauf ist {@code fn.runtime.dir} gesetzt, und damit endet die
- * Suche in der ersten Zeile. Alles dahinter — Zwischenlager, Download,
- * Prüfsumme, halb ausgepackter Ordner — wird beim Entwickeln <b>nie</b>
- * berührt und beim Spieler <b>immer</b>.
+ * <p><b>Why these test runs are more important than most.</b> In the
+ * development run {@code fn.runtime.dir} is set, and with that the
+ * search ends in the first line. Everything behind it — cache, download,
+ * checksum, half-unpacked folder — is <b>never</b> touched during
+ * development and <b>always</b> at the player's.
  *
- * <p>Der Server ist einer aus der Java-Bibliothek und läuft auf einem Port,
- * den das Betriebssystem aussucht. Kein Netz, keine fremde Adresse, keine
- * Wartezeit.
+ * <p>The server is one from the Java library and runs on a port
+ * that the operating system picks. No network, no foreign address, no
+ * waiting time.
  */
 class RuntimeInstallTest {
 
@@ -48,12 +48,12 @@ class RuntimeInstallTest {
     }
 
     /**
-     * Ein Manifest für den Prüflauf.
+     * A manifest for the test run.
      *
-     * <p>Das echte im Klassenpfad nennt seit der Auslieferung eine Adresse —
-     * wer damit {@code locate} ruft, lädt wirklich. Hier steht stattdessen,
-     * was der jeweilige Fall braucht: mit oder ohne Adresse, mit der Prüfsumme
-     * des Archivs, das der eigene Server ausliefert.
+     * <p>The real one in the classpath names an address since delivery —
+     * whoever calls {@code locate} with it really downloads. Here stands instead
+     * what the respective case needs: with or without an address, with the checksum
+     * of the archive that the own server delivers.
      */
     private static Properties manifest(String baseUrl, String sha256) {
         Properties values = new Properties();
@@ -64,10 +64,10 @@ class RuntimeInstallTest {
         return values;
     }
 
-    // ---- Die Suchreihenfolge ------------------------------------------------
+    // ---- The search order ---------------------------------------------------
 
     @Test
-    @DisplayName("Ein gesetztes fn.runtime.dir gewinnt, wenn etwas darin liegt")
+    @DisplayName("A set fn.runtime.dir wins if something lies in it")
     void configuredDirectoryWins(@TempDir Path dir, @TempDir Path game) throws IOException {
         Files.createFile(dir.resolve("jcef.jar"));
         System.setProperty("fn.runtime.dir", dir.toString());
@@ -76,7 +76,7 @@ class RuntimeInstallTest {
     }
 
     @Test
-    @DisplayName("Ein gesetztes fn.runtime.dir ohne Inhalt nennt den Bauweg")
+    @DisplayName("A set fn.runtime.dir with no content names the build path")
     void configuredButEmptyDirectorySaysHow(@TempDir Path dir, @TempDir Path game) {
         System.setProperty("fn.runtime.dir", dir.toString());
 
@@ -90,7 +90,7 @@ class RuntimeInstallTest {
     }
 
     @Test
-    @DisplayName("Sonst zählt das Zwischenlager im Spielordner")
+    @DisplayName("Otherwise the cache in the game folder counts")
     void cacheIsUsedWhenComplete(@TempDir Path game) throws IOException {
         Path cache = RuntimeInstall.cacheDir(game.toFile()).toPath();
         Files.createDirectories(cache);
@@ -100,14 +100,14 @@ class RuntimeInstallTest {
     }
 
     @Test
-    @DisplayName("Ein halb ausgepacktes Zwischenlager zählt nicht")
+    @DisplayName("A half-unpacked cache does not count")
     void halfUnpackedCacheDoesNotCount(@TempDir Path game) throws IOException {
         Path cache = RuntimeInstall.cacheDir(game.toFile()).toPath();
         Files.createDirectories(cache);
         Files.createFile(cache.resolve("jcef.jar"));
-        // Genau der Zustand, den ein Absturz beim Auspacken hinterlässt: Die
-        // Datei, an der die Suche einen fertigen Ordner erkennt, liegt schon
-        // da — der Rest fehlt.
+        // Exactly the state that a crash during unpacking leaves behind: the
+        // file by which the search recognizes a finished folder already lies
+        // there — the rest is missing.
         Files.writeString(cache.resolve(".unvollstaendig"), "abgebrochen");
         RuntimeManifest.useForTests(manifest("", "0".repeat(64)));
 
@@ -116,7 +116,7 @@ class RuntimeInstallTest {
     }
 
     @Test
-    @DisplayName("Die Fassung steht im Pfad des Zwischenlagers")
+    @DisplayName("The version stands in the cache's path")
     void cachePathCarriesTheVersion(@TempDir Path game) {
         Path cache = RuntimeInstall.cacheDir(game.toFile()).toPath();
 
@@ -125,12 +125,12 @@ class RuntimeInstallTest {
     }
 
     @Test
-    @DisplayName("Ohne hinterlegte Adresse wird nichts geladen")
+    @DisplayName("Without a stored address nothing is fetched")
     void withoutAnAddressNothingIsFetched(@TempDir Path game) {
         RuntimeManifest.useForTests(manifest("", "0".repeat(64)));
 
-        // So steht es heute im Manifest: base-url ist leer, solange keine
-        // öffentliche Adresse existiert.
+        // This is how it stands in the manifest today: base-url is empty as long as no
+        // public address exists.
         WebRuntimeUnavailable thrown = assertThrows(WebRuntimeUnavailable.class,
                 () -> RuntimeInstall.locate(game.toFile()));
 
@@ -138,23 +138,23 @@ class RuntimeInstallTest {
         assertFalse(RuntimeInstall.downloading(), "es darf kein Thread gestartet worden sein");
     }
 
-    // ---- Laden, prüfen, auspacken -------------------------------------------
+    // ---- Fetch, check, unpack -----------------------------------------------
 
     @Test
-    @DisplayName("Mit Adresse läuft der Download im Hintergrund, und der zweite Blick findet den Ordner")
+    @DisplayName("With an address the download runs in the background, and the second look finds the folder")
     void withAnAddressTheFetchRunsInTheBackground(@TempDir Path game) throws Exception {
         byte[] archive = tarGzWith("jcef.jar", "inhalt");
         String url = serve(archive);
-        // Die Adresse ohne den Dateinamen: locate hängt ihn selbst an.
+        // The address without the file name: locate appends it itself.
         RuntimeManifest.useForTests(manifest(url.substring(0, url.lastIndexOf('/')), sha256(archive)));
 
         WebRuntimeUnavailable thrown = assertThrows(WebRuntimeUnavailable.class,
                 () -> RuntimeInstall.locate(game.toFile()));
         assertEquals(WebRuntimeState.NOT_DOWNLOADED, thrown.status().state());
 
-        // Nicht auf Verdacht schlafen, sondern warten, bis der Thread fertig
-        // ist — mit einer Frist, damit ein hängender Download den Prüflauf
-        // nicht mitnimmt.
+        // Do not sleep on suspicion, but wait until the thread is
+        // done — with a deadline, so that a hanging download does not take the test run
+        // down with it.
         long deadline = System.currentTimeMillis() + 10_000;
         while (RuntimeInstall.downloading() && System.currentTimeMillis() < deadline) {
             Thread.sleep(20);
@@ -165,7 +165,7 @@ class RuntimeInstallTest {
     }
 
     @Test
-    @DisplayName("Ein Archiv wird geladen, geprüft und ausgepackt")
+    @DisplayName("An archive is fetched, checked and unpacked")
     void anArchiveIsFetchedCheckedAndUnpacked(@TempDir Path game) throws Exception {
         byte[] archive = tarGzWith("jcef.jar", "nicht wirklich eine Bibliothek");
         String url = serve(archive);
@@ -180,7 +180,7 @@ class RuntimeInstallTest {
     }
 
     @Test
-    @DisplayName("Bei falscher Prüfsumme entsteht kein Ordner")
+    @DisplayName("With a wrong checksum no folder comes into being")
     void aWrongChecksumLeavesNothingBehind(@TempDir Path game) throws Exception {
         byte[] archive = tarGzWith("jcef.jar", "inhalt");
         String url = serve(archive);
@@ -197,7 +197,7 @@ class RuntimeInstallTest {
     }
 
     @Test
-    @DisplayName("Eine Adresse, die nicht antwortet, nennt ihren Rückgabewert")
+    @DisplayName("An address that does not answer names its return code")
     void aBadResponseSaysItsCode(@TempDir Path game) throws Exception {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", exchange -> {
@@ -213,13 +213,13 @@ class RuntimeInstallTest {
         assertTrue(thrown.getMessage().contains("404"), thrown.getMessage());
     }
 
-    // ---- Hilfsmittel --------------------------------------------------------
+    // ---- Helpers ------------------------------------------------------------
 
     private static RuntimeManifest.Entry entry(String sha256) {
         return new RuntimeManifest.Entry("windows-x86_64", "probe.tar.gz", sha256);
     }
 
-    /** Startet einen Server, der genau dieses Archiv ausliefert. */
+    /** Starts a server that delivers exactly this archive. */
     private String serve(byte[] archive) throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/probe.tar.gz", exchange -> {
@@ -232,7 +232,7 @@ class RuntimeInstallTest {
         return "http://127.0.0.1:" + server.getAddress().getPort() + "/probe.tar.gz";
     }
 
-    /** Baut ein echtes tar.gz mit einer Datei darin — über dasselbe tar. */
+    /** Builds a real tar.gz with a file in it — via the same tar. */
     private static byte[] tarGzWith(String name, String content) throws Exception {
         Path work = Files.createTempDirectory("fn-tar");
         try {
@@ -255,7 +255,7 @@ class RuntimeInstallTest {
                     try {
                         Files.deleteIfExists(path);
                     } catch (IOException ignored) {
-                        // Ein liegengebliebener Prüfordner ist kein Fehlschlag.
+                        // A leftover test folder is not a failure.
                     }
                 });
             }

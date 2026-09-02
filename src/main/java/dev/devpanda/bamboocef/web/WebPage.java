@@ -11,12 +11,12 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
 /**
- * Eine einzelne Seite aus dem Jar auf die Platte, damit Chromium sie laden kann.
+ * A single page from the jar onto disk, so that Chromium can load it.
  *
- * <p><b>Warum auf die Platte.</b> Chromium liest keine Klassenpfade. Eine
- * Seite, die im Jar liegt, bekommt sie nur als Datei — unter
- * {@code <spiel>/factorynetwork/web/}, bei jedem Aufruf neu kopiert, damit
- * eine geänderte Seite im Jar nicht an einer alten Kopie scheitert.
+ * <p><b>Why onto disk.</b> Chromium does not read class paths. A page that sits
+ * in the jar reaches it only as a file — under
+ * {@code <game>/factorynetwork/web/}, copied afresh on every call, so that a
+ * changed page in the jar does not fail against an old copy.
  */
 public final class WebPage {
 
@@ -26,12 +26,12 @@ public final class WebPage {
     }
 
     /**
-     * Legt die Seite ab und gibt ihre Adresse zurück.
+     * Writes the page out and returns its address.
      *
-     * @param resource der Pfad im Klassenpfad, etwa
+     * @param resource the path in the class path, for example
      *                 {@code assets/factorynetwork/web/overlay/menu.html}
-     * @param fileName der Dateiname auf der Platte
-     * @return die {@code file:}-Adresse, oder {@code null}, wenn etwas fehlte
+     * @param fileName the file name on disk
+     * @return the {@code file:} address, or {@code null} if something was missing
      */
     public static String unpack(String resource, String fileName) {
         Path target = Minecraft.getInstance().gameDirectory.toPath()

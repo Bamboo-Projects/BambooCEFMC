@@ -12,22 +12,22 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Der Verwalter der offenen Browser.
+ * The manager of the open browsers.
  *
- * <p>Die Fehler, die diese Prüfläufe verhindern sollen, zeigen sich alle erst
- * beim Beenden des Spiels — also dort, wo niemand mehr hinsieht und eine
- * Ausnahme im Protokoll untergeht: eine Sitzung, die beim Schließen aus der
- * Schleife fällt; ein Warten auf eine Bestätigung, die längst da war; ein
- * zweiter Aufruf, der etwas kaputtmacht.
+ * <p>The faults these test runs are meant to prevent all show up only
+ * when the game shuts down — that is, where no one is looking anymore and an
+ * exception is lost in the log: a session that falls out of the loop
+ * on closing; a wait for a confirmation that was long since there; a
+ * second call that breaks something.
  *
- * <p><b>Warum sie hier stehen und nicht im Spiel gemessen werden.</b> Im Spiel
- * schließen die Bildschirme ihre Browser selbst, bevor das Herunterfahren
- * beginnt — {@code closeAll()} sah dort bisher immer eine leere Liste. Der
- * interessante Fall ist genau der andere.
+ * <p><b>Why they stand here and are not measured in the game.</b> In the game
+ * the screens close their browsers themselves before the shutdown
+ * begins — {@code closeAll()} always saw an empty list there so far. The
+ * interesting case is exactly the other one.
  */
 class BrowserManagerTest {
 
-    /** Eine Sitzung, die aufschreibt, was mit ihr geschieht. */
+    /** A session that writes down what happens to it. */
     private static final class FakeSession implements ManagedBrowser {
         private final String name;
         private final List<String> events;
@@ -48,11 +48,11 @@ class BrowserManagerTest {
             }
             closed = true;
             events.add(name + ": close");
-            // Genau wie die echte Sitzung: erst abmelden, dann schließen.
+            // Exactly like the real session: first unregister, then close.
             BrowserManager.closing(this);
             if (confirmOnClose) {
-                // Chromium bestätigt sofort — im Spiel dauert es ein paar
-                // Runden der Nachrichtenschleife.
+                // Chromium confirms at once — in the game it takes a few
+                // rounds of the message loop.
                 BrowserManager.closed(this);
             }
         }
@@ -69,7 +69,7 @@ class BrowserManagerTest {
     }
 
     @Test
-    @DisplayName("Anmelden und abmelden zählt richtig")
+    @DisplayName("Registering and unregistering counts correctly")
     void countFollowsRegistration() {
         List<String> events = new ArrayList<>();
         FakeSession one = new FakeSession("eins", events, true);
@@ -86,7 +86,7 @@ class BrowserManagerTest {
     }
 
     @Test
-    @DisplayName("closeAll schließt alles, obwohl sich jede Sitzung dabei abmeldet")
+    @DisplayName("closeAll closes everything, even though each session unregisters itself in the process")
     void closeAllSurvivesSelfRemoval() {
         List<String> events = new ArrayList<>();
         for (int i = 1; i <= 5; i++) {
@@ -94,9 +94,9 @@ class BrowserManagerTest {
         }
         assertEquals(5, BrowserManager.count());
 
-        // Ohne Kopie flöge hier eine ConcurrentModificationException — jedes
-        // close() nimmt sich selbst aus der Liste, über die gerade gelaufen
-        // wird.
+        // Without a copy a ConcurrentModificationException would fly here — every
+        // close() removes itself from the list that is currently being iterated
+        // over.
         BrowserManager.closeAll();
 
         assertEquals(0, BrowserManager.count());
@@ -105,7 +105,7 @@ class BrowserManagerTest {
     }
 
     @Test
-    @DisplayName("closeAll darf mehrfach gerufen werden")
+    @DisplayName("closeAll may be called multiple times")
     void closeAllIsIdempotent() {
         List<String> events = new ArrayList<>();
         BrowserManager.register(new FakeSession("eins", events, true));
@@ -119,7 +119,7 @@ class BrowserManagerTest {
     }
 
     @Test
-    @DisplayName("Aus dem leeren Zustand wirft nichts")
+    @DisplayName("From the empty state nothing throws")
     void emptyIsHarmless() {
         BrowserManager.closeAll();
         assertEquals(0, BrowserManager.count());
@@ -129,12 +129,12 @@ class BrowserManagerTest {
     }
 
     @Test
-    @DisplayName("Auf die Bestätigung wird gewartet — und das Pumpen bringt sie")
+    @DisplayName("The confirmation is waited for — and pumping brings it")
     void awaitClosedWaitsForConfirmation() {
         List<String> events = new ArrayList<>();
-        // Diese Sitzung bestätigt nicht von selbst. Genau so verhält sich
-        // Chromium: close(true) ist eine Bitte, onBeforeClose kommt aus der
-        // Nachrichtenschleife.
+        // This session does not confirm on its own. That is exactly how
+        // Chromium behaves: close(true) is a request, onBeforeClose comes from the
+        // message loop.
         FakeSession slow = new FakeSession("langsam", events, false);
         BrowserManager.register(slow);
         BrowserManager.closeAll();
@@ -144,7 +144,7 @@ class BrowserManagerTest {
 
         int[] rounds = {0};
         boolean confirmed = BrowserManager.awaitClosed(1000, () -> {
-            // Nach ein paar Runden meldet sich Chromium.
+            // After a few rounds Chromium reports back.
             if (++rounds[0] == 3) {
                 BrowserManager.closed(slow);
             }
@@ -156,7 +156,7 @@ class BrowserManagerTest {
     }
 
     @Test
-    @DisplayName("Bleibt die Bestätigung aus, endet das Warten an der Frist")
+    @DisplayName("If the confirmation fails to come, the waiting ends at the deadline")
     void awaitClosedGivesUp() {
         List<String> events = new ArrayList<>();
         BrowserManager.register(new FakeSession("stumm", events, false));
@@ -175,7 +175,7 @@ class BrowserManagerTest {
     }
 
     @Test
-    @DisplayName("Eine Sitzung, die beim Schließen wirft, hält die anderen nicht auf")
+    @DisplayName("A session that throws on closing does not hold up the others")
     void oneBrokenSessionDoesNotStopTheRest() {
         List<String> events = new ArrayList<>();
         BrowserManager.register(new FakeSession("vorher", events, true));

@@ -11,24 +11,24 @@ import java.nio.file.Path;
 import java.util.Locale;
 
 /**
- * Der Messablauf für Takt und Tipplatenz.
+ * The measurement run for pace and typing latency.
  *
- * <p><b>Wozu er jetzt dient.</b> Alle bisherigen Zahlen dieses Projekts sind
- * über eine Fernsitzung entstanden. Eine Fernsitzung kann in den Bildweg
- * hineinregieren — Fensterverwaltung, Bildsynchronisation, Zeitplanung auf
- * der Grafikkarte hängen daran. Dieser Ablauf prüft lokal nach, ob die
- * Schlüsselzahlen bleiben, und wiederholt dabei ausdrücklich <i>nicht</i> die
- * ganzen alten Reihen. Zwei Stufen genügen.
+ * <p><b>What it now serves.</b> All previous numbers of this project came
+ * about over a remote session. A remote session can interfere with the image
+ * path — window management, frame synchronization, scheduling on
+ * the graphics card hang on it. This run checks locally whether the
+ * key numbers hold, and expressly does <i>not</i> repeat the
+ * whole old series. Two stages suffice.
  *
- * <p><b>Die erste Stufe misst den Takt, nicht die Dauer.</b> Eine Seite, die
- * in jedem Bild ein kleines Feld umfärbt, zwingt Chromium zu liefern, sooft
- * es kann. Der Abstand zweier Bilder ist dann der Takt selbst und sonst
- * nichts — die Zahl, die nach Schritt I den ganzen Befund trägt und die nach
- * dem Patch auf sechzig Bilder je Sekunde springen muss.
+ * <p><b>The first stage measures the pace, not the duration.</b> A page that
+ * recolors a small field in every frame forces Chromium to deliver as often
+ * as it can. The gap between two frames is then the pace itself and nothing
+ * else — the number that carries the whole finding after Step I and that must
+ * jump to sixty frames per second after the patch.
  *
- * <p><b>Die zweite Stufe misst, was das Produkt werden soll:</b> Monaco
- * vollständig, mit dem vorgeblurten Hintergrund statt echtem Weichzeichner.
- * Beides in einem Lauf, damit dieselbe Sitzung beide Zahlen liefert.
+ * <p><b>The second stage measures what the product is meant to be:</b> Monaco
+ * complete, with the pre-blurred background instead of real blurring.
+ * Both in one run, so that the same session delivers both numbers.
  */
 public final class ProbeBenchmark extends IdeScreen {
 
@@ -36,12 +36,12 @@ public final class ProbeBenchmark extends IdeScreen {
 
     private static final long TYPING_NANOS = 45_000_000_000L;
     /**
-     * Wie lange eine Speicherstufe steht.
+     * How long a memory stage stands.
      *
-     * <p>Lang genug, dass die Messung von außen sie trifft: Der Aufruf, der
-     * den Speicher abfragt, braucht selbst gut eine Sekunde. Beim ersten
-     * Versuch standen alle fünf Stufen bei denselben achthundert Megabyte —
-     * gemessen wurde jedes Mal derselbe Zustand.
+     * <p>Long enough that the measurement from outside catches it: the call that
+     * queries the memory itself needs a good second. On the first
+     * attempt all five stages stood at the same eight hundred megabytes —
+     * each time the same state was measured.
      */
     private static final long RAM_NANOS = 20_000_000_000L;
     private static final int SETTLE_FRAMES = 40;
@@ -49,16 +49,16 @@ public final class ProbeBenchmark extends IdeScreen {
     private static boolean finished;
 
     /**
-     * Was der Reihe nach gemessen wird.
+     * What is measured in order.
      *
-     * <p>Die Speicherstufen zuerst: Ist Monaco einmal geladen, gibt es den
-     * leeren Zustand in dieser Sitzung nicht zurück.
+     * <p>The memory stages first: once Monaco is loaded, the
+     * empty state does not come back in this session.
      */
     private enum Step {
-        // Der lokale Kontrolllauf, nachdem alle bisherigen Messungen über eine
-        // Fernsitzung liefen. Zwei Stufen, mehr braucht es nicht: einmal der
-        // nackte Takt, einmal die Konfiguration, die das Produkt werden soll.
-        // Alles dazwischen ist beantwortet und wird nicht wiederholt.
+        // The local control run, after all previous measurements ran over a
+        // remote session. Two stages, no more are needed: once the
+        // bare pace, once the configuration that the product is meant to be.
+        // Everything in between is answered and is not repeated.
         TAKT("A Takt (kontinuierlicher Paint)", "takt", 20_000_000_000L, false),
         MONACO_VORBLUR("B Monaco + vorgeblurter Hintergrund", "monaco-vorblur",
                 TYPING_NANOS, true),
@@ -101,13 +101,13 @@ public final class ProbeBenchmark extends IdeScreen {
         return finished;
     }
 
-    /** Öffnet die Messung — sie beginnt mit einer leeren Seite. */
+    /** Opens the benchmark — it begins with an empty page. */
     public static boolean open(Minecraft client) {
         String ide = prepare(client);
         if (ide == null) {
             return false;
         }
-        // Die Messfläche liegt neben der Oberfläche und wird genauso ausgepackt.
+        // The measurement surface lies next to the interface and is unpacked the same way.
         Path folder = client.gameDirectory.toPath()
                 .resolve("factorynetwork-web").resolve("ide");
         Path probe = folder.resolve("probe.html");
@@ -165,11 +165,11 @@ public final class ProbeBenchmark extends IdeScreen {
                 texture().resetStats();
                 session().resetLatency();
                 frameTimes.reset();
-                // frisch() statt leeren(): Es setzt auch den Inhalt des
-                // Editors zurück. Ohne das tippen aufeinanderfolgende Stufen
-                // in dasselbe, immer länger werdende Dokument — in Schritt H
-                // hat genau das eine Stufe um acht Millisekunden langsamer
-                // aussehen lassen, als sie war.
+                // frisch() instead of leeren(): it also resets the content of
+                // the editor. Without that, consecutive stages type
+                // into the same, ever-lengthening document — in Step H
+                // exactly that made one stage look eight milliseconds slower
+                // than it was.
                 runScript("window.fnProbe && fnProbe.frisch()");
                 if (step.typing) {
                     runScript("window.fnProbe && fnProbe.fokus()");
@@ -190,15 +190,15 @@ public final class ProbeBenchmark extends IdeScreen {
         frameInStep = 0;
         begin();
         if (step == Step.DONE) {
-            // <b>Nicht sofort schließen.</b> Der Bericht der Seite geht über
-            // die Konsole und braucht eine Handvoll Bilder, bis er ankommt.
-            // Beim letzten Lauf hat das Schließen ihn überholt, und für die
-            // letzte Stufe fehlte die Sicht der Seite ganz.
+            // <b>Do not close immediately.</b> The page's report goes over
+            // the console and needs a handful of frames until it arrives.
+            // On the last run, closing overtook it, and for the
+            // last stage the page's view was missing entirely.
             closingFrames = 30;
         }
     }
 
-    /** Wie viele Bilder noch zu warten sind, bis geschlossen werden darf. */
+    /** How many frames are still to wait until closing is allowed. */
     private int closingFrames = -1;
 
     private void finishIfDue() {
@@ -216,23 +216,23 @@ public final class ProbeBenchmark extends IdeScreen {
         if (step == Step.DONE) {
             return;
         }
-        // Die Seite neu laden statt einen zweiten Browser aufzumachen: Zwei
-        // Browser teilten sich die Bildrate, und jede Zahl wäre halb so gut.
+        // Reload the page instead of opening a second browser: two
+        // browsers would share the frame rate, and every number would be half as good.
         runScript("location.href='" + pageBase + "?v=" + step.variant + "'");
         stepStartedNanos = System.nanoTime();
         settleFrames = SETTLE_FRAMES;
     }
 
     /**
-     * Ein Zeichen auf dem vollen Weg, wie es von einer Tastatur käme.
+     * One character on the full path, as it would come from a keyboard.
      *
-     * <p><b>Nur ein Zeichen zu schicken, reicht nicht.</b> Das erzeugt in
-     * Chromium ein {@code input}-Ereignis, aber kein {@code keydown} — und die
-     * Seite misst an {@code keydown}. Beim ersten Versuch stand deshalb in
-     * jeder Zeile {@code n=0}: Java tippte, die Seite sah nichts.
+     * <p><b>Sending only a character is not enough.</b> That produces in
+     * Chromium an {@code input} event, but no {@code keydown} — and the
+     * page measures on {@code keydown}. On the first attempt, that is why
+     * every line read {@code n=0}: Java typed, the page saw nothing.
      *
-     * <p>Echte Eingabe kommt in drei Teilen: Taste herunter, Zeichen, Taste
-     * herauf. Genau so wird hier getippt.
+     * <p>Real input comes in three parts: key down, character, key
+     * up. That is exactly how it is typed here.
      */
     private void typeOneCharacter() {
         char zeichen = TIPPTEXT.charAt(typedIndex++ % TIPPTEXT.length());
@@ -288,29 +288,29 @@ public final class ProbeBenchmark extends IdeScreen {
                 "%s: Minecrafts Bildzeit p50 %.1f ms, p95 %.1f ms",
                 step.label, frameTimes.percentile(50) / 1000.0,
                 frameTimes.percentile(95) / 1000.0));
-        // Die Form der Verteilung, nicht nur ihre Lage. Ein Takt von dreißig
-        // Bildern je Sekunde trägt seine Unterschrift sichtbar: Häufungen bei
-        // 33 ms und bei 67 ms, dazwischen fast nichts. Verteilte Rechenzeit
-        // sähe dagegen aus wie ein einzelner Hügel.
+        // The shape of the distribution, not just its position. A pace of thirty
+        // frames per second carries its signature visibly: clusters at
+        // 33 ms and at 67 ms, almost nothing in between. Distributed compute time
+        // would instead look like a single hill.
         LOG.info("{}: Verteilung von A (Fächer zu 4 ms)\n{}",
                 step.label, toPaint.histogram(4.0, 25));
-        // Und jetzt die Sicht der Seite auf dieselbe Strecke.
+        // And now the page's view of the same stretch.
         runScript("window.fnProbe && fnProbe.bericht('" + step.label + "')");
     }
 
     /**
-     * Der Takt: wie weit zwei Bilder aus Chromium auseinanderliegen.
+     * The pace: how far apart two frames from Chromium lie.
      *
-     * <p><b>Die Zahl, auf die es bei diesem Lauf ankommt.</b> Nicht wie lange
-     * etwas dauert, sondern wie oft überhaupt jemand drankommt. Bei einer
-     * Seite, die in jedem Bild etwas ändert, ist der Abstand der Takt selbst
-     * und sonst nichts.
+     * <p><b>The number that matters on this run.</b> Not how long
+     * something takes, but how often anyone gets a turn at all. For a
+     * page that changes something in every frame, the gap is the pace itself
+     * and nothing else.
      *
-     * <p>Ein Vorbehalt gehört ins Protokoll: Das Bild kommt im Render-Thread
-     * an, die Abstände liegen also auf Minecrafts eigenem Raster von rund
-     * achteinhalb Millisekunden. Dreiunddreißig von sechzehn zu
-     * unterscheiden reicht das mühelos; auf die Nachkommastelle ist es nicht
-     * zu lesen.
+     * <p>One caveat belongs in the log: the frame arrives on the render thread,
+     * so the gaps lie on Minecraft's own grid of around
+     * eight and a half milliseconds. To tell thirty-three from sixteen
+     * apart that is easily enough; down to the decimal place it cannot
+     * be read.
      */
     private void reportPace(double seconds) {
         var gaps = session().paintGaps();

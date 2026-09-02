@@ -1,55 +1,54 @@
 package dev.devpanda.bamboocef.web.view;
 
 /**
- * Wo ein Browser liegt, wie groß er ist — und die eine Umrechnung dazwischen.
+ * Where a browser lies, how large it is — and the one conversion between them.
  *
- * <p><b>Drei Einheiten, die niemand verwechseln darf.</b>
+ * <p><b>Three units that nobody may confuse.</b>
  *
  * <table border="1">
- *   <caption>Die Einheiten und wo sie gelten</caption>
- *   <tr><th>Einheit</th><th>Woher</th><th>Wofür</th></tr>
+ *   <caption>The units and where they apply</caption>
+ *   <tr><th>Unit</th><th>Source</th><th>Purpose</th></tr>
  *   <tr>
- *     <td><b>Framebuffer-Pixel</b></td>
+ *     <td><b>Framebuffer pixels</b></td>
  *     <td>{@code window.getWidth()}</td>
- *     <td>Was die Grafikkarte wirklich hat. Bei einem 4K-Schirm viermal so
- *         viele wie bei Full HD.</td>
+ *     <td>What the graphics card really has. On a 4K screen four times as
+ *         many as on Full HD.</td>
  *   </tr>
  *   <tr>
- *     <td><b>GUI-Einheiten</b></td>
- *     <td>{@code screen.width}, Mauskoordinaten</td>
- *     <td>Minecrafts eigenes Raster. Bei GUI-Skalierung 3 ist eine
- *         GUI-Einheit drei Framebuffer-Pixel breit.</td>
+ *     <td><b>GUI units</b></td>
+ *     <td>{@code screen.width}, mouse coordinates</td>
+ *     <td>Minecraft's own grid. At GUI scale 3 one GUI unit is three
+ *         framebuffer pixels wide.</td>
  *   </tr>
  *   <tr>
- *     <td><b>Browser-Pixel</b></td>
+ *     <td><b>Browser pixels</b></td>
  *     <td>{@code browser.resize(w, h)}</td>
- *     <td>Wie groß Chromium seine Seite malt. Hier gleich CSS-Pixeln, weil
- *         diese JCEF-Fassung keinen {@code device_scale_factor} setzt.</td>
+ *     <td>How large Chromium paints its page. Here equal to CSS pixels,
+ *         because this JCEF build sets no {@code device_scale_factor}.</td>
  *   </tr>
  * </table>
  *
- * <p><b>Die Entscheidung: ein Browser-Pixel ist ein Framebuffer-Pixel.</b> Der
- * Browser bekommt so viele Pixel, wie der Bereich auf dem Schirm wirklich
- * einnimmt — nicht so viele, wie Minecrafts Raster ihm zugesteht. Sonst wäre
- * Schrift bei GUI-Skalierung 3 auf ein Drittel der Auflösung gerechnet und
- * beim Zeichnen wieder aufgeblasen. Für einen Editor ist das der Unterschied
- * zwischen lesbar und matschig.
+ * <p><b>The decision: one browser pixel is one framebuffer pixel.</b> The
+ * browser gets as many pixels as the area really occupies on screen — not as
+ * many as Minecraft's grid grants it. Otherwise text at GUI scale 3 would be
+ * computed at a third of the resolution and blown up again when drawn. For an
+ * editor that is the difference between legible and mushy.
  *
- * <p><b>Und warum das hier steht und nicht zweimal woanders.</b> Zeichnen und
- * Maus müssen dieselbe Rechnung benutzen, sonst klickt der Spieler neben das,
- * was er sieht — ein Fehler, der sich als „die Seite reagiert falsch" tarnt
- * und tagelang gesucht wird. Später soll ein Strahl auf eine Fläche in der
- * Welt genauso rechnen: Er liefert einen Anteil von 0 bis 1 und geht über
- * {@link #fromFraction(double, double)} in dieselbe Ebene.
+ * <p><b>And why this lives here and not twice elsewhere.</b> Drawing and mouse
+ * must use the same computation, or the player clicks next to what they see — a
+ * bug that disguises itself as "the page reacts wrongly" and is hunted for
+ * days. Later a ray onto a surface in the world should compute the same way: it
+ * yields a fraction from 0 to 1 and goes through
+ * {@link #fromFraction(double, double)} into the same plane.
  *
- * <p>Reine Rechnung, kein Minecraft. Die Skalierung kommt als Zahl herein,
- * damit sie sich prüfen lässt.
+ * <p>Pure computation, no Minecraft. The scale comes in as a number so that it
+ * can be checked.
  *
- * @param guiX      linke Kante in GUI-Einheiten
- * @param guiY      obere Kante in GUI-Einheiten
- * @param guiWidth  Breite in GUI-Einheiten
- * @param guiHeight Höhe in GUI-Einheiten
- * @param guiScale  wie viele Framebuffer-Pixel eine GUI-Einheit misst
+ * @param guiX      left edge in GUI units
+ * @param guiY      top edge in GUI units
+ * @param guiWidth  width in GUI units
+ * @param guiHeight height in GUI units
+ * @param guiScale  how many framebuffer pixels one GUI unit measures
  */
 public record BrowserView(int guiX, int guiY, int guiWidth, int guiHeight, double guiScale) {
 
@@ -62,16 +61,16 @@ public record BrowserView(int guiX, int guiY, int guiWidth, int guiHeight, doubl
         }
     }
 
-    /** Die ganze Oberfläche, ohne Rand. */
+    /** The whole surface, without a border. */
     public static BrowserView fullscreen(int guiWidth, int guiHeight, double guiScale) {
         return new BrowserView(0, 0, guiWidth, guiHeight, guiScale);
     }
 
     /**
-     * Wie breit der Browser malen soll, in Browser-Pixeln.
+     * How wide the browser should paint, in browser pixels.
      *
-     * <p>Mindestens eins: Chromium mit Breite null malt nie wieder, und ein
-     * Fenster, das gerade zugezogen wird, geht durch diesen Zustand.
+     * <p>At least one: Chromium with width zero never paints again, and a
+     * window being dragged shut passes through this state.
      */
     public int browserWidth() {
         return Math.max(1, (int) Math.round(guiWidth * guiScale));
@@ -81,18 +80,18 @@ public record BrowserView(int guiX, int guiY, int guiWidth, int guiHeight, doubl
         return Math.max(1, (int) Math.round(guiHeight * guiScale));
     }
 
-    /** Liegt dieser Punkt in GUI-Einheiten über der Fläche? */
+    /** Does this point in GUI units lie over the surface? */
     public boolean contains(double guiMouseX, double guiMouseY) {
         return guiMouseX >= guiX && guiMouseX < guiX + guiWidth
                 && guiMouseY >= guiY && guiMouseY < guiY + guiHeight;
     }
 
     /**
-     * Ein Mauspunkt in GUI-Einheiten wird zu einem Browser-Pixel.
+     * A mouse point in GUI units becomes a browser pixel.
      *
-     * <p>Geklemmt auf die Fläche: Chromium mit einer Koordinate außerhalb
-     * seines Fensters zu füttern, hebt Ziehvorgänge auf, die noch laufen. Wer
-     * wissen will, ob der Zeiger überhaupt drin ist, fragt {@link #contains}.
+     * <p>Clamped to the surface: feeding Chromium a coordinate outside its
+     * window cancels drag operations that are still running. Whoever wants to
+     * know whether the pointer is inside at all asks {@link #contains}.
      */
     public int toBrowserX(double guiMouseX) {
         return clamp((guiMouseX - guiX) * guiScale, browserWidth());
@@ -103,14 +102,14 @@ public record BrowserView(int guiX, int guiY, int guiWidth, int guiHeight, doubl
     }
 
     /**
-     * Ein Anteil von 0 bis 1 wird zu einem Browser-Pixel.
+     * A fraction from 0 to 1 becomes a browser pixel.
      *
-     * <p>Der Weg für eine Fläche in der Welt: Ein Strahl trifft sie irgendwo,
-     * und wo genau, sagt sich am ehesten als Anteil. Damit landet auch ein
-     * Bildschirm an der Wand in derselben Ebene wie dieser Screen — und in
-     * derselben Rechnung.
+     * <p>The path for a surface in the world: a ray hits it somewhere, and
+     * where exactly is most readily expressed as a fraction. That way a screen
+     * on the wall lands in the same plane as this screen — and in the same
+     * computation.
      *
-     * @return Browser-Pixel als {@code [x, y]}
+     * @return browser pixels as {@code [x, y]}
      */
     public int[] fromFraction(double acrossFraction, double downFraction) {
         return new int[] {
@@ -120,29 +119,28 @@ public record BrowserView(int guiX, int guiY, int guiWidth, int guiHeight, doubl
     }
 
     /**
-     * Ein Browser-Pixel wird zu einem Punkt in GUI-Einheiten.
+     * A browser pixel becomes a point in GUI units.
      *
-     * <p>Für alles, was Chromium in seinen eigenen Koordinaten meldet und was
-     * an die richtige Stelle auf dem Schirm muss — ein aufgeklapptes
-     * Auswahlfeld zum Beispiel.
+     * <p>For everything Chromium reports in its own coordinates and that has to
+     * go to the right spot on screen — an expanded dropdown, for example.
      *
-     * @return GUI-Einheiten als {@code [x, y]}
+     * @return GUI units as {@code [x, y]}
      */
     public double[] toGui(int browserX, int browserY) {
         return new double[] {guiX + browserX / guiScale, guiY + browserY / guiScale};
     }
 
-    /** Ein Maß in Browser-Pixeln wird zu einem Maß in GUI-Einheiten. */
+    /** A length in browser pixels becomes a length in GUI units. */
     public double lengthToGui(int browserLength) {
         return browserLength / guiScale;
     }
 
-    /** Dieselbe Fläche mit anderer Größe — beim Ziehen am Fensterrand. */
+    /** The same surface at a different size — when dragging the window edge. */
     public BrowserView resized(int newGuiWidth, int newGuiHeight, double newGuiScale) {
         return new BrowserView(guiX, guiY, newGuiWidth, newGuiHeight, newGuiScale);
     }
 
-    /** Ob eine Meldung an Chromium überhaupt nötig ist. */
+    /** Whether a message to Chromium is needed at all. */
     public boolean sameSizeAs(BrowserView other) {
         return other != null
                 && browserWidth() == other.browserWidth()

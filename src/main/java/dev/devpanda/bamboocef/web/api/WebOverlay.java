@@ -1,41 +1,40 @@
 package dev.devpanda.bamboocef.web.api;
 
 /**
- * Eine Fläche über dem Bild, in Bildschirmpunkten.
+ * A surface above the image, in screen points.
  *
- * <p><b>Bildschirmpunkte, nicht Pixel.</b> Ort und Größe sind die Einheiten,
- * in denen Minecraft seine Oberfläche zeichnet — dieselben, die der Spieler
- * mit der GUI-Skalierung wählt. Die Fläche rechnet selbst in Browserpixel
- * um und schärft nach, wenn sich die Skalierung ändert. Wer in Pixeln denkt,
- * bekommt bei jedem Skalierungswechsel eine andere Größe.
+ * <p><b>Screen points, not pixels.</b> Position and size are the units in
+ * which Minecraft draws its interface — the same ones the player chooses with
+ * the GUI scale. The surface converts to browser pixels itself and re-sharpens
+ * when the scale changes. Whoever thinks in pixels gets a different size on
+ * every scale change.
  *
- * <p>Gezeichnet wird über dem Spiel, unter jedem offenen Bildschirm, in der
- * Reihenfolge des Öffnens. F1 blendet die Fläche mit dem Rest der
- * Oberfläche aus.
+ * <p>It is drawn above the game, beneath any open screen, in the order of
+ * opening. F1 hides the surface along with the rest of the interface.
  *
- * <p>Eingaben hängen am {@link OverlayFocus}: Ohne Fokus ist die Fläche ein
- * Bild. Mit Tastaturfokus bekommt sie, was ihr {@link KeyFilter} nimmt, und
- * der Spieler behält Maus und Rest. Mit Mausfokus ist der Zeiger frei.
- * <b>F10 beendet jeden Fokus</b>, gleich, was der Filter sagt — sonst gäbe
- * es eine Fläche, aus der niemand herauskommt.
+ * <p>Input hangs on {@link OverlayFocus}: without focus the surface is a
+ * picture. With keyboard focus it gets what its {@link KeyFilter} takes, and
+ * the player keeps the mouse and the rest. With mouse focus the pointer is
+ * free. <b>F10 ends any focus</b>, no matter what the filter says — otherwise
+ * there would be a surface no one can get out of.
  *
- * <p>Fassung 1. Was hier steht, bleibt.
+ * <p>Version 1. What is here stays.
  */
 public interface WebOverlay extends AutoCloseable {
 
-    /** Die Fläche darunter: Textur, Größe in Pixeln, Eingaben von Hand. */
+    /** The surface beneath: texture, size in pixels, input by hand. */
     WebSurface surface();
 
-    /** Linker Rand, in Bildschirmpunkten. */
+    /** Left edge, in screen points. */
     int x();
 
-    /** Oberer Rand, in Bildschirmpunkten. */
+    /** Top edge, in screen points. */
     int y();
 
-    /** Breite in Bildschirmpunkten. */
+    /** Width in screen points. */
     int width();
 
-    /** Höhe in Bildschirmpunkten. */
+    /** Height in screen points. */
     int height();
 
     void moveTo(int x, int y);
@@ -44,21 +43,21 @@ public interface WebOverlay extends AutoCloseable {
 
     boolean visible();
 
-    /** Unsichtbar heißt: nicht gezeichnet, aber offen — und ohne Fokus. */
+    /** Invisible means: not drawn, but open — and without focus. */
     void setVisible(boolean visible);
 
     OverlayFocus focus();
 
     /**
-     * Fokus geben oder nehmen.
+     * Give or take focus.
      *
-     * <p>Nur ein Overlay hat Fokus; wer ihn bekommt, nimmt ihn dem anderen.
-     * Der Wechsel ist sofort wirksam, auch mitten in einer Taste: Was schon
-     * gedrückt war, gilt für die Seite als losgelassen.
+     * <p>Only one overlay has focus; whoever gets it takes it from the other.
+     * The change takes effect immediately, even in the middle of a key: what
+     * was already pressed counts as released for the page.
      */
     void focus(OverlayFocus wanted);
 
-    /** Offen und mit lebendem Browser darunter. */
+    /** Open and with a live browser beneath. */
     boolean alive();
 
     @Override

@@ -1,14 +1,14 @@
 package dev.devpanda.bamboocef.web;
 
 /**
- * Der Zustand der Runtime samt Begründung.
+ * The state of the runtime together with a reason.
  *
- * <p>Die Begründung ist für Menschen und steht im Protokoll — sie ist kein
- * Fehlercode, der ausgewertet wird. Wer verzweigen will, fragt den
+ * <p>The reason is for humans and goes into the log — it is not an error code
+ * that gets evaluated. Whoever wants to branch asks the
  * {@link WebRuntimeState}.
  *
- * @param state  woran man ist
- * @param reason ein Satz dazu, oder leer
+ * @param state  where things stand
+ * @param reason a sentence about it, or empty
  */
 public record WebRuntimeStatus(WebRuntimeState state, String reason) {
 

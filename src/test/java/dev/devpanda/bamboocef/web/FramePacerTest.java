@@ -8,25 +8,25 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Der Taktgeber: reine Zeitrechnung, deshalb hier prüfbar.
+ * The pacemaker: pure time arithmetic, therefore testable here.
  *
- * <p>Die Uhr kommt von außen. Ein Prüflauf, der auf echte Zeit wartet, ist
- * langsam und launisch; einer, der sie stellt, prüft dieselbe Rechnung in
- * Mikrosekunden.
+ * <p>The clock comes from outside. A test run that waits for real time is
+ * slow and moody; one that sets it checks the same calculation in
+ * microseconds.
  */
 class FramePacerTest {
 
     private static final long SECOND = 1_000_000_000L;
 
     @Test
-    @DisplayName("Das erste Bild ist sofort fällig")
+    @DisplayName("The first frame is due at once")
     void theFirstFrameIsDueAtOnce() {
         FramePacer pacer = new FramePacer(BrowserVisibility.ACTIVE);
         assertTrue(pacer.due(0L), "sonst bleibt eine frisch geöffnete Fläche leer");
     }
 
     @Test
-    @DisplayName("Danach erst wieder nach dem Abstand")
+    @DisplayName("After that only again after the interval")
     void thenOnlyAfterTheInterval() {
         FramePacer pacer = new FramePacer(BrowserVisibility.ACTIVE);   // 30/s
         pacer.drawn(0L);
@@ -37,7 +37,7 @@ class FramePacerTest {
     }
 
     @Test
-    @DisplayName("Wer unsichtbar ist, malt nie")
+    @DisplayName("Whoever is invisible never draws")
     void hiddenMeansNever() {
         FramePacer pacer = new FramePacer(BrowserVisibility.HIDDEN);
 
@@ -48,7 +48,7 @@ class FramePacerTest {
     }
 
     @Test
-    @DisplayName("Wer sichtbar wird, malt sofort")
+    @DisplayName("Whoever becomes visible draws at once")
     void wakingUpDrawsAtOnce() {
         FramePacer pacer = new FramePacer(BrowserVisibility.HIDDEN);
         pacer.drawn(0L);
@@ -59,12 +59,12 @@ class FramePacerTest {
     }
 
     @Test
-    @DisplayName("Der Takt holt nichts nach")
+    @DisplayName("The clock does not catch up")
     void theClockDoesNotCatchUp() {
         FramePacer pacer = new FramePacer(BrowserVisibility.DISTANT);   // 5/s
         pacer.drawn(0L);
 
-        // Eine Minute später: fällig, aber nur einmal — nicht dreihundertmal.
+        // A minute later: due, but only once — not three hundred times.
         long muchLater = SECOND * 60;
         assertTrue(pacer.due(muchLater));
         pacer.drawn(muchLater);
@@ -73,7 +73,7 @@ class FramePacerTest {
     }
 
     @Test
-    @DisplayName("Ein ausgefallenes Bild lässt den Takt stehen")
+    @DisplayName("A dropped frame leaves the clock standing")
     void askipDoesNotAdvanceTheClock() {
         FramePacer pacer = new FramePacer(BrowserVisibility.ACTIVE);
         pacer.drawn(0L);
@@ -84,7 +84,7 @@ class FramePacerTest {
     }
 
     @Test
-    @DisplayName("Ohne Angabe gilt: unsichtbar")
+    @DisplayName("With no value given: invisible")
     void nullIsHidden() {
         FramePacer pacer = new FramePacer(null);
         assertEquals(BrowserVisibility.HIDDEN, pacer.visibility());
@@ -94,7 +94,7 @@ class FramePacerTest {
     }
 
     @Test
-    @DisplayName("Die Abstände passen zu den Bildraten")
+    @DisplayName("The intervals match the frame rates")
     void intervalsMatchTheRates() {
         assertEquals(SECOND / 60, BrowserVisibility.FOREGROUND.frameIntervalNanos());
         assertEquals(SECOND / 30, BrowserVisibility.ACTIVE.frameIntervalNanos());

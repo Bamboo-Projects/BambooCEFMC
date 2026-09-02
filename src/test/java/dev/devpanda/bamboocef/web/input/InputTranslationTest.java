@@ -14,26 +14,26 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Die Übersetzung zwischen Minecrafts Eingaben und dem, was Chromium erwartet.
+ * The translation between Minecraft's inputs and what Chromium expects.
  *
- * <p>Die Fehler, die diese Prüfläufe verhindern sollen, sehen im Spiel nicht
- * nach Übersetzungsfehlern aus: Die Pfeiltaste schreibt eine Ziffer, das
- * {@code @} fehlt auf einer deutschen Tastatur, die rechte Maustaste fügt Text
- * ein statt ein Menü zu öffnen, und das Rad scrollt verkehrt herum.
+ * <p>The faults these test runs are meant to prevent do not look like
+ * translation errors in the game: the arrow key writes a digit, the
+ * {@code @} is missing on a German keyboard, the right mouse button inserts text
+ * instead of opening a menu, and the wheel scrolls the wrong way round.
  *
- * <p><b>Die Erwartungen sind nicht ausgedacht.</b> Sie stammen aus zwei
- * Messungen ohne Minecraft: {@code tools/runtime/probe/ScanProbe.java} für die
- * Scancodes und {@code tools/runtime/probe/KeyProbe.java} für das, was
- * Chromium von einem Tastendruck wirklich sieht.
+ * <p><b>The expectations are not made up.</b> They come from two
+ * measurements without Minecraft: {@code tools/runtime/probe/ScanProbe.java} for the
+ * scancodes and {@code tools/runtime/probe/KeyProbe.java} for what
+ * Chromium really sees of a key press.
  */
 class InputTranslationTest {
 
     // ---- GlfwScancodes ------------------------------------------------------
 
     @Test
-    @DisplayName("Pfeiltaste und Ziffernblock teilen den Scancode und trennt das Bit")
+    @DisplayName("Arrow key and numpad share the scancode and the bit separates them")
     void extendedFlagSeparatesArrowsFromNumpad() {
-        // Gemessen am 31. August 2026 mit ScanProbe.
+        // Measured on 31 August 2026 with ScanProbe.
         int up = 0x0148;
         int numpad8 = 0x0048;
 
@@ -46,7 +46,7 @@ class InputTranslationTest {
     }
 
     @Test
-    @DisplayName("Rechte Umschalttasten sind erweitert, linke nicht")
+    @DisplayName("Right modifier keys are extended, left ones not")
     void extendedFlagSeparatesLeftFromRight() {
         assertTrue(GlfwScancodes.extended(0x011D), "rechtes Strg");
         assertTrue(!GlfwScancodes.extended(0x001D), "linkes Strg");
@@ -59,7 +59,7 @@ class InputTranslationTest {
     // ---- GlfwKeys -----------------------------------------------------------
 
     @Test
-    @DisplayName("Buchstaben und Ziffern gehen direkt, weil beide Zählungen ASCII folgen")
+    @DisplayName("Letters and digits map directly, because both numberings follow ASCII")
     void lettersAndDigitsMapDirectly() {
         assertEquals(KeyEvent.VK_A, GlfwKeys.toAwtKeyCode(GLFW.GLFW_KEY_A));
         assertEquals(KeyEvent.VK_Z, GlfwKeys.toAwtKeyCode(GLFW.GLFW_KEY_Z));
@@ -68,7 +68,7 @@ class InputTranslationTest {
     }
 
     @Test
-    @DisplayName("Die Tabelle deckt Steuerung, Navigation, Ziffernblock und Funktionstasten ab")
+    @DisplayName("The table covers control, navigation, numpad and function keys")
     void tableCoversTheKeysThatMatter() {
         assertEquals(KeyEvent.VK_ENTER, GlfwKeys.toAwtKeyCode(GLFW.GLFW_KEY_ENTER));
         assertEquals(KeyEvent.VK_ESCAPE, GlfwKeys.toAwtKeyCode(GLFW.GLFW_KEY_ESCAPE));
@@ -97,7 +97,7 @@ class InputTranslationTest {
     }
 
     @Test
-    @DisplayName("Links und rechts tragen denselben Tastencode — die Seite steckt im Scancode")
+    @DisplayName("Left and right carry the same key code — the side sits in the scancode")
     void bothSidesShareTheKeyCode() {
         assertEquals(KeyEvent.VK_SHIFT, GlfwKeys.toAwtKeyCode(GLFW.GLFW_KEY_LEFT_SHIFT));
         assertEquals(KeyEvent.VK_SHIFT, GlfwKeys.toAwtKeyCode(GLFW.GLFW_KEY_RIGHT_SHIFT));
@@ -108,17 +108,17 @@ class InputTranslationTest {
     }
 
     @Test
-    @DisplayName("Layout-Tasten liefern VK_UNDEFINED — und werden trotzdem geschickt")
+    @DisplayName("Layout keys yield VK_UNDEFINED — and are sent anyway")
     void layoutKeysAreUndefinedOnPurpose() {
-        // Was auf einer deutschen Tastatur an dieser Stelle steht, weiß nur
-        // das Betriebssystem. Der Text nimmt den Weg über charTyped.
+        // What sits at this spot on a German keyboard only the
+        // operating system knows. The text takes the path via charTyped.
         assertEquals(KeyEvent.VK_UNDEFINED, GlfwKeys.toAwtKeyCode(GLFW.GLFW_KEY_SEMICOLON));
         assertEquals(KeyEvent.VK_UNDEFINED, GlfwKeys.toAwtKeyCode(GLFW.GLFW_KEY_GRAVE_ACCENT));
         assertEquals(KeyEvent.VK_UNDEFINED, GlfwKeys.toAwtKeyCode(GLFW.GLFW_KEY_WORLD_1));
 
-        // Auf Windows ist der Wert ohne Bedeutung: Der virtuelle Tastencode
-        // entsteht dort aus dem Scancode. Ein Ereignis zu verwerfen, weil
-        // dieses Feld leer bleibt, verlöre Tasten, die funktionieren.
+        // On Windows the value has no meaning: the virtual key code
+        // arises there from the scancode. Discarding an event because
+        // this field stays empty would lose keys that work.
         assertEquals(0, KeyEvent.VK_UNDEFINED,
                 "VK_UNDEFINED ist null — nichts, worauf ein Aufrufer prüfen müsste");
     }
@@ -126,7 +126,7 @@ class InputTranslationTest {
     // ---- AwtModifiers -------------------------------------------------------
 
     @Test
-    @DisplayName("Die DOWN_MASK-Familie, nicht die alte")
+    @DisplayName("The DOWN_MASK family, not the old one")
     void modifiersUseTheDownMaskFamily() {
         assertEquals(InputEvent.SHIFT_DOWN_MASK, AwtModifiers.forKey(GLFW.GLFW_MOD_SHIFT));
         assertEquals(InputEvent.CTRL_DOWN_MASK, AwtModifiers.forKey(GLFW.GLFW_MOD_CONTROL));
@@ -138,15 +138,15 @@ class InputTranslationTest {
     }
 
     @Test
-    @DisplayName("Am getippten Zeichen fallen Strg und Alt weg — sonst fehlt das AltGr-Zeichen")
+    @DisplayName("On the typed character Ctrl and Alt drop away — otherwise the AltGr character is missing")
     void charactersDropCtrlAndAlt() {
-        // Gemessen: KEY_TYPED '@' mit Strg+Alt kommt nicht an, ohne beide
-        // schon. Windows meldet AltGr als Strg + rechtes Alt.
+        // Measured: KEY_TYPED '@' with Ctrl+Alt does not arrive, without both
+        // it does. Windows reports AltGr as Ctrl + right Alt.
         int altGr = GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_ALT;
         assertEquals(0, AwtModifiers.forCharacter(altGr));
 
-        // Umschalt bleibt: Es entscheidet nichts mehr, kostet nichts und hält
-        // das Ereignis vollständig.
+        // Shift stays: it decides nothing anymore, costs nothing and keeps
+        // the event complete.
         assertEquals(InputEvent.SHIFT_DOWN_MASK,
                 AwtModifiers.forCharacter(GLFW.GLFW_MOD_SHIFT | altGr));
     }
@@ -154,7 +154,7 @@ class InputTranslationTest {
     // ---- AwtMouseEvents -----------------------------------------------------
 
     @Test
-    @DisplayName("Rechts ist BUTTON3, nicht BUTTON2")
+    @DisplayName("Right is BUTTON3, not BUTTON2")
     void rightIsButtonThree() {
         assertEquals(MouseEvent.BUTTON1, AwtMouseEvents.toAwtButton(MouseButtons.MINECRAFT_LEFT));
         assertEquals(MouseEvent.BUTTON3, AwtMouseEvents.toAwtButton(MouseButtons.MINECRAFT_RIGHT),
@@ -163,7 +163,7 @@ class InputTranslationTest {
     }
 
     @Test
-    @DisplayName("Bewegung mit gedrückter Taste ist ein Ziehen, sonst eine Bewegung")
+    @DisplayName("Movement with a pressed button is a drag, otherwise a move")
     void draggingIsItsOwnEvent() {
         MouseEvent moving = AwtMouseEvents.moved(10, 20, 0, false);
         MouseEvent dragging = AwtMouseEvents.moved(10, 20,
@@ -177,7 +177,7 @@ class InputTranslationTest {
     }
 
     @Test
-    @DisplayName("Der Klickzähler geht als clickCount hinaus")
+    @DisplayName("The click counter goes out as clickCount")
     void clickCountTravels() {
         MouseEvent doubleClick = AwtMouseEvents.button(5, 6, true,
                 MouseButtons.MINECRAFT_LEFT, 2, InputEvent.BUTTON1_DOWN_MASK);
@@ -189,11 +189,11 @@ class InputTranslationTest {
     }
 
     @Test
-    @DisplayName("Das Rad reicht Minecrafts Vorzeichen unverändert weiter")
+    @DisplayName("The wheel passes Minecraft's sign along unchanged")
     void wheelKeepsTheSign() {
-        // Gemessen mit KeyProbe: wheelRotation +1 erzeugt in der Seite
-        // deltaY -2.0, also hinauf. Minecrafts Delta ist nach oben positiv —
-        // also wandert es unverändert hinein.
+        // Measured with KeyProbe: wheelRotation +1 produces deltaY -2.0 in the
+        // page, that is upward. Minecraft's delta is positive upward —
+        // so it passes in unchanged.
         MouseWheelEvent up = AwtMouseEvents.wheel(0, 0, 1, 3, 0);
         MouseWheelEvent down = AwtMouseEvents.wheel(0, 0, -1, 3, 0);
 
@@ -205,7 +205,7 @@ class InputTranslationTest {
     }
 
     @Test
-    @DisplayName("Der Absender ist peerlos und wird nie gezeigt")
+    @DisplayName("The sender is peerless and is never shown")
     void eventSourceIsPeerless() {
         assertNotNull(AwtEventSource.SOURCE, "null wirft in AWTs Konstruktoren");
         assertEquals(null, AwtEventSource.SOURCE.getParent(),

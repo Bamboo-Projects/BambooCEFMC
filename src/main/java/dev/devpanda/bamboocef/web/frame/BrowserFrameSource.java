@@ -1,22 +1,21 @@
 package dev.devpanda.bamboocef.web.frame;
 
 /**
- * Woher Bilder kommen.
+ * Where images come from.
  *
- * <p>Heute ist das ein Browser, dessen {@code onPaint} in ein
- * {@link FrameSlot} legt. Später kann es dieselbe Quelle mit einer Textur auf
- * der Grafikkarte sein, ohne dass irgendetwas dahinter davon erfährt — deshalb
- * steht hier ein {@link BrowserFrame} und kein Puffer.
+ * <p>Today that is a browser whose {@code onPaint} deposits into a
+ * {@link FrameSlot}. Later it can be the same source with a texture on the
+ * graphics card, without anything downstream noticing — which is why there is a
+ * {@link BrowserFrame} here and not a buffer.
  */
 public interface BrowserFrameSource {
 
     /**
-     * Das neueste Bild, oder {@code null}.
+     * The latest image, or {@code null}.
      *
-     * <p><b>Der Aufrufer besitzt es</b> und muss es schließen oder
-     * zurückgeben. Zweimal hintereinander gerufen, ohne dass etwas Neues
-     * gemalt wurde, antwortet die Quelle beim zweiten Mal mit {@code null} —
-     * ein Bild wird nicht zweimal herausgegeben.
+     * <p><b>The caller owns it</b> and must close it or return it. Called twice
+     * in a row without anything new having been painted, the source answers
+     * {@code null} the second time — an image is not handed out twice.
      */
     BrowserFrame poll();
 }
