@@ -1,0 +1,37 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Was der Client beim Spielen hinterlässt. Die Logs unter run/ sind schon
+# draußen; diese hier landen daneben im Wurzelverzeichnis.
+logs/
+
+# Chromiums eigenes Protokoll. Die Proben setzen log_file, aber die
+# Hilfsprozesse schreiben ihr debug.log ins aktuelle Verzeichnis — und das ist
+# beim Bauen die Wurzel des Repositorys.
+debug.log
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+
+# NeoForge / ModDevGradle
+run/
+runs/
+run-data/
+repo/
+
+# Betriebssystem
+.DS_Store
+Thumbs.db
+
+# Das Paket der VS-Code-Erweiterung: gebaut aus editor/vscode, kein Quelltext.
+*.vsix
+.wrangler/
