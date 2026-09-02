@@ -39,7 +39,7 @@ final class SessionSurface implements WebSurface {
         this.keys = keys;
         this.routing = new KeyRouting(keys);
         this.location = ResourceLocation.fromNamespaceAndPath(
-                "factorynetwork", "web_surface/" + nextId++);
+                "bamboocef", "web_surface/" + nextId++);
         Minecraft.getInstance().getTextureManager()
                 .register(location, new ManagedTexture(session::textureId));
     }

@@ -9,7 +9,7 @@ import java.util.Properties;
 /**
  * What ships: version, archive name, checksum, address.
  *
- * <p>Read from {@code fn-runtime.properties} in the jar. The file is generated
+ * <p>Read from {@code bamboocef-runtime.properties} in the jar. The file is generated
  * at packaging time and sits checked in under
  * {@code tools/runtime/dist.properties} — the mod has to know what it expects
  * before anyone has packaged anything.
@@ -21,7 +21,7 @@ import java.util.Properties;
 public final class RuntimeManifest {
 
     /** The location in the jar. Comes from tools/runtime/dist.properties. */
-    private static final String RESOURCE = "/fn-runtime.properties";
+    private static final String RESOURCE = "/bamboocef-runtime.properties";
 
     private static Properties values;
 

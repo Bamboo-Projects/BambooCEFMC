@@ -23,7 +23,7 @@ import java.util.HexFormat;
  *
  * <pre>
  *   1. fn.runtime.dir            set by the build script, for development
- *   2. &lt;game directory&gt;/factorynetwork/runtime/&lt;version&gt;/
+ *   2. &lt;game directory&gt;/bamboocef/runtime/&lt;version&gt;/
  *   3. downloaded, if an address is given in the manifest
  * </pre>
  *
@@ -103,7 +103,7 @@ public final class RuntimeInstall {
 
     /** Where a downloaded runtime sits. */
     public static File cacheDir(File gameDirectory) {
-        File own = new File(gameDirectory, "factorynetwork");
+        File own = new File(gameDirectory, "bamboocef");
         return new File(new File(own, "runtime"), RuntimeManifest.version());
     }
 

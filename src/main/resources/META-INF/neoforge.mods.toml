@@ -14,6 +14,9 @@ für Overlays, Bildschirme und Flächen in der Welt — für diese Mod und für
 fremde Mods.
 '''
 
+[[mixins]]
+config = "bamboocef.mixins.json"
+
 [[dependencies.${mod_id}]]
 modId = "neoforge"
 type = "required"

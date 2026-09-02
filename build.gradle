@@ -100,8 +100,8 @@ processResources {
         expand expandProps
     }
     // Was ausgeliefert wird, muss die Mod wissen: tools/runtime/dist.properties
-    // wird als /fn-runtime.properties eingebettet, RuntimeManifest liest sie.
+    // wird als /bamboocef-runtime.properties eingebettet, RuntimeManifest liest sie.
     from('tools/runtime/dist.properties') {
-        rename { 'fn-runtime.properties' }
+        rename { 'bamboocef-runtime.properties' }
     }
 }

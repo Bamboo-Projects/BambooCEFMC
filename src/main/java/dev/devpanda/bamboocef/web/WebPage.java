@@ -15,7 +15,7 @@ import java.nio.file.StandardCopyOption;
  *
  * <p><b>Why onto disk.</b> Chromium does not read class paths. A page that sits
  * in the jar reaches it only as a file — under
- * {@code <game>/factorynetwork/web/}, copied afresh on every call, so that a
+ * {@code <game>/bamboocef/web/}, copied afresh on every call, so that a
  * changed page in the jar does not fail against an old copy.
  */
 public final class WebPage {
@@ -29,13 +29,13 @@ public final class WebPage {
      * Writes the page out and returns its address.
      *
      * @param resource the path in the class path, for example
-     *                 {@code assets/factorynetwork/web/overlay/menu.html}
+     *                 {@code assets/bamboocef/web/overlay/menu.html}
      * @param fileName the file name on disk
      * @return the {@code file:} address, or {@code null} if something was missing
      */
     public static String unpack(String resource, String fileName) {
         Path target = Minecraft.getInstance().gameDirectory.toPath()
-                .resolve("factorynetwork").resolve("web").resolve(fileName);
+                .resolve("bamboocef").resolve("web").resolve(fileName);
         try (InputStream stream = WebPage.class.getClassLoader().getResourceAsStream(resource)) {
             if (stream == null) {
                 LOG.warn("Die Seite fehlt im Klassenpfad: {}", resource);
