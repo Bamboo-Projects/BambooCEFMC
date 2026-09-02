@@ -1,0 +1,37 @@
+# Was eine vollständige Laufzeitumgebung für windows-x86_64 enthalten muss.
+#
+# Die Liste steht in einer eigenen Datei und nicht im Skript, damit ein
+# späterer Zweig für Linux oder macOS eine eigene Liste mitbringt und an den
+# Skripten nichts ändert.
+#
+# Sie ist nicht geraten: CMake gibt sie beim Konfigurieren aus, unter
+# "CEF Binary files:" und "CEF Resource files:". Der Beleg liegt nach jedem
+# Bau unter tools/runtime/build/log/cef-dateiliste.log.
+#
+# Gegenüber der CEF-116-Zeit ist snapshot_blob.bin verschwunden und
+# dxcompiler.dll, dxil.dll sowie vk_swiftshader_icd.json sind hinzugekommen.
+
+# Unser Anteil
+jcef.jar
+jcef.dll
+jcef_helper.exe
+
+# CEF Binary files
+libcef.dll
+chrome_elf.dll
+d3dcompiler_47.dll
+dxcompiler.dll
+dxil.dll
+libEGL.dll
+libGLESv2.dll
+v8_context_snapshot.bin
+vk_swiftshader.dll
+vk_swiftshader_icd.json
+vulkan-1.dll
+
+# CEF Resource files
+icudtl.dat
+resources.pak
+chrome_100_percent.pak
+chrome_200_percent.pak
+locales/

@@ -1,0 +1,200 @@
+From afcba3acd74966175b801e415d5f3d7480181ad2 Mon Sep 17 00:00:00 2001
+From: DevPanda <richter@kairosable.com>
+Date: Mon, 31 Aug 2026 23:05:09 +0200
+Subject: [PATCH] CEF darf in dem Thread arbeiten, der es aufruft
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+CefApp führt alles, was CEFs Hauptthread gehört, in AWTs Ereignisthread aus:
+N_PreInitialize, N_Initialize, N_Shutdown und jede Runde der
+Nachrichtenschleife. An die Schleife hängt sie zusätzlich einen Swing-Timer
+mit kMaxTimerDelay = 1000/30 — dreißig Runden je Sekunde.
+
+Für eine AWT-Anwendung ist das richtig und war nie anders gedacht. Für ein
+Programm mit eigener Schleife sind es zwei Fehler auf einmal:
+
+Erstens der Thread. onPaint und die übrigen Rückrufe kommen dort an, wo
+gepumpt wird. Kommt der Renderpfad aus einem Renderthread und wird aus AWT
+gepumpt, treffen die Bilder im falschen Thread ein — und die Freigabe der
+Textur, die davon abhängt, dass beides derselbe Thread ist, hält nicht mehr.
+
+Zweitens der Takt. Wer sechzig Bilder je Sekunde einstellt und über einen
+Timer mit dreißig Runden pumpt, bekommt dreißig. Ohne Fehlermeldung.
+
+useCallingThread() lässt beides fallen: Vorbereitung, Initialisierung und
+Herunterfahren laufen im aufrufenden Thread. Gepumpt wird über
+doMessageLoopWorkNow(), das genau eine Runde ausführt und zurückkehrt.
+
+doMessageLoopWork(delay) wird dabei zum Nichtstun, und das ist kein
+Schönheitsfehler. CEF ruft die Methode selbst zurück, um eine Runde zu
+erbitten — die erste noch mitten aus CefInitialize heraus. Wer die Bitte
+annimmt, verschachtelt CefDoMessageLoopWork in sich selbst, und der Prozess
+endet an einer Meldung über einen Ausnahmefilter, die nichts mit der Ursache
+zu tun hat. Wer selbst pumpt, hat seinen Takt ohnehin und braucht die Bitte
+nicht.
+
+Ohne den Schalter bleibt alles, wie es war — bestehende Anwendungen merken
+nichts.
+
+Überflüssig wird dieser Patch, sobald upstream einen Weg anbietet, CEFs
+Hauptthread selbst zu bestimmen.
+---
+ java/org/cef/CefApp.java | 97 +++++++++++++++++++++++++++++++++-------
+ 1 file changed, 82 insertions(+), 15 deletions(-)
+
+diff --git a/java/org/cef/CefApp.java b/java/org/cef/CefApp.java
+index e623b83..2bb223f 100644
+--- a/java/org/cef/CefApp.java
++++ b/java/org/cef/CefApp.java
+@@ -143,6 +143,54 @@ public class CefApp extends CefAppHandlerAdapter {
+      *
+      * @throws UnsatisfiedLinkError
+      */
++    /**
++     * Ob CEF in dem Thread arbeitet, der es aufruft.
++     */
++    private static volatile boolean callingThreadIsCefThread_ = false;
++
++    /**
++     * Legt fest, dass CEF in dem Thread arbeitet, der es aufruft.
++     *
++     * <p>Ohne diesen Schalter führt CefApp alles, was CEFs Hauptthread
++     * gehört — Vorbereitung, Initialisierung, Nachrichtenschleife,
++     * Herunterfahren —, in AWTs Ereignisthread aus und hängt an die
++     * Nachrichtenschleife zusätzlich einen Swing-Timer mit dreißig Runden je
++     * Sekunde. Für eine AWT-Anwendung ist das genau richtig.
++     *
++     * <p>Ein Programm mit einer eigenen Schleife — ein Spiel etwa, dessen
++     * Renderthread ohnehin zu jedem Bild einmal vorbeikommt — verträgt beides
++     * nicht: Die Rückrufe kämen in einem fremden Thread an, und der Takt wäre
++     * bei dreißig gedeckelt, auch wenn der Browser sechzig liefern soll.
++     *
++     * <p>Muss vor dem ersten {@link #getInstance()} gerufen werden. Danach
++     * gehören alle Aufrufe an CefApp und ihre Browser in denselben Thread.
++     */
++    public static void useCallingThread() {
++        callingThreadIsCefThread_ = true;
++    }
++
++    /**
++     * Führt r in dem Thread aus, dem CEFs Hauptarbeit gehört, und wartet.
++     */
++    private static void onCefThread(Runnable r) throws Exception {
++        if (callingThreadIsCefThread_ || SwingUtilities.isEventDispatchThread()) {
++            r.run();
++        } else {
++            SwingUtilities.invokeAndWait(r);
++        }
++    }
++
++    /**
++     * Wie {@link #onCefThread(Runnable)}, ohne auf das Ende zu warten.
++     */
++    private static void onCefThreadLater(Runnable r) {
++        if (callingThreadIsCefThread_) {
++            r.run();
++        } else {
++            SwingUtilities.invokeLater(r);
++        }
++    }
++
+     private CefApp(String[] args, CefSettings settings) throws UnsatisfiedLinkError {
+         super(args);
+         if (settings != null) settings_ = settings.clone();
+@@ -160,20 +208,15 @@ public class CefApp extends CefAppHandlerAdapter {
+             appHandler_ = this;
+         }
+ 
+-        // Execute on the AWT event dispatching thread.
+         try {
+-            Runnable r = new Runnable() {
++            onCefThread(new Runnable() {
+                 @Override
+                 public void run() {
+                     // Perform native pre-initialization.
+                     if (!N_PreInitialize())
+                         throw new IllegalStateException("Failed to pre-initialize native code");
+                 }
+-            };
+-            if (SwingUtilities.isEventDispatchThread())
+-                r.run();
+-            else
+-                SwingUtilities.invokeAndWait(r);
++            });
+         } catch (Exception e) {
+             e.printStackTrace();
+         }
+@@ -387,7 +430,6 @@ public class CefApp extends CefAppHandlerAdapter {
+      * @return true on success.
+      */
+     private final void initialize() {
+-        // Execute on the AWT event dispatching thread.
+         try {
+             Runnable r = new Runnable() {
+                 @Override
+@@ -437,10 +479,7 @@ public class CefApp extends CefAppHandlerAdapter {
+                     }
+                 }
+             };
+-            if (SwingUtilities.isEventDispatchThread())
+-                r.run();
+-            else
+-                SwingUtilities.invokeAndWait(r);
++            onCefThread(r);
+         } catch (Exception e) {
+             e.printStackTrace();
+         }
+@@ -468,9 +507,10 @@ public class CefApp extends CefAppHandlerAdapter {
+      * Shut down the context.
+      */
+     private final void shutdown() {
+-        // Execute on the AWT event dispatching thread. Always call asynchronously
+-        // so the call stack has a chance to unwind.
+-        SwingUtilities.invokeLater(new Runnable() {
++        // Ohne eigenen Thread: auf AWTs Ereignisthread und asynchron, damit der
++        // Aufrufstapel sich abbauen kann. Mit eigenem Thread: hier und jetzt —
++        // der Aufrufer weiß, dass er außerhalb eines CEF-Rückrufs steht.
++        onCefThreadLater(new Runnable() {
+             @Override
+             public void run() {
+                 System.out.println("shutdown on " + Thread.currentThread());
+@@ -484,11 +524,38 @@ public class CefApp extends CefAppHandlerAdapter {
+         });
+     }
+ 
++    /**
++     * Führt genau eine Runde der Nachrichtenschleife aus, hier und jetzt.
++     *
++     * <p>Der Weg für ein Programm mit eigener Schleife: Der Thread, der CEF
++     * gehört, ruft das einmal je Bild. Alles, was CEF zu melden hat — auch
++     * {@code onPaint} —, kommt in diesem Aufruf und damit in diesem Thread.
++     *
++     * <p><b>Nicht aus einem Rückruf von CEF heraus aufrufen.</b>
++     * {@code CefDoMessageLoopWork} darf sich nicht selbst verschachteln.
++     */
++    public final void doMessageLoopWorkNow() {
++        if (getState() != CefAppState.TERMINATED) {
++            N_DoMessageLoopWork();
++        }
++    }
++
+     /**
+      * Perform a single message loop iteration. Used on all platforms except
+      * Windows with windowed rendering.
+      */
+     public final void doMessageLoopWork(final long delay_ms) {
++        if (callingThreadIsCefThread_) {
++            // CEF bittet hier um eine Runde in delay_ms. Wer selbst pumpt,
++            // schlägt die Bitte aus: Sein Takt steht ohnehin fest.
++            //
++            // Und er muss sie ausschlagen. Die Bitte kommt aus CEF heraus —
++            // die erste noch mitten aus CefInitialize. Hier zu pumpen hieße,
++            // CefDoMessageLoopWork in sich selbst zu verschachteln; das
++            // beendet den Prozess, und zwar mit einer Meldung über einen
++            // Ausnahmefilter, die nichts mit der Ursache zu tun hat.
++            return;
++        }
+         // Execute on the AWT event dispatching thread.
+         SwingUtilities.invokeLater(new Runnable() {
+             @Override

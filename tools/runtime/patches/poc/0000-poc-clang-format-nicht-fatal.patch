@@ -1,0 +1,16 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 22d0fc0..00c0ff0 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -300,7 +300,10 @@ execute_process(
+   RESULT_VARIABLE EXECUTE_RV
+   )
+ if(NOT EXECUTE_RV STREQUAL "0")
+-  message(FATAL_ERROR "Execution failed with unexpected result: ${EXECUTE_RV}")
++  # clang-format ist ein Formatierungswerkzeug und fuer den Build ohne
++  # Bedeutung. Sein Download laeuft ueber ein mitgeliefertes gsutil, das
++  # mit Python 3.13 und neuer nicht mehr startet.
++  message(WARNING "clang-format nicht geladen - wird nicht gebraucht")
+ endif()
+ 
+ 

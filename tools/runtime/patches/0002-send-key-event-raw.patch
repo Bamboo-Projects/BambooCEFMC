@@ -1,0 +1,312 @@
+From bc05b9ea034dadd13574c05927df4d5e88efa171 Mon Sep 17 00:00:00 2001
+From: DevPanda <richter@kairosable.com>
+Date: Mon, 31 Aug 2026 23:05:08 +0200
+Subject: [PATCH] sendKeyEventRaw: Tastenereignisse aus Werten statt aus einem
+ KeyEvent
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Auf Windows liest der native Teil von sendKeyEvent den Scancode aus dem Feld
+java.awt.event.KeyEvent.scancode. Das ist ein private transient long, und
+gefüllt wird es allein vom nativen AWT-Code, wenn Windows selbst eine Taste
+meldet. Ein Ereignis, das ein Programm baut, trägt dort null — und aus null
+macht MapVirtualKey für jede Taste den virtuellen Tastencode null. Chromium
+erkennt dann nicht etwa die falschen Tasten, sondern keine einzige.
+
+Reflection auf das Feld bräuchte --add-opens java.desktop/java.awt.event und
+ist damit bei Endanwendern nicht ausrollbar; eine eigene KeyEvent-Unterklasse
+kommt an das Feld nicht heran. Deshalb eine zweite native Methode, die die
+Werte als Parameter nimmt.
+
+Zwei Stellen weichen bewusst vom Windows-Zweig aus N_SendKeyEvent ab:
+
+VkFromScancode statt MapVirtualKey allein. MapVirtualKey mit MAPVK_VSC_TO_VK
+sieht nur das untere Byte des Scancodes. Pfeiltasten und Ziffernblock teilen
+sich diese acht Bit — 0x48 wird deshalb zu VK_NUMPAD8, gleichgültig ob
+Pfeil-hoch oder die Acht gemeint war. Für die Tasten, bei denen sich beide
+Bedeutungen unterscheiden, steht der Wert jetzt ausgeschrieben da.
+
+native_key_code trägt das Erweiterungs-Bit. Upstream schreibt
+(scanCode << 16) | 1 und verliert damit Bit 24 des lParam. Chromium leitet
+aus genau diesem Bit ab, welche physische Taste eine Seite als "code" sieht.
+
+Der Zweig für Linux und macOS bleibt bewusst dünn: Version 1 ist Windows.
+
+Überflüssig wird dieser Patch, sobald upstream einen Weg bietet, den Scancode
+an sendKeyEvent zu übergeben.
+---
+ java/org/cef/browser/CefBrowser_N.java |  41 ++++++
+ native/CefBrowser_N.cpp                | 166 +++++++++++++++++++++++++
+ native/CefBrowser_N.h                  |  15 +++
+ 3 files changed, 222 insertions(+)
+
+diff --git a/java/org/cef/browser/CefBrowser_N.java b/java/org/cef/browser/CefBrowser_N.java
+index 1462b96..d31168d 100644
+--- a/java/org/cef/browser/CefBrowser_N.java
++++ b/java/org/cef/browser/CefBrowser_N.java
+@@ -644,6 +644,45 @@ public abstract class CefBrowser_N extends CefNativeAdapter implements CefBrowse
+         }
+     }
+ 
++    /**
++     * Sendet ein Tastenereignis aus einfachen Werten statt aus einem
++     * {@link KeyEvent}.
++     *
++     * <p>Auf Windows liest der native Teil von {@link #sendKeyEvent(KeyEvent)}
++     * den Scancode aus dem Feld {@code KeyEvent.scancode}. Das ist ein
++     * {@code private transient long}, und gefüllt wird es allein vom nativen
++     * AWT-Code, wenn Windows selbst eine Taste meldet. Ein Ereignis, das ein
++     * Programm baut, trägt dort null — und aus null macht
++     * {@code MapVirtualKey} für jede Taste den virtuellen Tastencode null.
++     * Chromium erkennt dann nicht etwa die falschen Tasten, sondern keine
++     * einzige.
++     *
++     * <p>Diese Fassung nimmt die Werte deshalb als Parameter. Sie tut sonst
++     * nichts anderes als {@link #sendKeyEvent(KeyEvent)}.
++     *
++     * @param type      {@link KeyEvent#KEY_PRESSED}, {@link
++     *                  KeyEvent#KEY_RELEASED} oder {@link KeyEvent#KEY_TYPED}
++     * @param modifiers Masken aus {@code InputEvent.*_DOWN_MASK} — nicht die
++     *                  alten {@code *_MASK}. Die sehen ähnlich aus und haben
++     *                  andere Werte.
++     * @param keyChar   das Zeichen bei {@code KEY_TYPED}; sonst ohne Bedeutung
++     * @param scancode  der Windows-Scancode, unteres Byte, ohne Erweiterungs-Bit
++     * @param extended  ob Windows die Taste als erweitert führt. Pfeiltasten
++     *                  und Ziffernblock teilen sich die unteren acht Bit; ohne
++     *                  dieses Kennzeichen wird aus Pfeil-hoch die Acht.
++     * @param keyCode   {@code KeyEvent.VK_*}. Auf Windows ungenutzt, weil der
++     *                  virtuelle Tastencode aus dem Scancode entsteht; die
++     *                  Zweige für Linux und macOS brauchen ihn.
++     */
++    public void sendKeyEventRaw(int type, int modifiers, char keyChar, int scancode,
++            boolean extended, int keyCode) {
++        try {
++            N_SendKeyEventRaw(type, modifiers, keyChar, scancode, extended, keyCode);
++        } catch (UnsatisfiedLinkError ule) {
++            ule.printStackTrace();
++        }
++    }
++
+     /**
+      * Send a mouse event.
+      * @param e The event to send.
+@@ -870,6 +909,8 @@ public abstract class CefBrowser_N extends CefNativeAdapter implements CefBrowse
+     private final native void N_WasResized(int width, int height);
+     private final native void N_Invalidate();
+     private final native void N_SendKeyEvent(KeyEvent e);
++    private final native void N_SendKeyEventRaw(
++            int type, int modifiers, char keyChar, int scancode, boolean extended, int keyCode);
+     private final native void N_SendMouseEvent(MouseEvent e);
+     private final native void N_SendMouseWheelEvent(MouseWheelEvent e);
+     private final native void N_DragTargetDragEnter(
+diff --git a/native/CefBrowser_N.cpp b/native/CefBrowser_N.cpp
+index ceea3a6..b09fdd5 100644
+--- a/native/CefBrowser_N.cpp
++++ b/native/CefBrowser_N.cpp
+@@ -71,6 +71,95 @@ int GetCefModifiers(JNIEnv* env, jclass cls, int modifiers) {
+   return cef_modifiers;
+ }
+ 
++#if defined(OS_WIN)
++
++// Der virtuelle Tastencode zu einem Scancode.
++//
++// MapVirtualKey(..., MAPVK_VSC_TO_VK) sieht nur das untere Byte und kennt das
++// Erweiterungs-Bit nicht. Es bildet 0x48 deshalb auf VK_NUMPAD8 ab —
++// gleichgültig, ob die Pfeiltaste nach oben oder die Acht des Ziffernblocks
++// gemeint war. Windows unterscheidet beide über das Präfix 0xE0.
++//
++// Für die Tasten, bei denen sich beide Bedeutungen unterscheiden, steht der
++// Wert deshalb ausgeschrieben hier. Alles andere geht weiter über
++// MapVirtualKey; das liefert für Umschalt, Strg und Alt bewusst den Code ohne
++// Seite (VK_CONTROL, nicht VK_LCONTROL) — genau den stellt Windows in den
++// wParam einer echten Tastenmeldung, und die Seite steckt im lParam.
++WORD VkFromScancode(int scancode, bool extended) {
++  if (extended) {
++    switch (scancode) {
++      case 0x35:
++        return VK_DIVIDE;  // sonst VK_OEM_2
++      case 0x37:
++        return VK_SNAPSHOT;  // sonst VK_MULTIPLY
++      case 0x47:
++        return VK_HOME;  // sonst VK_NUMPAD7
++      case 0x48:
++        return VK_UP;  // sonst VK_NUMPAD8
++      case 0x49:
++        return VK_PRIOR;  // sonst VK_NUMPAD9
++      case 0x4B:
++        return VK_LEFT;  // sonst VK_NUMPAD4
++      case 0x4D:
++        return VK_RIGHT;  // sonst VK_NUMPAD6
++      case 0x4F:
++        return VK_END;  // sonst VK_NUMPAD1
++      case 0x50:
++        return VK_DOWN;  // sonst VK_NUMPAD2
++      case 0x51:
++        return VK_NEXT;  // sonst VK_NUMPAD3
++      case 0x52:
++        return VK_INSERT;  // sonst VK_NUMPAD0
++      case 0x53:
++        return VK_DELETE;  // sonst VK_DECIMAL
++      case 0x5B:
++        return VK_LWIN;
++      case 0x5C:
++        return VK_RWIN;
++      case 0x5D:
++        return VK_APPS;
++      default:
++        break;
++    }
++  } else {
++    // Ohne das Bit gehören dieselben Scancodes dem Ziffernblock. Auch das muss
++    // ausgeschrieben stehen: MapVirtualKey liefert hier gemessen die
++    // Navigationstaste — 0x48 wird zu VK_UP, nicht zu VK_NUMPAD8. Das ist die
++    // Lesart bei ausgeschaltetem NumLock, und sie nähme dem Erweiterungs-Bit
++    // für diese Tasten jede Bedeutung: Pfeil-hoch und die Acht kämen als
++    // dasselbe an.
++    switch (scancode) {
++      case 0x47:
++        return VK_NUMPAD7;
++      case 0x48:
++        return VK_NUMPAD8;
++      case 0x49:
++        return VK_NUMPAD9;
++      case 0x4B:
++        return VK_NUMPAD4;
++      case 0x4C:
++        return VK_NUMPAD5;
++      case 0x4D:
++        return VK_NUMPAD6;
++      case 0x4F:
++        return VK_NUMPAD1;
++      case 0x50:
++        return VK_NUMPAD2;
++      case 0x51:
++        return VK_NUMPAD3;
++      case 0x52:
++        return VK_NUMPAD0;
++      case 0x53:
++        return VK_DECIMAL;
++      default:
++        break;
++    }
++  }
++  return LOWORD(MapVirtualKey(scancode, MAPVK_VSC_TO_VK));
++}
++
++#endif  // defined(OS_WIN)
++
+ #if defined(OS_LINUX)
+ 
+ // From ui/events/keycodes/keyboard_codes_posix.h.
+@@ -1903,6 +1992,83 @@ Java_org_cef_browser_CefBrowser_1N_N_1SendKeyEvent(JNIEnv* env,
+   browser->GetHost()->SendKeyEvent(cef_event);
+ }
+ 
++JNIEXPORT void JNICALL
++Java_org_cef_browser_CefBrowser_1N_N_1SendKeyEventRaw(JNIEnv* env,
++                                                      jobject obj,
++                                                      jint type,
++                                                      jint modifiers,
++                                                      jchar key_char,
++                                                      jint scancode,
++                                                      jboolean extended,
++                                                      jint key_code) {
++  CefRefPtr<CefBrowser> browser = JNI_GET_BROWSER_OR_RETURN(env, obj);
++
++  // KeyEvent nur, um an die Konstanten zu kommen: KEY_PRESSED und Verwandte
++  // sowie die *_DOWN_MASK-Werte, die es von InputEvent erbt. Es wird kein
++  // Ereignis erzeugt — das ist der ganze Zweck dieser Fassung.
++  ScopedJNIClass cls(env, "java/awt/event/KeyEvent");
++  if (!cls)
++    return;
++
++  JNI_STATIC_DEFINE_INT(env, cls, KEY_PRESSED);
++  JNI_STATIC_DEFINE_INT(env, cls, KEY_RELEASED);
++  JNI_STATIC_DEFINE_INT(env, cls, KEY_TYPED);
++
++  CefKeyEvent cef_event;
++  cef_event.modifiers = GetCefModifiers(env, cls, modifiers);
++
++#if defined(OS_WIN)
++  const int base = scancode & 0xFF;
++  const bool is_extended = (extended != JNI_FALSE);
++  const WORD vk_code = VkFromScancode(base, is_extended);
++
++  // Der lParam einer echten Tastenmeldung: Wiederholungszähler in Bit 0-15,
++  // Scancode in Bit 16-23, Erweiterungs-Bit in Bit 24. Chromium leitet daraus
++  // den physischen Tastencode ab, den eine Seite als "code" sieht — ArrowUp
++  // gegen Numpad8. Upstream schreibt hier (scanCode << 16) | 1 und verliert
++  // das Bit; deshalb steht es hier ausgeschrieben.
++  cef_event.native_key_code = (base << 16) | 1;
++  if (is_extended) {
++    cef_event.native_key_code |= (1 << 24);
++  }
++#else
++  // Linux und macOS gehören nicht zu Version 1. Ihre Zweige in
++  // N_SendKeyEvent rechnen aus keyCode und keyChar einen X11- beziehungsweise
++  // Carbon-Tastencode aus; hier steht nur das Nötigste, damit die Methode
++  // übersetzt und nicht still etwas Falsches tut.
++  cef_event.native_key_code = key_char;
++  cef_event.unmodified_character = key_char;
++  cef_event.character = key_char;
++#endif
++
++  if (type == JNI_STATIC(KEY_PRESSED)) {
++#if defined(OS_WIN)
++    cef_event.windows_key_code = vk_code;
++#else
++    cef_event.windows_key_code = key_code;
++#endif
++    cef_event.type = KEYEVENT_RAWKEYDOWN;
++  } else if (type == JNI_STATIC(KEY_RELEASED)) {
++#if defined(OS_WIN)
++    cef_event.windows_key_code = vk_code;
++    // Bit 30 und 31 sind bei WM_KEYUP immer gesetzt.
++    cef_event.native_key_code |= 0xC0000000;
++#else
++    cef_event.windows_key_code = key_code;
++#endif
++    cef_event.type = KEYEVENT_KEYUP;
++  } else if (type == JNI_STATIC(KEY_TYPED)) {
++    // Beim getippten Zeichen zählt allein das Zeichen. Kein Scancode, kein
++    // Tastencode — so macht es auch N_SendKeyEvent.
++    cef_event.windows_key_code = key_char;
++    cef_event.type = KEYEVENT_CHAR;
++  } else {
++    return;
++  }
++
++  browser->GetHost()->SendKeyEvent(cef_event);
++}
++
+ JNIEXPORT void JNICALL
+ Java_org_cef_browser_CefBrowser_1N_N_1SendMouseEvent(JNIEnv* env,
+                                                      jobject obj,
+diff --git a/native/CefBrowser_N.h b/native/CefBrowser_N.h
+index b0348d5..43fac7a 100644
+--- a/native/CefBrowser_N.h
++++ b/native/CefBrowser_N.h
+@@ -436,6 +436,21 @@ Java_org_cef_browser_CefBrowser_1N_N_1Invalidate(JNIEnv*, jobject);
+ JNIEXPORT void JNICALL
+ Java_org_cef_browser_CefBrowser_1N_N_1SendKeyEvent(JNIEnv*, jobject, jobject);
+ 
++/*
++ * Class:     org_cef_browser_CefBrowser_N
++ * Method:    N_SendKeyEventRaw
++ * Signature: (IICIZI)V
++ */
++JNIEXPORT void JNICALL
++Java_org_cef_browser_CefBrowser_1N_N_1SendKeyEventRaw(JNIEnv*,
++                                                      jobject,
++                                                      jint,
++                                                      jint,
++                                                      jchar,
++                                                      jint,
++                                                      jboolean,
++                                                      jint);
++
+ /*
+  * Class:     org_cef_browser_CefBrowser_N
+  * Method:    N_SendMouseEvent

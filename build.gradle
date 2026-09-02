@@ -16,6 +16,13 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
+// Die native Laufzeitumgebung (java-cef) baut tools/runtime/build-jcef.ps1.
+// Ab hier ist sie Voraussetzung für den Bau: ohne sie fehlt jcef.jar.
+def ownRuntimeDir = file('tools/runtime/build/out/windows-x86_64')
+
+// Der java-cef-Unterbau lebt in einem eigenen Quellordner neben src/main.
+sourceSets.main.java.srcDir('src/runtime/java')
+
 neoForge {
     version = neo_version
 
@@ -28,6 +35,7 @@ neoForge {
         client {
             client()
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            systemProperty 'fn.runtime.dir', ownRuntimeDir.absolutePath
         }
     }
 
@@ -36,11 +44,46 @@ neoForge {
             sourceSet sourceSets.main
         }
     }
+
+    // Die Unit-Tests brauchen dieselben Minecraft-Klassen wie der Hauptcode
+    // (LWJGL/GLFW, Rendertypen). Ohne das fehlt dem Testquellsatz die
+    // Client-Seite und die Filter-/Eingabe-Prüfläufe übersetzen nicht.
+    addModdingDependenciesTo sourceSets.test
+}
+
+dependencies {
+    // jcef.jar auf den Laufzeit-Klassenpfad des Dev-Clients.
+    add(neoForge.runs.client.additionalRuntimeClasspathConfiguration.name,
+            files(new File(ownRuntimeDir, 'jcef.jar')))
+}
+
+dependencies {
+    if (!ownRuntimeDir.exists()) {
+        throw new GradleException("Keine Laufzeitumgebung unter ${ownRuntimeDir}. "
+                + "Erst: pwsh -File tools/runtime/build-jcef.ps1")
+    }
+    compileOnly files(new File(ownRuntimeDir, 'jcef.jar'))
+    runtimeOnly files(new File(ownRuntimeDir, 'jcef.jar'))
+
+    compileOnly 'net.java.dev.jna:jna:5.14.0'
+    compileOnly 'net.java.dev.jna:jna-platform:5.14.0'
+
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.release = 21
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events 'failed'
+        exceptionFormat 'full'
+    }
 }
 
 processResources {
@@ -55,5 +98,10 @@ processResources {
     inputs.properties(expandProps)
     filesMatching(['META-INF/neoforge.mods.toml']) {
         expand expandProps
+    }
+    // Was ausgeliefert wird, muss die Mod wissen: tools/runtime/dist.properties
+    // wird als /fn-runtime.properties eingebettet, RuntimeManifest liest sie.
+    from('tools/runtime/dist.properties') {
+        rename { 'fn-runtime.properties' }
     }
 }

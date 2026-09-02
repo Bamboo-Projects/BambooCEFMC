@@ -1,0 +1,42 @@
+From 507d3e14dcfb3fb4a13b6a3af056cb962bc0b8b9 Mon Sep 17 00:00:00 2001
+From: DevPanda <richter@kairosable.com>
+Date: Mon, 31 Aug 2026 23:05:08 +0200
+Subject: [PATCH] clang-format darf fehlen, ohne den Bau anzuhalten
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Der Bau lädt clang-format über ein beigelegtes gsutil. Dessen mitgebrachte
+Abhängigkeiten laden sich unter heutigen Python-Fassungen nicht mehr — unter
+3.12 fehlt six.moves, unter 3.13 und neuer stirbt es an einer Enum-Prüfung. Der
+Schritt scheitert damit auf Rechnern, an denen sonst alles stimmt, und reißt den
+gesamten Konfigurationslauf mit.
+
+clang-format wird nur von tools/fix_style gebraucht und vom Bau selbst nie
+aufgerufen. Aus dem FATAL_ERROR wird deshalb eine Warnung.
+
+Überflüssig wird dieser Patch, sobald upstream den Download entweder
+überspringbar macht oder auf ein Werkzeug umstellt, das unter aktuellem Python
+läuft.
+---
+ CMakeLists.txt | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a1cd92d..8167600 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -292,7 +292,12 @@ execute_process(
+   RESULT_VARIABLE EXECUTE_RV
+   )
+ if(NOT EXECUTE_RV STREQUAL "0")
+-  message(FATAL_ERROR "Execution failed with unexpected result: ${EXECUTE_RV}")
++  # clang-format ist ein Formatierer für tools/fix_style. Der Bau benutzt ihn
++  # nicht. Sein Download läuft über ein beigelegtes gsutil, dessen mitgebrachte
++  # Abhängigkeiten sich unter heutigen Python-Fassungen nicht mehr laden lassen
++  # — der Schritt scheitert also auf Rechnern, an denen sonst alles stimmt.
++  # Ein fehlender Formatierer darf keinen Bau anhalten.
++  message(WARNING "clang-format nicht geladen - für den Bau nicht nötig")
+ endif()
+ 
+ 

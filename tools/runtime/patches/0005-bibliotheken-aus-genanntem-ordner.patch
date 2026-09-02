@@ -1,0 +1,80 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: DevPanda <richter@kairosable.com>
+Date: Tue, 1 Sep 2026 15:10:00 +0200
+Subject: [PATCH] Die nativen Bibliotheken aus einem genannten Ordner laden
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+CefApp lädt seine Bibliotheken über SystemBootstrap, und dessen Voreinstellung
+ruft System.loadLibrary. Gefunden wird damit nur, was auf java.library.path
+liegt — und der steht beim Start der JVM fest. Für einen Entwicklungslauf
+reicht das: Gradle hängt den Ordner an den PATH, und auf Windows speist sich
+der Suchpfad daraus. Ein Spieler startet aber über einen Launcher, und der
+setzt keinen PATH für uns.
+
+Der offensichtliche Weg wäre setLoader von außen. Er trägt nicht: System.load
+bindet die Bibliothek an den Klassenlader der aufrufenden Klasse, und die JVM
+findet eine native Methode nur über den Lader der Klasse, die sie deklariert.
+Ein Loader aus dem Mod-Code lädt aus dem falschen Lader — genau der
+UnsatisfiedLinkError bei N_PreInitialize, den ein PATH-Eintrag damals behoben
+hat. Der Aufruf muss innerhalb dieser Klasse stehen.
+
+Deshalb die Voreinstellung selbst: Nennt jcef.library.path einen Ordner und
+liegt die Bibliothek darin, wird sie von dort geladen. Sonst bleibt alles beim
+Alten.
+
+Der Rückfall ist keine Höflichkeit, sondern Pflicht. CefApp lädt auf Windows
+zuerst jawt, und das liegt beim JRE und nie in diesem Ordner. Die übrigen —
+chrome_elf, libcef, jcef — werden in dieser Reihenfolge vorgeladen; ihre
+Abhängigkeiten untereinander löst Windows dann über die schon geladenen
+Module auf, nicht über den Suchpfad.
+
+Überflüssig würde der Patch, wenn java-cef selbst einen Weg böte, den Ordner
+zur Laufzeit zu nennen.
+---
+diff --git a/java/org/cef/SystemBootstrap.java b/java/org/cef/SystemBootstrap.java
+index 342aaa8..5dc4a7f 100644
+--- a/java/org/cef/SystemBootstrap.java
++++ b/java/org/cef/SystemBootstrap.java
+@@ -18,11 +18,36 @@ public class SystemBootstrap {
+     }
+ 
+     /**
+-     * Default implementation is to call System.loadLibrary
++     * Name of the system property naming the directory the native libraries
++     * are loaded from.
++     */
++    static public final String LIBRARY_PATH_PROPERTY = "jcef.library.path";
++
++    /**
++     * Default implementation is to load from {@code jcef.library.path} when
++     * that property names a directory holding the library, and to call
++     * System.loadLibrary otherwise.
++     *
++     * <p>The load has to happen from inside this class. System.load binds the
++     * library to the class loader of the calling class, and the JVM only finds
++     * native methods through the loader of the class declaring them. A loader
++     * installed from another module would bind to the wrong one.
++     *
++     * <p>The fallback is not optional: jawt ships with the JRE and is never
++     * found in the directory the property names.
+      */
+     static private Loader loader_ = new Loader() {
+         @Override
+         public void loadLibrary(String libname) {
++            String dir = System.getProperty(LIBRARY_PATH_PROPERTY);
++            if (dir != null && !dir.isEmpty()) {
++                java.io.File file =
++                        new java.io.File(dir, System.mapLibraryName(libname));
++                if (file.isFile()) {
++                    System.load(file.getAbsolutePath());
++                    return;
++                }
++            }
+             System.loadLibrary(libname);
+         }
+     };
+-- 
+2.43.0
+

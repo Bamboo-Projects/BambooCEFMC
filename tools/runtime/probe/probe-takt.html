@@ -1,0 +1,47 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Takt</title>
+<!--
+  Eine Seite, die sich in jedem Bild ändert.
+
+  Warum überhaupt eine: Chromium malt nur, wenn sich etwas ändert. Eine
+  stehende Seite liefert kein onPaint, und der gemessene Abstand wäre dann
+  nicht der der Bildrate, sondern der der Langeweile.
+
+  Warum so wenig: Gemessen werden soll der Takt des Unterbaus, nicht die
+  Rechenzeit einer Arbeitslast. Ein wanderndes Rechteck und ein Zähler
+  reichen; alles Größere verschiebt die Messung auf die Seite.
+-->
+<style>
+  html, body { margin: 0; height: 100%; background: #101418; overflow: hidden; }
+  #balken {
+    position: absolute; top: 40%; left: 0;
+    width: 240px; height: 120px; border-radius: 12px;
+    background: linear-gradient(90deg, #4fc3f7, #7e57c2);
+  }
+  #zahl {
+    position: absolute; left: 24px; top: 24px;
+    font: 600 28px/1.4 system-ui, sans-serif; color: #cfd8dc;
+  }
+</style>
+
+<div id="balken"></div>
+<div id="zahl">0</div>
+
+<script>
+  const balken = document.getElementById('balken');
+  const zahl = document.getElementById('zahl');
+  let bilder = 0;
+  const beginn = performance.now();
+
+  function schritt(jetzt) {
+    bilder++;
+    const weg = (jetzt / 8) % (window.innerWidth + 240) - 240;
+    balken.style.transform = 'translateX(' + weg.toFixed(1) + 'px)';
+    const sekunden = (jetzt - beginn) / 1000;
+    zahl.textContent = bilder + ' Bilder, ' +
+      (sekunden > 0 ? (bilder / sekunden).toFixed(1) : '0') + '/s in der Seite';
+    requestAnimationFrame(schritt);
+  }
+  requestAnimationFrame(schritt);
+</script>

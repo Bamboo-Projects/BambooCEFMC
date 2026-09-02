@@ -1,0 +1,96 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Tastatur-Prüfstand</title>
+<!--
+  Die Seite schreibt mit, was Chromium von einem Tastendruck tatsächlich sieht.
+
+  Sie urteilt nicht. Was erwartet wird, steht in KeyProbe.java; hier steht nur,
+  was ankam. Beides getrennt zu halten ist der Sinn der Übung: Sonst prüft die
+  Messung ihre eigene Annahme.
+-->
+<style>
+  html, body { margin: 0; height: 100%; background: #101418; }
+  #feld {
+    position: fixed; inset: 0; width: 100%; height: 100%;
+    box-sizing: border-box; border: 0; padding: 16px; resize: none;
+    background: #101418; color: #cfd8dc;
+    font: 16px/1.5 ui-monospace, Consolas, monospace;
+  }
+</style>
+
+<textarea id="feld" autofocus spellcheck="false"></textarea>
+
+<script>
+  window.protokoll = [];
+
+  addEventListener('keydown', e => window.protokoll.push({
+    art: 'down',
+    key: e.key,
+    code: e.code,
+    keyCode: e.keyCode,
+    location: e.location,
+    repeat: e.repeat,
+    ctrl: e.ctrlKey,
+    shift: e.shiftKey,
+    alt: e.altKey,
+    meta: e.metaKey
+  }), true);
+
+  addEventListener('keypress', e => window.protokoll.push({
+    art: 'press',
+    key: e.key,
+    charCode: e.charCode
+  }), true);
+
+  addEventListener('keyup', e => window.protokoll.push({
+    art: 'up',
+    key: e.key,
+    code: e.code,
+    keyCode: e.keyCode,
+    location: e.location
+  }), true);
+
+  window.leeren = () => {
+    window.protokoll = [];
+    window.rad = [];
+    const feld = document.getElementById('feld');
+    feld.value = '';
+    feld.focus();
+    return true;
+  };
+
+  // Das Protokoll als Zeilen mit Tabulatoren, nicht als JSON.
+  //
+  // Warum nicht JSON: Auf der anderen Seite steht Java ohne JSON-Bibliothek.
+  // Ein Parser dafür wäre mehr Code als der ganze Prüfstand — und er könnte
+  // scheitern, wo die Messung eindeutig sein soll. Sieben Felder je Zeile
+  // reichen, und ein Aufteilen am Tabulator ist kein Parser.
+  //
+  // Reihenfolge: art, key, code, keyCode, charCode, Modifikatoren, location
+  const TAB = String.fromCharCode(9);
+  const NL = String.fromCharCode(10);
+
+  window.bericht = () => window.protokoll.map(e => [
+    e.art,
+    e.key,
+    e.code || '',
+    e.keyCode === undefined ? '' : e.keyCode,
+    e.charCode === undefined ? '' : e.charCode,
+    (e.ctrl ? 'C' : '') + (e.shift ? 'S' : '') + (e.alt ? 'A' : '') + (e.meta ? 'M' : ''),
+    e.location === undefined ? '' : e.location
+  ].join(TAB)).join(NL);
+
+  // Das Rad. Nicht raten, messen: GLFW meldet nach oben ein positives Delta,
+  // AWT nach oben ein negatives wheelRotation, und was Chromium daraus macht,
+  // steht in keiner der beiden Dokumentationen.
+  window.rad = [];
+  addEventListener('wheel', e => window.rad.push(e.deltaY), { capture: true, passive: true });
+  window.radBericht = () => window.rad.map(d => String(d)).join(TAB);
+
+  // Was wirklich im Feld steht — die zweite Wahrheit neben dem Protokoll.
+  // Ein Zeichen kann als Ereignis ankommen und trotzdem nicht im Text landen,
+  // und es kann doppelt im Text landen, ohne dass zwei Ereignisse kämen.
+  window.text = () => document.getElementById('feld').value;
+
+  document.getElementById('feld').focus();
+</script>

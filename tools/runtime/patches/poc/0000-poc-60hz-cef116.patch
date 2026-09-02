@@ -1,0 +1,87 @@
+diff --git a/java/org/cef/browser/CefBrowser_N.java b/java/org/cef/browser/CefBrowser_N.java
+index 6c3749f..377a1d3 100644
+--- a/java/org/cef/browser/CefBrowser_N.java
++++ b/java/org/cef/browser/CefBrowser_N.java
+@@ -266,6 +266,22 @@ public abstract class CefBrowser_N extends CefNativeAdapter implements CefBrowse
+         }
+     }
+ 
++    /**
++     * Sets the maximum rate in frames per second that CefRenderHandler::OnPaint
++     * will be called for a windowless browser. The actual fps may be lower if
++     * the browser cannot generate frames at the requested rate. The value must
++     * be between 1 and 60. Can be called on any thread.
++     *
++     * Backported from upstream java-cef; this fork predates the API.
++     */
++    public void setWindowlessFrameRate(int frameRate) {
++        try {
++            N_SetWindowlessFrameRate(frameRate);
++        } catch (UnsatisfiedLinkError ule) {
++            ule.printStackTrace();
++        }
++    }
++
+     @Override
+     public int getIdentifier() {
+         try {
+@@ -742,6 +758,7 @@ public abstract class CefBrowser_N extends CefNativeAdapter implements CefBrowse
+     private final native void N_Reload();
+     private final native void N_ReloadIgnoreCache();
+     private final native void N_StopLoad();
++    private final native void N_SetWindowlessFrameRate(int frameRate);
+     private final native int N_GetIdentifier();
+     private final native CefFrame N_GetMainFrame();
+     private final native CefFrame N_GetFocusedFrame();
+diff --git a/native/CefBrowser_N.cpp b/native/CefBrowser_N.cpp
+index af6543b..425adad 100644
+--- a/native/CefBrowser_N.cpp
++++ b/native/CefBrowser_N.cpp
+@@ -4,6 +4,8 @@
+ 
+ #include "CefBrowser_N.h"
+ 
++#include <cstdlib>
++
+ #include "include/base/cef_callback.h"
+ #include "include/cef_browser.h"
+ #include "include/cef_task.h"
+@@ -1006,6 +1008,23 @@ void create(std::shared_ptr<JNIObjectsForCreate> objs,
+ 
+   CefBrowserSettings settings;
+ 
++  // Windowless frame rate, overridable from the environment.
++  //
++  // CEF defaults to 30 fps for windowless browsers and the value is only
++  // settable through CefBrowserSettings at creation time. This fork predates
++  // the CefBrowserSettings binding, so there is no way to reach it from Java.
++  // Reading it here keeps a single binary able to serve both sides of an A/B
++  // comparison: JCEF_WINDOWLESS_FRAME_RATE=60 against the unset default.
++  //
++  // CEF accepts 1..60; anything outside that range is ignored so a typo
++  // cannot silently produce a browser that never paints.
++  if (const char* fps_text = std::getenv("JCEF_WINDOWLESS_FRAME_RATE")) {
++    const int fps = std::atoi(fps_text);
++    if (fps >= 1 && fps <= 60) {
++      settings.windowless_frame_rate = fps;
++    }
++  }
++
+   if (transparent == JNI_FALSE) {
+     // Specify an opaque background color (white) to disable transparency.
+     settings.background_color = CefColorSetARGB(255, 255, 255, 255);
+@@ -1282,6 +1301,14 @@ Java_org_cef_browser_CefBrowser_1N_N_1StopLoad(JNIEnv* env, jobject obj) {
+   browser->StopLoad();
+ }
+ 
++JNIEXPORT void JNICALL
++Java_org_cef_browser_CefBrowser_1N_N_1SetWindowlessFrameRate(JNIEnv* env,
++                                                             jobject obj,
++                                                             jint frameRate) {
++  CefRefPtr<CefBrowser> browser = JNI_GET_BROWSER_OR_RETURN(env, obj);
++  browser->GetHost()->SetWindowlessFrameRate(frameRate);
++}
++
+ JNIEXPORT jint JNICALL
+ Java_org_cef_browser_CefBrowser_1N_N_1GetIdentifier(JNIEnv* env, jobject obj) {
+   CefRefPtr<CefBrowser> browser = JNI_GET_BROWSER_OR_RETURN(env, obj, -1);

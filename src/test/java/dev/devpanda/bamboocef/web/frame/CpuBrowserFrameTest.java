@@ -1,0 +1,165 @@
+package dev.devpanda.bamboocef.web.frame;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Das Bild besitzt seine Bildpunkte — geprüft, nicht behauptet.
+ *
+ * <p>Der Fall, um den es geht, ist genau der von JCEF: Ein fremder Puffer
+ * kommt herein, wird gleich danach überschrieben, und das Bild muss trotzdem
+ * zeigen, was zum Zeitpunkt des Aufrufs darin stand.
+ */
+class CpuBrowserFrameTest {
+
+    private static ByteBuffer bufferOf(int width, int height, byte fill) {
+        ByteBuffer buffer = ByteBuffer
+                .allocateDirect(width * height * CpuBrowserFrame.BYTES_PER_PIXEL)
+                .order(ByteOrder.nativeOrder());
+        while (buffer.hasRemaining()) {
+            buffer.put(fill);
+        }
+        return buffer.flip();
+    }
+
+    @Test
+    @DisplayName("Was der fremde Puffer nach dem Aufruf tut, geht das Bild nichts an")
+    void theFrameSurvivesTheSourceBeingOverwritten() {
+        ByteBuffer chromium = bufferOf(2, 2, (byte) 0x11);
+        CpuBrowserFrame frame = CpuBrowserFrame.allocate(2, 2);
+        frame.copyFrom(chromium, 2, 2, List.of());
+
+        // Chromium verwendet seinen Puffer wieder — genau das darf es nach der
+        // Rückkehr aus onPaint.
+        chromium.clear();
+        while (chromium.hasRemaining()) {
+            chromium.put((byte) 0x77);
+        }
+
+        ByteBuffer kept = frame.pixels();
+        assertEquals((byte) 0x11, kept.get(0),
+                "hätte das Bild den fremden Puffer nur festgehalten, stünde hier 0x77");
+        assertEquals(2 * 2 * 4, kept.remaining());
+    }
+
+    @Test
+    @DisplayName("Der fremde Puffer wird nicht angefasst")
+    void theSourceIsLeftAlone() {
+        ByteBuffer chromium = bufferOf(2, 2, (byte) 0x11);
+        int positionBefore = chromium.position();
+        int limitBefore = chromium.limit();
+
+        CpuBrowserFrame.allocate(2, 2).copyFrom(chromium, 2, 2, List.of());
+
+        assertEquals(positionBefore, chromium.position(),
+                "eine verschobene Position merkt erst der nächste Aufruf");
+        assertEquals(limitBefore, chromium.limit());
+    }
+
+    @Test
+    @DisplayName("Ohne Angabe gilt das ganze Bild als geändert")
+    void noRegionsMeansEverything() {
+        CpuBrowserFrame frame = CpuBrowserFrame.allocate(8, 4);
+        frame.copyFrom(bufferOf(8, 4, (byte) 1), 8, 4, List.of());
+
+        assertEquals(List.of(DirtyRegion.whole(8, 4)), frame.dirty());
+        assertTrue(frame.full());
+    }
+
+    @Test
+    @DisplayName("Angegebene Bereiche bleiben erhalten")
+    void regionsAreKept() {
+        CpuBrowserFrame frame = CpuBrowserFrame.allocate(8, 4);
+        DirtyRegion cursor = new DirtyRegion(2, 1, 1, 1);
+        frame.copyFrom(bufferOf(8, 4, (byte) 1), 8, 4, List.of(cursor));
+
+        assertEquals(List.of(cursor), frame.dirty());
+        assertEquals(false, frame.full(), "ein Cursor ist nicht das ganze Bild");
+        assertEquals(1, cursor.pixels());
+    }
+
+    @Test
+    @DisplayName("Eine zu kleine Quelle wird abgewiesen statt halb gelesen")
+    void aShortSourceIsRefused() {
+        CpuBrowserFrame frame = CpuBrowserFrame.allocate(4, 4);
+        ByteBuffer tooSmall = bufferOf(2, 2, (byte) 1);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> frame.copyFrom(tooSmall, 4, 4, List.of()));
+    }
+
+    @Test
+    @DisplayName("Wächst das Fenster, wächst der Puffer mit")
+    void growingReallocates() {
+        CpuBrowserFrame frame = CpuBrowserFrame.allocate(2, 2);
+        frame.copyFrom(bufferOf(2, 2, (byte) 1), 2, 2, List.of());
+        frame.copyFrom(bufferOf(8, 8, (byte) 2), 8, 8, List.of());
+
+        assertEquals(8, frame.width());
+        assertEquals(8, frame.height());
+        assertEquals(8 * 8 * 4, frame.pixels().remaining());
+        assertEquals((byte) 2, frame.pixels().get(0));
+    }
+
+    @Test
+    @DisplayName("Wiederverwenden behält den Puffer und vergisst die Bereiche")
+    void reuseKeepsTheBufferAndForgetsTheRegions() {
+        CpuBrowserFrame frame = CpuBrowserFrame.allocate(4, 4);
+        frame.copyFrom(bufferOf(4, 4, (byte) 5), 4, 4, List.of(new DirtyRegion(0, 0, 1, 1)));
+
+        frame.reuse();
+        assertEquals(List.of(), frame.dirty(),
+                "sonst lädt der nächste Durchgang den Bereich von vorletzter Runde hoch");
+
+        frame.copyFrom(bufferOf(4, 4, (byte) 9), 4, 4, List.of());
+        assertEquals((byte) 9, frame.pixels().get(0));
+    }
+
+    @Test
+    @DisplayName("Ein geschlossenes Bild gibt nichts mehr her")
+    void aClosedFrameIsDone() {
+        CpuBrowserFrame frame = CpuBrowserFrame.allocate(2, 2);
+        frame.copyFrom(bufferOf(2, 2, (byte) 1), 2, 2, List.of());
+        frame.close();
+        frame.close();
+
+        assertTrue(frame.isClosed());
+        assertThrows(IllegalStateException.class, frame::pixels);
+        assertThrows(IllegalStateException.class,
+                () -> frame.copyFrom(bufferOf(2, 2, (byte) 1), 2, 2, List.of()));
+        assertThrows(IllegalStateException.class, frame::reuse);
+    }
+
+    @Test
+    @DisplayName("Die Sicht auf die Bildpunkte ist schreibgeschützt und teilt keine Position")
+    void theViewIsReadOnlyAndIndependent() {
+        CpuBrowserFrame frame = CpuBrowserFrame.allocate(2, 2);
+        frame.copyFrom(bufferOf(2, 2, (byte) 3), 2, 2, List.of());
+
+        ByteBuffer first = frame.pixels();
+        first.position(4);
+        ByteBuffer second = frame.pixels();
+
+        assertTrue(first.isReadOnly());
+        assertNotEquals(first.position(), second.position(),
+                "zwei Leser dürfen sich nicht gegenseitig die Position verschieben");
+        assertThrows(java.nio.ReadOnlyBufferException.class, () -> second.put(0, (byte) 0));
+    }
+
+    @Test
+    @DisplayName("Kein Bild ohne Maße")
+    void sizeMustMakeSense() {
+        assertThrows(IllegalArgumentException.class, () -> CpuBrowserFrame.allocate(0, 4));
+        assertThrows(IllegalArgumentException.class, () -> new DirtyRegion(0, 0, 0, 1));
+        assertThrows(IllegalArgumentException.class, () -> new DirtyRegion(-1, 0, 1, 1));
+    }
+}

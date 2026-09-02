@@ -1,0 +1,47 @@
+From 6ccfbcecacf8ff3b8542699d113d00fd7b25eb5c Mon Sep 17 00:00:00 2001
+From: DevPanda <richter@kairosable.com>
+Date: Mon, 31 Aug 2026 23:05:07 +0200
+Subject: [PATCH] =?UTF-8?q?CefBrowser=5FN=20=C3=B6ffnen,=20damit=20ein=20e?=
+ =?UTF-8?q?igener=20Browser=20davon=20erben=20kann?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Ein Programm, das Chromium ohne Fenster einbettet und seine Bilder selbst
+annimmt, muss von CefBrowser_N erben: sendKeyEvent, sendMouseEvent,
+sendMouseWheelEvent und wasResized sind protected final, und nur wer erbt,
+kommt heran. Die Klasse ist aber paketprivat.
+
+Warum nicht stattdessen CefBrowserOsr geöffnet wird, obwohl das die
+naheliegende Stelle wäre: Deren Konstruktor ruft createGLCanvas() und baut
+eine AWT-GLCanvas über JOGL auf. In einem Prozess, der seinen eigenen
+GL-Kontext führt und JOGL nicht mitliefert, ist das kein gangbarer Weg. Die
+Klasse öffentlich zu machen würde eine Nutzbarkeit vorspiegeln, die sie nicht
+hat; sie stattdessen von JOGL zu befreien wäre kein Patch mehr, sondern ein
+Ersatz für fünfhundert Zeilen fremden Code.
+
+Diese eine Zeile öffnet dafür nichts, was nicht ohnehin offen wäre: Die Klasse
+bleibt abstrakt, ihr Konstruktor bleibt protected, und ihre öffentlichen
+Methoden stehen schon über die Schnittstelle CefBrowser zur Verfügung. Neu
+erreichbar sind allein die protected-Mitglieder — für Unterklassen, und genau
+darum geht es.
+
+Überflüssig wird dieser Patch, sobald upstream einen Browser ohne Fenster
+anbietet, der ohne JOGL auskommt.
+---
+ java/org/cef/browser/CefBrowser_N.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/java/org/cef/browser/CefBrowser_N.java b/java/org/cef/browser/CefBrowser_N.java
+index c89e296..1462b96 100644
+--- a/java/org/cef/browser/CefBrowser_N.java
++++ b/java/org/cef/browser/CefBrowser_N.java
+@@ -38,7 +38,7 @@ import javax.swing.SwingUtilities;
+  * The visibility of this class is "package". To create a new
+  * CefBrowser instance, please use CefBrowserFactory.
+  */
+-abstract class CefBrowser_N extends CefNativeAdapter implements CefBrowser {
++public abstract class CefBrowser_N extends CefNativeAdapter implements CefBrowser {
+     private volatile boolean isPending_ = false;
+     private final CefClient client_;
+     private final String url_;
