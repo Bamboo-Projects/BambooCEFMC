@@ -2,6 +2,7 @@ package dev.devpanda.bamboocef.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.devpanda.bamboocef.BambooCEF;
+import dev.devpanda.bamboocef.dev.WebProofChain;
 import dev.devpanda.bamboocef.web.BrowserManager;
 import dev.devpanda.bamboocef.web.WebRuntime;
 import dev.devpanda.bamboocef.web.api.Overlays;
@@ -43,17 +44,23 @@ public final class BambooCEFClient {
      *
      * <p>The order is deliberate. The self-test of the image path runs first
      * and once per session; it needs a drawing context and can therefore not
-     * be an ordinary check run. The benchmark comes last and only on request:
-     * {@code -Dfn.benchmark=true}. Both would otherwise share a Chromium with
-     * the surfaces and measure each other.
+     * be an ordinary check run. The proof chain follows, because the benchmark
+     * after it waits for the proofs to be through. The benchmark itself runs
+     * only on request: {@code -Dfn.benchmark=true}. All three would otherwise
+     * share a Chromium with the surfaces and measure each other.
      */
     @SubscribeEvent
     public static void tickWebRuntime(ClientTickEvent.Post event) {
         // A library must not start Chromium on its own: the self-test runs only
         // when asked for. Consumers get the runtime lazily, on the first surface.
-        if (SELF_TEST) {
+        //
+        // The proof chain counts as an asker. It needs the self-test as its
+        // first step, and without this line a run with -Dfn.benchmark would
+        // wait forever for a self-test that nobody started.
+        if (SELF_TEST || WebProofChain.wanted()) {
             WebSelfTest.tick();
         }
+        WebProofChain.tick();
         WebBenchmark.tick();
         Overlays.tick();
         WorldSurfaces.tick();
