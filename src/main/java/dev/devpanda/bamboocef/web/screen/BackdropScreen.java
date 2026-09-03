@@ -41,7 +41,7 @@ import java.nio.file.Path;
  */
 public class BackdropScreen extends BrowserScreen {
 
-    private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/BackdropScreen");
+    private static final Logger LOG = LoggerFactory.getLogger("BambooCEF/BackdropScreen");
 
     /** How often a new backdrop comes into being. */
     public enum Mode {

@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Where the runtime environment is searched for and how it is fetched.
  *
  * <p><b>Why these test runs are more important than most.</b> In the
- * development run {@code fn.runtime.dir} is set, and with that the
+ * development run {@code bamboocef.runtime.dir} is set, and with that the
  * search ends in the first line. Everything behind it — cache, download,
  * checksum, half-unpacked folder — is <b>never</b> touched during
  * development and <b>always</b> at the player's.
@@ -43,7 +43,7 @@ class RuntimeInstallTest {
             server.stop(0);
             server = null;
         }
-        System.clearProperty("fn.runtime.dir");
+        System.clearProperty("bamboocef.runtime.dir");
         RuntimeManifest.useForTests(null);
     }
 
@@ -67,18 +67,18 @@ class RuntimeInstallTest {
     // ---- The search order ---------------------------------------------------
 
     @Test
-    @DisplayName("A set fn.runtime.dir wins if something lies in it")
+    @DisplayName("A set bamboocef.runtime.dir wins if something lies in it")
     void configuredDirectoryWins(@TempDir Path dir, @TempDir Path game) throws IOException {
         Files.createFile(dir.resolve("jcef.jar"));
-        System.setProperty("fn.runtime.dir", dir.toString());
+        System.setProperty("bamboocef.runtime.dir", dir.toString());
 
         assertEquals(dir.toFile(), RuntimeInstall.locate(game.toFile()));
     }
 
     @Test
-    @DisplayName("A set fn.runtime.dir with no content names the build path")
+    @DisplayName("A set bamboocef.runtime.dir with no content names the build path")
     void configuredButEmptyDirectorySaysHow(@TempDir Path dir, @TempDir Path game) {
-        System.setProperty("fn.runtime.dir", dir.toString());
+        System.setProperty("bamboocef.runtime.dir", dir.toString());
 
         WebRuntimeUnavailable thrown = assertThrows(WebRuntimeUnavailable.class,
                 () -> RuntimeInstall.locate(game.toFile()));

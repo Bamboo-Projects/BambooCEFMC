@@ -59,7 +59,7 @@ public final class WebDevTools {
         if (!WebDebug.isRequested()) {
             say(Component.literal(
                             "Chromiums Fernwartung ist zu. Der Client muss mit "
-                                    + "-Dfn.devtools=true starten — im Entwicklungslauf über "
+                                    + "-Dbamboocef.devtools=true starten — im Entwicklungslauf über "
                                     + "./gradlew runClient -Pdevtools.")
                     .withStyle(ChatFormatting.YELLOW));
             return;

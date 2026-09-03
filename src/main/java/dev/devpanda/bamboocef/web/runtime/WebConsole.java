@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class WebConsole implements CefDisplayHandler {
 
-    private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/Web");
+    private static final Logger LOG = LoggerFactory.getLogger("BambooCEF/Web");
 
     private static boolean attached;
 

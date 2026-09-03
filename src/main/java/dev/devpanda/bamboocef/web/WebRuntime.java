@@ -26,7 +26,7 @@ import java.util.function.Supplier;
  */
 public final class WebRuntime {
 
-    private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/Web");
+    private static final Logger LOG = LoggerFactory.getLogger("BambooCEF/Web");
 
     private static WebRuntimeStatus status = WebRuntimeStatus.of(WebRuntimeState.NOT_STARTED);
     private static WebBackend backend;

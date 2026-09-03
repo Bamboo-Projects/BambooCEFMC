@@ -27,12 +27,12 @@ import org.slf4j.LoggerFactory;
  *
  * <p><b>Only on request, only local.</b> An open debug port is a door into the
  * browser: whoever reaches it can read pages, run scripts and send input. It
- * therefore only opens when {@code fn.devtools} is set, and Chromium binds it
+ * therefore only opens when {@code bamboocef.devtools} is set, and Chromium binds it
  * of its own accord only to the local machine.
  */
 public final class WebDebug {
 
-    private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/WebDebug");
+    private static final Logger LOG = LoggerFactory.getLogger("BambooCEF/WebDebug");
 
     /** The port, if it does open. */
     public static final int PORT = 9222;
@@ -49,7 +49,7 @@ public final class WebDebug {
      * no longer accepts anything.
      */
     public static void requestIfEnabled() {
-        if (!Boolean.getBoolean("fn.devtools") || requested) {
+        if (!Boolean.getBoolean("bamboocef.devtools") || requested) {
             return;
         }
         try {
@@ -73,7 +73,7 @@ public final class WebDebug {
             });
             requested = true;
             LOG.info("Chromiums Fernwartung wird auf 127.0.0.1:{} geöffnet — "
-                    + "nur für diese Sitzung und nur, weil fn.devtools gesetzt ist", PORT);
+                    + "nur für diese Sitzung und nur, weil bamboocef.devtools gesetzt ist", PORT);
         } catch (IllegalStateException tooLate) {
             LOG.warn("Zu spät für die Fernwartung: Chromium läuft schon. "
                     + "Der Wunsch muss im Aufbau der Mod angemeldet werden.", tooLate);

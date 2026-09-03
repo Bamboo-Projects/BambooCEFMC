@@ -23,7 +23,7 @@ public final class BambooCEF {
         // loading, so before every setup event. Anyone who wants to add to
         // Chromium's command line has to do it here or not at all.
         //
-        // Only does anything when fn.devtools is set; on a server the class
+        // Only does anything when bamboocef.devtools is set; on a server the class
         // does not even exist in the first place.
         if (FMLEnvironment.dist.isClient()) {
             dev.devpanda.bamboocef.web.runtime.WebDebug.requestIfEnabled();

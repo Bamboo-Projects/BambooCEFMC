@@ -35,7 +35,7 @@ neoForge {
         client {
             client()
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
-            systemProperty 'fn.runtime.dir', ownRuntimeDir.absolutePath
+            systemProperty 'bamboocef.runtime.dir', ownRuntimeDir.absolutePath
         }
     }
 

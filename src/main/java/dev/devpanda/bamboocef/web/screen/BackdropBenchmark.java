@@ -33,7 +33,7 @@ import java.util.Locale;
 public final class BackdropBenchmark extends BackdropScreen {
 
     private static final Logger LOG =
-            LoggerFactory.getLogger("FactoryNetwork/BackdropBenchmark");
+            LoggerFactory.getLogger("BambooCEF/BackdropBenchmark");
 
     private static final long SECTION_NANOS = 5_000_000_000L;
     private static final long SETTLE_NANOS = 3_000_000_000L;

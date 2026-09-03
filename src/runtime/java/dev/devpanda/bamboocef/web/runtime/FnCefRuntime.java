@@ -35,13 +35,13 @@ public final class FnCefRuntime {
     private static final Logger LOG = LogUtils.getLogger();
 
     /**
-     * Whether debugging runs along: {@code -Dfn.cef.trace=true}.
+     * Whether debugging runs along: {@code -Dbamboocef.cef.trace=true}.
      *
      * <p>It hooks into the standard error output and records every key. Both
      * are only noise in everyday use and, in case of doubt, the only thing that
      * helps — hence a switch and not a decision for good.
      */
-    static final boolean TRACE = Boolean.getBoolean("fn.cef.trace");
+    static final boolean TRACE = Boolean.getBoolean("bamboocef.cef.trace");
 
     private static CefApp app;
     private static CefClient client;

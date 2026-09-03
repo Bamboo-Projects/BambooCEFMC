@@ -47,7 +47,7 @@ public final class BambooCEFClient {
      * and once per session; it needs a drawing context and can therefore not
      * be an ordinary check run. The proof chain follows, because the benchmark
      * after it waits for the proofs to be through. The benchmark itself runs
-     * only on request: {@code -Dfn.benchmark=true}. All three would otherwise
+     * only on request: {@code -Dbamboocef.benchmark=true}. All three would otherwise
      * share a Chromium with the surfaces and measure each other.
      */
     @SubscribeEvent
@@ -56,7 +56,7 @@ public final class BambooCEFClient {
         // when asked for. Consumers get the runtime lazily, on the first surface.
         //
         // The proof chain counts as an asker. It needs the self-test as its
-        // first step, and without this line a run with -Dfn.benchmark would
+        // first step, and without this line a run with -Dbamboocef.benchmark would
         // wait forever for a self-test that nobody started.
         if (SELF_TEST || WebProofChain.wanted()) {
             WebSelfTest.tick();

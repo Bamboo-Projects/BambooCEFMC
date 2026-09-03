@@ -134,7 +134,7 @@ public class FnBrowser extends CefBrowser_N implements CefRenderHandler {
      * to narrow down the moment: if the header lines in the log always sit
      * between the same two steps, that is half the answer.
      *
-     * <p>Behind {@code -Dfn.cef.trace=true}, because in everyday use it would
+     * <p>Behind {@code -Dbamboocef.cef.trace=true}, because in everyday use it would
      * be noise.
      */
     private void trace(String step) {

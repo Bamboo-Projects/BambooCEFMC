@@ -36,7 +36,7 @@ import java.nio.charset.StandardCharsets;
  */
 public final class WebSelfTest {
 
-    private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/WebSelfTest");
+    private static final Logger LOG = LoggerFactory.getLogger("BambooCEF/WebSelfTest");
 
     /** Edge length of the test surface. Small enough to read back quickly. */
     private static final int SIZE = 256;

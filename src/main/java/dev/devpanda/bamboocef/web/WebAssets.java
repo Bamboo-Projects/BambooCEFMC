@@ -39,7 +39,7 @@ import java.util.List;
  */
 public final class WebAssets {
 
-    private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/WebAssets");
+    private static final Logger LOG = LoggerFactory.getLogger("BambooCEF/WebAssets");
 
     /** How the target folder tells what sits in it. */
     private static final String STAMP = ".fassung";

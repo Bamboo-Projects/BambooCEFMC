@@ -25,7 +25,7 @@ public enum WebRuntimeState {
      * Whoever downloads it has a browser on the next start.
      *
      * <p>Set by {@link RuntimeInstall} when a folder named via
-     * {@code fn.runtime.dir} is empty or the manifest knows no address to
+     * {@code bamboocef.runtime.dir} is empty or the manifest knows no address to
      * download from.
      */
     RUNTIME_MISSING,

@@ -60,7 +60,7 @@ import java.util.Locale;
  */
 public final class BackdropProof extends Screen {
 
-    private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/BackdropProof");
+    private static final Logger LOG = LoggerFactory.getLogger("BambooCEF/BackdropProof");
 
     /** How far an unoccluded colour may be off. */
     private static final int TOLERANCE = 16;

@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
  * rate, and every benchmark would report half as the limit. The render proof
  * additionally needs a screen all to itself.
  *
- * <p>Runs only when {@code fn.benchmark} is set. In ordinary play no one gains
+ * <p>Runs only when {@code bamboocef.benchmark} is set. In ordinary play no one gains
  * anything from a test image popping up when entering the world. By hand it
  * works any time with {@code /bamboocef nachweis}.
  *
@@ -38,7 +38,7 @@ public final class WebProofChain {
     /** A short pause between two browsers — two seconds. */
     private static final int SETTLE_TICKS = 40;
 
-    private static final boolean ENABLED = Boolean.getBoolean("fn.benchmark");
+    private static final boolean ENABLED = Boolean.getBoolean("bamboocef.benchmark");
 
     /**
      * A run that only wants an editor skips the chain.
@@ -46,7 +46,7 @@ public final class WebProofChain {
      * <p>The proofs A through E together need over three minutes before the
      * first page appears. For a spike that needs several runs, that is a lost
      * quarter of an hour every time — so {@code fn.ide} wins over
-     * {@code fn.benchmark}. What such a run opens instead is the consuming
+     * {@code bamboocef.benchmark}. What such a run opens instead is the consuming
      * mod's business, not this one's.
      */
     private static final boolean IDE_ONLY = Boolean.getBoolean("fn.ide");

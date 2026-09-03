@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class FrameSchemes {
 
-    private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/FrameSchemes");
+    private static final Logger LOG = LoggerFactory.getLogger("BambooCEF/FrameSchemes");
 
     /** The one store. It lives as long as Chromium's registration. */
     private static final FrameStore STORE = new FrameStore();

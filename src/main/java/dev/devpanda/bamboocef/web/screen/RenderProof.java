@@ -57,7 +57,7 @@ import java.util.Locale;
  */
 public final class RenderProof extends Screen {
 
-    private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/RenderProof");
+    private static final Logger LOG = LoggerFactory.getLogger("BambooCEF/RenderProof");
 
     /** How far a value may be off. Chromium rounds, so do we. */
     private static final int TOLERANCE = 14;

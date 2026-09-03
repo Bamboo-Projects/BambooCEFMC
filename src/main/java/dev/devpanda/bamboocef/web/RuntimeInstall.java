@@ -22,7 +22,7 @@ import java.util.HexFormat;
  * <p><b>Three places, in this order.</b>
  *
  * <pre>
- *   1. fn.runtime.dir            set by the build script, for development
+ *   1. bamboocef.runtime.dir     set by the build script, for development
  *   2. &lt;game directory&gt;/bamboocef/runtime/&lt;version&gt;/
  *   3. downloaded, if an address is given in the manifest
  * </pre>
@@ -68,7 +68,7 @@ public final class RuntimeInstall {
      *         why, and whether a second attempt is worthwhile
      */
     public static File locate(File gameDirectory) {
-        String configured = System.getProperty("fn.runtime.dir");
+        String configured = System.getProperty("bamboocef.runtime.dir");
         if (configured != null && !configured.isBlank()) {
             File dir = new File(configured);
             if (complete(dir)) {
@@ -134,7 +134,7 @@ public final class RuntimeInstall {
             } finally {
                 downloading = false;
             }
-        }, "FactoryNetwork Laufzeitumgebung");
+        }, "BambooCEF Laufzeitumgebung");
         // A background thread: whoever quits the game while it is downloading
         // should not wait for a hundred and seventy megabytes. What is
         // half-loaded sits in a .teil file and does not get in the way next
@@ -152,7 +152,7 @@ public final class RuntimeInstall {
      *
      * <p>Package-private and not private, so that a test run can call it against
      * its own server. On the path through {@link #locate(File)} it is never
-     * reached in a development run — there {@code fn.runtime.dir} is set, and
+     * reached in a development run — there {@code bamboocef.runtime.dir} is set, and
      * then everything is already present.
      */
     static void download(RuntimeManifest.Entry entry, String url, Path target)

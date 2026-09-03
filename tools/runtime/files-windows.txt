@@ -35,3 +35,10 @@ resources.pak
 chrome_100_percent.pak
 chrome_200_percent.pak
 locales/
+
+# Licenses
+# CEF and java-cef are BSD-licensed: a binary redistribution has to carry the
+# copyright notice. build-jcef.ps1 copies both out of the sources it builds
+# from — they are not part of the CEF binary/resource file lists above.
+LICENSE-cef.txt
+LICENSE-java-cef.txt

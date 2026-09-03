@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
  */
 public class BrowserScreen extends Screen {
 
-    private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/BrowserScreen");
+    private static final Logger LOG = LoggerFactory.getLogger("BambooCEF/BrowserScreen");
 
     /**
      * The key that reclaims the focus.
@@ -194,7 +194,7 @@ public class BrowserScreen extends Screen {
             // from one that simply was not reset: the second request for the
             // same kind would appear nowhere.
             boolean firstOfKind = seenCursors.add(wanted);
-            if (firstOfKind || Boolean.getBoolean("fn.cef.trace")) {
+            if (firstOfKind || Boolean.getBoolean("bamboocef.cef.trace")) {
                 LOG.info("Mauszeiger: Chromium wünscht {} ({})",
                         dev.devpanda.bamboocef.web.view.CursorType.fromId(wanted), wanted);
             }

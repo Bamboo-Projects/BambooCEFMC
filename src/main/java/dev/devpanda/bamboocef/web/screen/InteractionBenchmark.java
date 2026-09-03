@@ -32,7 +32,7 @@ import java.util.Locale;
 public final class InteractionBenchmark extends BrowserScreen {
 
     private static final Logger LOG =
-            LoggerFactory.getLogger("FactoryNetwork/InteractionBenchmark");
+            LoggerFactory.getLogger("BambooCEF/InteractionBenchmark");
 
     /**
      * How long a section lasts.

@@ -306,6 +306,13 @@ foreach ($dir in $nativeOut, $cefRelease, $cefRes) {
 }
 $sources['jcef.jar'] = Join-Path $classesDir 'jcef.jar'
 
+# Both licenses under their target names. BSD asks a binary redistribution to
+# carry the copyright notice, and neither file sits in the CEF binary or
+# resource directories the loop above walks — they lie at the root of the CEF
+# distribution and of the java-cef checkout.
+$sources['LICENSE-cef.txt']      = Join-Path $cefRoot   'LICENSE.txt'
+$sources['LICENSE-java-cef.txt'] = Join-Path $sourceDir 'LICENSE.txt'
+
 $missing = @()
 foreach ($name in $expected) {
     if ($name -eq 'locales/') { continue }

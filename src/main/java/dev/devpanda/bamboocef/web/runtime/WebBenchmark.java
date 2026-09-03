@@ -35,12 +35,12 @@ import java.util.Locale;
  * <p>All three run at 1920×1080, so that the numbers are comparable with one
  * another and the upper bound is not a flattering one.
  *
- * <p>Runs once per session, only when {@code fn.benchmark} is set — a
+ * <p>Runs once per session, only when {@code bamboocef.benchmark} is set — a
  * measurement that always ran along would be a cost item instead of a proof.
  */
 public final class WebBenchmark {
 
-    private static final Logger LOG = LoggerFactory.getLogger("FactoryNetwork/WebBenchmark");
+    private static final Logger LOG = LoggerFactory.getLogger("BambooCEF/WebBenchmark");
 
     /** The size at which measuring happens — a full screen. */
     private static final int WIDTH = 1920;
@@ -128,7 +128,7 @@ public final class WebBenchmark {
         WARMUP, BASELINE, STILL_PAGE, BLINKER_PAGE, FLOOD_PAGE, DONE
     }
 
-    private static final boolean enabled = Boolean.getBoolean("fn.benchmark");
+    private static final boolean enabled = Boolean.getBoolean("bamboocef.benchmark");
     private static Stage stage = Stage.WARMUP;
     private static int ticksInStage;
 
