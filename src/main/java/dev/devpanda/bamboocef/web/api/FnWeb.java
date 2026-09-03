@@ -179,6 +179,20 @@ public final class FnWeb {
         }
     }
 
+    /**
+     * Asks for the runtime ahead of the first surface.
+     *
+     * <p>Chromium comes up lazily with the first surface, and that opener
+     * pays the cold start. A mod that knows it will need the web calls this
+     * once, early — at client setup, say. The library then starts the runtime
+     * a few seconds after the client is up, at the title screen, and fetches
+     * the runtime first if it is missing. Idempotent; without this call the
+     * library never starts a browser on its own.
+     */
+    public static void prepare() {
+        dev.devpanda.bamboocef.web.runtime.WebWarmup.request();
+    }
+
     public static boolean available() {
         return WebSupport.ensureStarted().usable();
     }

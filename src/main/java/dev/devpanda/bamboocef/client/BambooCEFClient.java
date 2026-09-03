@@ -10,6 +10,7 @@ import dev.devpanda.bamboocef.web.api.WorldSurfaces;
 import dev.devpanda.bamboocef.web.runtime.WebBenchmark;
 import dev.devpanda.bamboocef.web.runtime.WebPump;
 import dev.devpanda.bamboocef.web.runtime.WebSelfTest;
+import dev.devpanda.bamboocef.web.runtime.WebWarmup;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -60,6 +61,8 @@ public final class BambooCEFClient {
         if (SELF_TEST || WebProofChain.wanted()) {
             WebSelfTest.tick();
         }
+        // Only acts once a consumer asked via FnWeb.prepare().
+        WebWarmup.tick();
         WebProofChain.tick();
         WebBenchmark.tick();
         Overlays.tick();
