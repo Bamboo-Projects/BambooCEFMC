@@ -70,6 +70,16 @@ at build time).
 For development, point the game at a local build instead:
 `-Dbamboocef.runtime.dir=<path to a built runtime folder>`.
 
+## Reading on
+
+- `docs/architecture.md` — how a page becomes a texture: the CEF backend, the
+  frame path, input, the page-to-mod channel, the lifecycle and the runtime
+  download.
+- `docs/api-guide.md` — the four ways to show a page, key filters, messages,
+  status, and the rules of the road.
+- The German `docs/stand-*.md` and `docs/plan-*.md` are the development
+  records: measurements, decisions, and what was proven in the game.
+
 ## Building
 
 - The mod: `./gradlew build` (ModDevGradle, NeoForge 21.1.248, Java 21).
