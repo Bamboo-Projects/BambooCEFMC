@@ -8,6 +8,12 @@ group = mod_group_id
 
 repositories {
     mavenCentral()
+    // The Java bindings of CEF live in the project's own bucket: they are on
+    // no public Maven, and CI must compile without a local native build.
+    maven {
+        url = 'https://bamboocef.bamboo-srv.de/maven'
+        content { includeGroup 'org.cef' }
+    }
 }
 
 base {
@@ -16,8 +22,9 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
-// Die native Laufzeitumgebung (java-cef) baut tools/runtime/build-jcef.ps1.
-// Ab hier ist sie Voraussetzung für den Bau: ohne sie fehlt jcef.jar.
+// The native runtime (tools/runtime/build-jcef.ps1) is only needed to RUN the
+// dev client; compiling and testing work without it. When it is missing,
+// the client run falls back to the download, like a player's game does.
 def ownRuntimeDir = file('tools/runtime/build/out/windows-x86_64')
 
 // Der java-cef-Unterbau lebt in einem eigenen Quellordner neben src/main.
@@ -35,7 +42,9 @@ neoForge {
         client {
             client()
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
-            systemProperty 'bamboocef.runtime.dir', ownRuntimeDir.absolutePath
+            if (ownRuntimeDir.exists()) {
+                systemProperty 'bamboocef.runtime.dir', ownRuntimeDir.absolutePath
+            }
         }
     }
 
@@ -52,18 +61,24 @@ neoForge {
 }
 
 dependencies {
-    // jcef.jar auf den Laufzeit-Klassenpfad des Dev-Clients.
+    // The mod itself is loaded from class folders in the dev run, so the
+    // nested jar below is not there; the bindings go on the run classpath.
     add(neoForge.runs.client.additionalRuntimeClasspathConfiguration.name,
-            files(new File(ownRuntimeDir, 'jcef.jar')))
+            "org.cef:jcef:${jcef_version}")
 }
 
 dependencies {
-    if (!ownRuntimeDir.exists()) {
-        throw new GradleException("Keine Laufzeitumgebung unter ${ownRuntimeDir}. "
-                + "Erst: pwsh -File tools/runtime/build-jcef.ps1")
+    // Compile against the CEF bindings and nest them into the mod jar
+    // (jar-in-jar): a player's game then has org.cef without any extra
+    // download step, while the native libraries still arrive separately.
+    compileOnly "org.cef:jcef:${jcef_version}"
+    jarJar("org.cef:jcef:${jcef_version}") {
+        version {
+            strictly "[${jcef_version},147.0)"
+            prefer jcef_version
+        }
     }
-    compileOnly files(new File(ownRuntimeDir, 'jcef.jar'))
-    runtimeOnly files(new File(ownRuntimeDir, 'jcef.jar'))
+    testRuntimeOnly "org.cef:jcef:${jcef_version}"
 
     compileOnly 'net.java.dev.jna:jna:5.14.0'
     compileOnly 'net.java.dev.jna:jna-platform:5.14.0'

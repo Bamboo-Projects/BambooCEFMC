@@ -116,3 +116,42 @@ GitHubs eingebautes `GITHUB_TOKEN` reicht für GitHub Releases.
 3. Erste Vorab-Release 0.1.0+mc1.21.1 über /release auf der 1.21.1-Branch
 4. Weitere MC-Version: Branch 1.21.x, anpassen, taggen
 ```
+
+## Stand 4. September 2026 — was jetzt wirklich läuft
+
+Die Trennung ist fertig und abgenommen; dieser Abschnitt ersetzt, wo er
+abweicht, die Planung oben.
+
+- **Zuerst nur BambooCEF.** FactoryNetwork ist noch nicht so weit und folgt
+  später mit derselben Pipeline.
+- **Ziele:** GitHub Releases (Quelle der Wahrheit, über `/release`), dann
+  **Modrinth** (Spieler und, kostenlos dazu, das Maven
+  `maven.modrinth:bamboocef:<version>` für fremde Modder). **CurseForge**
+  ist vorbereitet und schaltet sich ein, sobald Projekt und Token existieren.
+  Ein eigenes Maven für die Mods braucht es nicht.
+- **Werkzeug:** die GitHub-Action `mc-publish` (`.github/workflows/publish.yml`)
+  statt Minotaur — ein Workflow für Modrinth und CurseForge, ausgelöst vom
+  veröffentlichten GitHub-Release; der Release-Text ist der Changelog. Alle
+  0.x-Versionen gehen als *beta* auf die Plattformen. Nötig sind die
+  Variablen `MODRINTH_PROJECT_ID`/`CURSEFORGE_PROJECT_ID` und die Secrets
+  `MODRINTH_TOKEN`/`CURSEFORGE_TOKEN` in der Org.
+- **CI** (`build.yml`): baut und testet auf Ubuntu bei jedem Push nach `dev`
+  und `master` — ohne nativen Runtime-Build, weil `org.cef:jcef` aus dem
+  Bucket-Maven kommt (siehe unten).
+- **jcef reist in der Mod-Jar.** `jcef.jar` (194 KB) ist per Jar-in-Jar
+  (`jarJar`) in `bamboocef-<version>.jar` geschachtelt; Koordinaten
+  `org.cef:jcef:<cef>` aus dem statischen Maven im Bucket
+  (`https://bamboocef.bamboo-srv.de/maven`, Unterordner `maven/`). Nur die
+  Natives kommen per Download. Versionsquelle: `jcef_version` in
+  `gradle.properties` = `runtime.version` in `tools/runtime/dist.properties`.
+- **Runtime-Verteilung:** Bucket `bamboocef`, Unterordner je Plattform
+  (`minecraft/neoforge/`, später `unreal/`, `unity/`), Domain
+  `bamboocef.bamboo-srv.de`.
+- **Tag-Format:** das `/release`-Skill taggt `v{version}`; die Planung oben
+  wollte `v0.1.0+mc1.21.1`. Solange es eine MC-Version gibt, reicht
+  `v0.1.0`; das Suffix kommt mit der zweiten Versions-Branch. `publish.yml`
+  nimmt beide Formen. Der Jar-Name bleibt vorerst `bamboocef-0.1.0.jar`.
+- **Plattformtext:** Entwurf in `docs/modrinth.md` — mit den zwei Pflicht-
+  angaben „Windows x64" und dem Runtime-Download (Adresse, Größe, Prüfsumme).
+- **Vor dem ersten Release noch:** Modrinth-Projekt anlegen (Slug
+  `bamboocef`), Variable und Secret setzen, `mod_version` prüfen, `/release`.

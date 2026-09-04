@@ -1,0 +1,33 @@
+name: Build
+
+# Compiles and tests the mod on every push and pull request. No native
+# runtime is needed for this: the CEF Java bindings come from the project's
+# bucket Maven, and the tests never touch the network.
+on:
+  push:
+    branches: [dev, master]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # The wrapper script is committed from Windows; make sure it is runnable.
+      - run: chmod +x gradlew
+
+      - run: ./gradlew build --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bamboocef-jar
+          path: build/libs/*.jar
+          if-no-files-found: error
