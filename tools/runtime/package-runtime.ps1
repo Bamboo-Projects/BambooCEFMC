@@ -5,7 +5,7 @@
 #   pwsh -File tools/runtime/package-runtime.ps1 -Platform windows-x86_64
 #
 # Eingang  build/out/<plattform>/
-# Ausgang  build/dist/fn-runtime-<cef>-<plattform>.tar.gz
+# Ausgang  build/dist/bamboocef-runtime-<cef>-<plattform>.tar.gz
 #
 # Geprüft wird zweimal: einmal vor dem Packen gegen files-<plattform>.txt, und
 # einmal danach am ausgepackten Archiv. Der zweite Durchgang ist der wichtige —
@@ -76,7 +76,7 @@ $expected = Read-FileList (Join-Path $runtimeDir "files-$($Platform -replace '-x
 
 # Die CEF-Fassung trägt drei Teile; für einen Dateinamen taugt der erste.
 $cefShort = ($pin['cef.version'] -split '\+')[0]
-$archive  = Join-Path $distDir "fn-runtime-$cefShort-$Platform.tar.gz"
+$archive  = Join-Path $distDir "bamboocef-runtime-$cefShort-$Platform.tar.gz"
 
 Write-Step 'Vollständigkeit vor dem Packen'
 Assert-Complete $outDir $expected 'Das Bauergebnis'
@@ -98,7 +98,7 @@ $size = (Get-Item -LiteralPath $archive).Length
 Write-Host ("  {0}  {1:N0} Bytes" -f (Split-Path -Leaf $archive), $size) -ForegroundColor Green
 
 Write-Step 'Probeweise auspacken'
-$check = Join-Path ([System.IO.Path]::GetTempPath()) ("fn-runtime-probe-" + [guid]::NewGuid())
+$check = Join-Path ([System.IO.Path]::GetTempPath()) ("bamboocef-runtime-probe-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Force -Path $check | Out-Null
 try {
     & tar -xzf $archive -C $check
@@ -161,7 +161,7 @@ Write-Step 'Was hochzuladen ist'
 Write-Host "  $(Split-Path -Leaf $archive)"
 Write-Host "  $(Split-Path -Leaf $hashFile)"
 Write-Host ''
-Write-Host '  Ziel: R2-Bucket factorynetwork, flach im Wurzelverzeichnis.'
+Write-Host '  Ziel: R2-Bucket bamboocef, Unterordner minecraft/neoforge/.'
 Write-Host '  Der Client holt beide unter derselben Adresse und prüft die'
 Write-Host '  Summe, bevor er auspackt.'
 

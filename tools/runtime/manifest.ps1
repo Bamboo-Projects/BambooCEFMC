@@ -60,8 +60,8 @@ $patches = @(Get-ChildItem -LiteralPath (Join-Path $runtimeDir 'patches') -Filte
 
 $platforms = [ordered]@{}
 foreach ($archive in $archives) {
-    # Aus fn-runtime-146.0.10-windows-x86_64.tar.gz wird windows-x86_64.
-    if ($archive.Name -notmatch '^fn-runtime-.+?-(?<platform>[a-z0-9]+-[a-z0-9_]+)\.tar\.gz$') {
+    # Aus bamboocef-runtime-146.0.10-windows-x86_64.tar.gz wird windows-x86_64.
+    if ($archive.Name -notmatch '^bamboocef-runtime-.+?-(?<platform>[a-z0-9]+-[a-z0-9_]+)\.tar\.gz$') {
         throw "Archivname passt nicht zum Schema: $($archive.Name)"
     }
     $platforms[$Matches['platform']] = [ordered]@{
