@@ -25,7 +25,18 @@ public final class WebSupport {
      * Whoever asks too early takes a "not yet" for a "no".
      */
     public static WebRuntimeStatus ensureStarted() {
-        return WebRuntime.start(backend());
+        WebRuntimeStatus status = WebRuntime.start(backend());
+        if (status.state() == WebRuntimeState.NOT_DOWNLOADED && !RuntimeInstall.downloading()) {
+            // The first attempt only set the download off and remembered
+            // NOT_DOWNLOADED. Once the fetch is over — installed, or failed
+            // and worth another go — the remembered state must not stand in
+            // the way: nobody would ever call retry() for the player, and
+            // without this the runtime stayed unusable until the next game
+            // start. FAILED is deliberately left to an explicit retry: a
+            // failed Chromium start is not something to hammer on.
+            status = WebRuntime.retry(backend());
+        }
+        return status;
     }
 
     /** Try again, if the last reason was worth a second attempt. */
