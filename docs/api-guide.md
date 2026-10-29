@@ -137,6 +137,31 @@ and your mod receives the string:
 surface.onMessage(message -> handle(message));
 ```
 
+Messages to the page use JSON text on the render thread:
+
+```java
+surface.postMessage("{\"type\":\"document\",\"source\":\"EVERY 20 TICKS DO\\nEND\"}");
+```
+
+```js
+window.fnReceive = value => {
+    if (value.type === "document") editor.setValue(value.source);
+};
+// Signal readiness once the editor and fnSend are available.
+window.fnSend({ type: "ready" });
+```
+
+Register `onMessage` immediately after opening the surface, and send initial
+state in response to the page's readiness message. `postMessage` delivers
+asynchronously to the active main frame. It does not buffer or acknowledge
+messages: a closed surface, missing frame or missing `fnReceive` discards them.
+Objects, arrays and JSON primitives are supported; malformed JSON is discarded
+by `JSON.parse`, while a Java `null` argument on an open surface throws
+`IllegalArgumentException`. Use the text `"null"` to send a JSON null value.
+Payloads are transported as escaped string literals and are never evaluated
+as code. Existing custom `WebSurface` implementations inherit a default
+`postMessage` that throws `UnsupportedOperationException` until implemented.
+
 The shim is injected on every load, so plain HTML pages work; no library on
 the page side is needed. Handlers run on the render thread, from the frame
 pump that drives Chromium — keep them short and never block in them.

@@ -183,6 +183,13 @@ final class SessionSurface implements WebSurface {
     }
 
     @Override
+    public void postMessage(String json) {
+        if (!closed) {
+            session.postMessage(json);
+        }
+    }
+
+    @Override
     public void close() {
         if (closed) {
             return;

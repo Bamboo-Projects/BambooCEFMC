@@ -108,6 +108,27 @@ public interface WebSurface extends AutoCloseable {
      */
     void onMessage(java.util.function.Consumer<String> handler);
 
+    /**
+     * Sends a JSON value to {@code window.fnReceive(value)} on the active page.
+     *
+     * <p>Call on the render thread. Delivery is asynchronous and is not queued:
+     * closed surfaces, missing main frames or missing page handlers discard the
+     * message. Install the handler and signal readiness with {@code fnSend}
+     * before sending initial state. Invalid JSON is discarded by the page's
+     * {@code JSON.parse}; payload text is never executed as JavaScript.
+     *
+     * <p>The default keeps existing third-party implementations compatible and
+     * reports that they do not support this operation. BambooCEF surfaces
+     * implement it.
+     *
+     * @param json JSON text, including objects, arrays or primitive values
+     * @throws IllegalArgumentException if {@code json} is {@code null} on an open surface
+     * @throws UnsupportedOperationException if this implementation does not support messages
+     */
+    default void postMessage(String json) {
+        throw new UnsupportedOperationException("This surface cannot receive messages");
+    }
+
     @Override
     void close();
 }

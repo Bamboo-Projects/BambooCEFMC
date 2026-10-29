@@ -311,6 +311,13 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
         }
     }
 
+    /** Sends JSON to the active page; see WebSurface.postMessage for the delivery contract. */
+    public void postMessage(String json) {
+        if (!closed) {
+            runScript(PageMessages.receiveScript(json));
+        }
+    }
+
     // ---- Input -------------------------------------------------------------
 
     /**
@@ -439,11 +446,10 @@ public final class BrowserSession implements AutoCloseable, FnBrowser.Events,
     /**
      * Runs one line of JavaScript in the page.
      *
-     * <p><b>This is not a bridge.</b> It goes only in one direction, the page
-     * can return nothing, and there is no interface it would have to offer. It
-     * is needed for exactly one thing: to swap the address of an image without
-     * reloading the page — and thereby without losing everything anyone has
-     * typed onto it.
+     * <p>This low-level operation has no return value. In addition to runtime
+     * updates such as changing an image without reloading, it carries the
+     * escaped JSON script used by {@link #postMessage(String)}. API consumers
+     * should use the message method instead of constructing scripts.
      */
     public void runScript(String code) {
         if (closed) {
