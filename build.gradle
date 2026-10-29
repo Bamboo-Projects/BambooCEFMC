@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'net.neoforged.moddev' version '2.0.144'
+    id 'net.neoforged.moddev' version '2.0.148'
 }
 
 version = mod_version
@@ -20,7 +20,7 @@ base {
     archivesName = mod_id
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 // The native runtime (tools/runtime/build-jcef.ps1) is only needed to RUN the
 // dev client; compiling and testing work without it. When it is missing,
@@ -33,10 +33,6 @@ sourceSets.main.java.srcDir('src/runtime/java')
 neoForge {
     version = neo_version
 
-    parchment {
-        minecraftVersion = parchment_minecraft_version
-        mappingsVersion = parchment_mappings_version
-    }
 
     runs {
         client {
@@ -63,8 +59,9 @@ neoForge {
 dependencies {
     // The mod itself is loaded from class folders in the dev run, so the
     // nested jar below is not there; the bindings go on the run classpath.
-    add(neoForge.runs.client.additionalRuntimeClasspathConfiguration.name,
-            "org.cef:jcef:${jcef_version}")
+    // From Minecraft 26.1 on there is no separate run classpath any more;
+    // runtimeOnly is what ModDevGradle asks for instead.
+    runtimeOnly "org.cef:jcef:${jcef_version}"
 }
 
 dependencies {
@@ -90,7 +87,7 @@ dependencies {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-    options.release = 21
+    options.release = 25
 }
 
 test {
