@@ -3,7 +3,7 @@ package dev.devpanda.bamboocef.web.api;
 import com.mojang.logging.LogUtils;
 import dev.devpanda.bamboocef.web.screen.BrowserScreen;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 
@@ -68,7 +68,7 @@ public final class Overlays {
     // ---- Hooks for the client ------------------------------------------------------
 
     /** From the GUI layer, after everything Minecraft draws there. */
-    public static void draw(GuiGraphics graphics) {
+    public static void draw(GuiGraphicsExtractor graphics) {
         if (overlays.isEmpty()) {
             return;
         }

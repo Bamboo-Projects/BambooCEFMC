@@ -2,9 +2,7 @@ package dev.devpanda.bamboocef.web.api;
 
 import com.mojang.logging.LogUtils;
 import dev.devpanda.bamboocef.web.runtime.BrowserSession;
-import dev.devpanda.bamboocef.web.view.ManagedTexture;
-import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 
 import java.util.function.IntConsumer;
@@ -26,22 +24,15 @@ final class SessionSurface implements WebSurface {
 
     private static final Logger LOG = LogUtils.getLogger();
 
-    private static int nextId;
-
     private final BrowserSession session;
     private final KeyFilter keys;
     private final KeyRouting routing;
-    private final ResourceLocation location;
     private boolean closed;
 
     SessionSurface(BrowserSession session, KeyFilter keys) {
         this.session = session;
         this.keys = keys;
         this.routing = new KeyRouting(keys);
-        this.location = ResourceLocation.fromNamespaceAndPath(
-                "bamboocef", "web_surface/" + nextId++);
-        Minecraft.getInstance().getTextureManager()
-                .register(location, new ManagedTexture(session::textureId));
     }
 
     @Override
@@ -50,8 +41,8 @@ final class SessionSurface implements WebSurface {
     }
 
     @Override
-    public ResourceLocation textureLocation() {
-        return location;
+    public Identifier textureLocation() {
+        return session.texture().location();
     }
 
     @Override
@@ -195,9 +186,7 @@ final class SessionSurface implements WebSurface {
             return;
         }
         closed = true;
-        // Unregister first, then close: the other way around would leave a
-        // texture registered whose id points into the void.
-        Minecraft.getInstance().getTextureManager().release(location);
+        // The session releases its texture and the name with it.
         try {
             session.close();
         } catch (Throwable broken) {

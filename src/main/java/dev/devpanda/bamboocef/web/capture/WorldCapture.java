@@ -1,10 +1,11 @@
 package dev.devpanda.bamboocef.web.capture;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.opengl.GlTexture;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
-import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.GpuTexture;
 import dev.devpanda.bamboocef.web.measure.DurationSamples;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.opengl.GL11;
@@ -14,16 +15,21 @@ import org.lwjgl.opengl.GL30;
  * Fetches Minecraft's image from the graphics card and turns it into an image
  * for the browser.
  *
- * <p><b>When.</b> To be called while the main target holds <b>world and
- * interface</b> but no screen of its own yet. In Minecraft's flow that is the
- * time between {@code gui.render(…)} and the drawing of the open screen — in
- * practice, then, the first line in that screen's {@code render}, before any
- * stroke of our own.
+ * <p><b>When.</b> To be called while the main target holds the finished
+ * world. Since 26.1 a screen only collects what is to be drawn, and the whole
+ * interface (the HUD included) is drawn in one go afterwards. So the first line
+ * in a screen's {@code extractRenderState} sees the world, but no longer the
+ * HUD: that one is now drawn together with the screen.
  *
  * <p><b>And why that rules out feedback.</b> The browser is drawn <b>after</b>
  * this point. What is captured here can therefore never contain it — not even
  * one frame later, because then the capture again happens beforehand. No
  * detection is needed and no second draw buffer; the ordering alone is enough.
+ *
+ * <p><b>Straight through OpenGL, like the texture upload.</b> 26.1 has no
+ * framebuffer ids on its render targets any more, only GPU textures. Two
+ * framebuffers of our own point at them; the game's draw passes bind theirs
+ * anew each time and are not disturbed by it.
  *
  * <p><b>Downscaling happens on the graphics card, not in main memory.</b>
  * {@code glBlitFramebuffer} with linear filtering costs almost nothing there
@@ -79,6 +85,8 @@ public final class WorldCapture implements AutoCloseable {
     }
 
     private RenderTarget small;
+    private int readFramebuffer;
+    private int drawFramebuffer;
     private int targetWidth;
     private int targetHeight;
 
@@ -98,6 +106,9 @@ public final class WorldCapture implements AutoCloseable {
      */
     public long captureInto(FrameStore store, double scale, Format format) {
         RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
+        if (main.getColorTexture() == null) {
+            return 0L;
+        }
         int wanted = Math.max(1, (int) Math.round(main.width * scale));
         int wantedHeight = Math.max(1, (int) Math.round(main.height * scale));
 
@@ -131,41 +142,55 @@ public final class WorldCapture implements AutoCloseable {
             small.destroyBuffers();
         }
         // No depth buffer: what arrives here is a finished image.
-        small = new TextureTarget(width, height, false, Minecraft.ON_OSX);
-        small.setClearColor(0f, 0f, 0f, 1f);
+        small = new TextureTarget("bamboocef world capture", width, height, false);
         targetWidth = width;
         targetHeight = height;
     }
 
     private void blit(RenderTarget main) {
-        GlStateManager._glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, main.frameBufferId);
-        GlStateManager._glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, small.frameBufferId);
-        GL30.glBlitFramebuffer(
+        if (readFramebuffer == 0) {
+            readFramebuffer = GlStateManager.glGenFramebuffers();
+            drawFramebuffer = GlStateManager.glGenFramebuffers();
+        }
+        GlStateManager._glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFramebuffer);
+        GL30.glFramebufferTexture2D(GL30.GL_READ_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0,
+                GL11.GL_TEXTURE_2D, glName(main.getColorTexture()), 0);
+        GlStateManager._glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFramebuffer);
+        GL30.glFramebufferTexture2D(GL30.GL_DRAW_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0,
+                GL11.GL_TEXTURE_2D, glName(small.getColorTexture()), 0);
+        GlStateManager._glBlitFrameBuffer(
                 0, 0, main.width, main.height,
                 0, 0, targetWidth, targetHeight,
                 GL11.GL_COLOR_BUFFER_BIT, GL11.GL_LINEAR);
-        // <b>Bind back, or Minecraft draws into the wrong target.</b> What
-        // comes after — our own screen — would otherwise go into the small
-        // texture and not be visible on screen.
-        main.bindWrite(true);
+        // <b>Bind back</b>, through GlStateManager so that its memory of the
+        // bound framebuffers stays true. Every draw pass of the game binds its
+        // own target afterwards anyway.
+        GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+    }
+
+    private static int glName(GpuTexture texture) {
+        if (!(texture instanceof GlTexture gl)) {
+            throw new IllegalStateException("Die Weltaufnahme liest über OpenGL, das Spiel zeichnet aber anders");
+        }
+        return gl.glId();
     }
 
     /**
      * Reads and compresses.
      *
-     * <p>The path from Minecraft's own screenshot: bind the texture, download
-     * it, flip it vertically. The flip is necessary because OpenGL textures
-     * count their rows from the bottom and PNG from the top.
+     * <p>Read the texture into main memory, then encode it flipped. The flip
+     * is necessary because OpenGL textures count their rows from the bottom
+     * and PNG from the top; stb does it while writing, at no extra pass.
      */
     private byte[] readAsPng(long readStarted) throws Exception {
         try (NativeImage image = new NativeImage(targetWidth, targetHeight, false)) {
-            RenderSystem.bindTexture(small.getColorTextureId());
-            image.downloadTexture(0, true);
-            image.flipY();
+            GlStateManager._bindTexture(glName(small.getColorTexture()));
+            GL11.nglGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, image.getPointer());
+            GlStateManager._bindTexture(0);
             readTimes.record(System.nanoTime() - readStarted);
 
             long encodeStarted = System.nanoTime();
-            byte[] png = image.asByteArray();
+            byte[] png = PngEncoder.encode(image, true);
             encodeTimes.record(System.nanoTime() - encodeStarted);
             return png;
         }
@@ -184,9 +209,10 @@ public final class WorldCapture implements AutoCloseable {
         byte[] out = new byte[54 + pixelBytes];
         java.nio.ByteBuffer pixels = org.lwjgl.system.MemoryUtil.memAlloc(pixelBytes);
         try {
-            RenderSystem.bindTexture(small.getColorTextureId());
+            GlStateManager._bindTexture(glName(small.getColorTexture()));
             GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0,
                     org.lwjgl.opengl.GL12.GL_BGRA, GL11.GL_UNSIGNED_BYTE, pixels);
+            GlStateManager._bindTexture(0);
             readTimes.record(System.nanoTime() - readStarted);
 
             long encodeStarted = System.nanoTime();
@@ -257,6 +283,12 @@ public final class WorldCapture implements AutoCloseable {
         if (small != null) {
             small.destroyBuffers();
             small = null;
+        }
+        if (readFramebuffer != 0) {
+            GlStateManager._glDeleteFramebuffers(readFramebuffer);
+            GlStateManager._glDeleteFramebuffers(drawFramebuffer);
+            readFramebuffer = 0;
+            drawFramebuffer = 0;
         }
         targetWidth = 0;
         targetHeight = 0;

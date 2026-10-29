@@ -151,7 +151,7 @@ public final class BambooCEFCommands {
     private static void say(String message) {
         Minecraft client = Minecraft.getInstance();
         if (client.player != null) {
-            client.player.displayClientMessage(Component.literal(message), false);
+            client.player.sendSystemMessage(Component.literal(message));
         }
     }
 }

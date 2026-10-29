@@ -4,7 +4,7 @@ import dev.devpanda.bamboocef.web.runtime.BrowserSession;
 import dev.devpanda.bamboocef.web.view.BrowserCompositor;
 import dev.devpanda.bamboocef.web.view.BrowserView;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -78,7 +78,7 @@ final class OverlayImpl implements WebOverlay {
      * that signals a change of the GUI scale; the per-frame comparison is
      * cheaper than any search for a hook.
      */
-    void draw(GuiGraphics graphics, double guiScale) {
+    void draw(GuiGraphicsExtractor graphics, double guiScale) {
         if (!visible || !alive()) {
             return;
         }
@@ -86,7 +86,7 @@ final class OverlayImpl implements WebOverlay {
             view = view.resized(view.guiWidth(), view.guiHeight(), guiScale);
             surface.resize(view.browserWidth(), view.browserHeight());
         }
-        compositor.draw(graphics, view, surface.textureId(), popupPlacement());
+        compositor.draw(graphics, view, surface.session().texture(), popupPlacement());
     }
 
     private BrowserCompositor.PopupPlacement popupPlacement() {
@@ -95,7 +95,7 @@ final class OverlayImpl implements WebOverlay {
             return null;
         }
         double[] corner = view.toGui(session.popupX(), session.popupY());
-        return new BrowserCompositor.PopupPlacement(true, session.popupTextureId(),
+        return new BrowserCompositor.PopupPlacement(true, session.popupTexture(),
                 corner[0], corner[1],
                 view.lengthToGui(session.popupWidth()),
                 view.lengthToGui(session.popupHeight()));

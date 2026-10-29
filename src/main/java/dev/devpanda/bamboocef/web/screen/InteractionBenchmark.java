@@ -135,9 +135,9 @@ public final class InteractionBenchmark extends BrowserScreen {
     }
 
     @Override
-    public void render(net.minecraft.client.gui.GuiGraphics graphics,
+    public void extractRenderState(net.minecraft.client.gui.GuiGraphicsExtractor graphics,
                        int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         advance();
     }
 
@@ -195,7 +195,7 @@ public final class InteractionBenchmark extends BrowserScreen {
                 if (framesInStep % 12 == 0) {
                     char next = TYPED.charAt(typedIndex % TYPED.length());
                     typedIndex++;
-                    charTyped(next, 0);
+                    charTyped(new net.minecraft.client.input.CharacterEvent(next));
                 }
             }
             default -> {
@@ -264,8 +264,8 @@ public final class InteractionBenchmark extends BrowserScreen {
             case SELECT -> {
                 // Escape closes the box — and because Escape belongs to the
                 // page here, that works without a detour.
-                keyPressed(GLFW.GLFW_KEY_ESCAPE, 0, 0);
-                keyReleased(GLFW.GLFW_KEY_ESCAPE, 0, 0);
+                keyPressed(new net.minecraft.client.input.KeyEvent(GLFW.GLFW_KEY_ESCAPE, 0, 0));
+                keyReleased(new net.minecraft.client.input.KeyEvent(GLFW.GLFW_KEY_ESCAPE, 0, 0));
             }
             case RESIZE -> resizeTo(1.0);
             default -> {
@@ -292,23 +292,25 @@ public final class InteractionBenchmark extends BrowserScreen {
      */
     private void sendCombination(int glfwKey) {
         int scanCode = GLFW.glfwGetKeyScancode(glfwKey);
-        keyPressed(glfwKey, scanCode, GLFW.GLFW_MOD_CONTROL);
-        keyReleased(glfwKey, scanCode, GLFW.GLFW_MOD_CONTROL);
+        keyPressed(new net.minecraft.client.input.KeyEvent(glfwKey, scanCode, GLFW.GLFW_MOD_CONTROL));
+        keyReleased(new net.minecraft.client.input.KeyEvent(glfwKey, scanCode, GLFW.GLFW_MOD_CONTROL));
     }
 
     /** A key without a modifier, likewise with a real scancode. */
     private void sendPlain(int glfwKey) {
         int scanCode = GLFW.glfwGetKeyScancode(glfwKey);
-        keyPressed(glfwKey, scanCode, 0);
-        keyReleased(glfwKey, scanCode, 0);
+        keyPressed(new net.minecraft.client.input.KeyEvent(glfwKey, scanCode, 0));
+        keyReleased(new net.minecraft.client.input.KeyEvent(glfwKey, scanCode, 0));
     }
 
     private void clickAt(double acrossFraction, double downFraction) {
         double x = width * acrossFraction;
         double y = height * downFraction;
         mouseMoved(x, y);
-        mouseClicked(x, y, 0);
-        mouseReleased(x, y, 0);
+        var press = new net.minecraft.client.input.MouseButtonEvent(x, y,
+                new net.minecraft.client.input.MouseButtonInfo(0, 0));
+        mouseClicked(press, false);
+        mouseReleased(press);
     }
 
     private void report() {
@@ -323,13 +325,13 @@ public final class InteractionBenchmark extends BrowserScreen {
 
     /** Just as a safeguard: the run should not be disturbed by hand. */
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE && step != Step.SELECT) {
+    public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+        if (event.key() == GLFW.GLFW_KEY_ESCAPE && step != Step.SELECT) {
             LOG.info(String.format(Locale.GERMANY,
                     "Interaktionsmessung bei „%s\" abgebrochen", step.label));
             onClose();
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 }

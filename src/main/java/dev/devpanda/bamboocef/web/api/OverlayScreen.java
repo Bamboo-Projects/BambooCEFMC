@@ -4,8 +4,11 @@ import dev.devpanda.bamboocef.web.screen.BrowserScreen;
 import dev.devpanda.bamboocef.web.view.BrowserCursor;
 import dev.devpanda.bamboocef.web.view.BrowserView;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
@@ -51,13 +54,24 @@ final class OverlayScreen extends Screen {
         target.surface().onCursor(type -> wantedCursor = type);
     }
 
+    /**
+     * No background: the world stays as it is, the overlay lies on top of it.
+     *
+     * <p>Since 26.1 Minecraft collects a screen's background on its own before
+     * {@link #extractRenderState}; without this empty method the overlay
+     * would suddenly sit on a blurred world.
+     */
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // No background, no surface: both are already drawn by the GUI
-        // layer. Only the pointer remains here.
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+    }
+
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        // No surface: it is already drawn by the GUI layer. Only the pointer
+        // remains here.
         int wanted = wantedCursor;
         if (wanted != appliedCursor) {
-            cursor.apply(minecraft.getWindow().getWindow(), wanted);
+            cursor.apply(minecraft.getWindow().handle(), wanted);
             appliedCursor = wanted;
         }
     }
@@ -95,7 +109,9 @@ final class OverlayScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
         BrowserView view = view();
         if (!view.contains(mouseX, mouseY)) {
             // A click beside it gives the mouse back — the way you close a
@@ -103,21 +119,21 @@ final class OverlayScreen extends Screen {
             target.focus(OverlayFocus.NONE);
             return true;
         }
-        surface().mousePressed(view.toBrowserX(mouseX), view.toBrowserY(mouseY), button, heldModifiers());
+        surface().mousePressed(view.toBrowserX(mouseX), view.toBrowserY(mouseY), event.button(), heldModifiers());
         return true;
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(MouseButtonEvent event) {
         BrowserView view = view();
-        surface().mouseReleased(view.toBrowserX(mouseX), view.toBrowserY(mouseY), button, heldModifiers());
+        surface().mouseReleased(view.toBrowserX(event.x()), view.toBrowserY(event.y()), event.button(), heldModifiers());
         return true;
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
         BrowserView view = view();
-        surface().mouseMoved(view.toBrowserX(mouseX), view.toBrowserY(mouseY), heldModifiers());
+        surface().mouseMoved(view.toBrowserX(event.x()), view.toBrowserY(event.y()), heldModifiers());
         return true;
     }
 
@@ -134,46 +150,56 @@ final class OverlayScreen extends Screen {
     // ---- Keys -------------------------------------------------------------------
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyEvent event) {
+        int keyCode = event.key();
         if (keyCode == BrowserScreen.RELEASE_KEY) {
             target.focus(OverlayFocus.NONE);
             return true;
         }
-        if (surface().keyPressed(keyCode, scanCode, modifiers)) {
+        if (surface().keyPressed(keyCode, event.scancode(), event.modifiers())) {
             return true;
         }
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
             target.focus(OverlayFocus.NONE);
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 
     @Override
-    public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == BrowserScreen.RELEASE_KEY) {
+    public boolean keyReleased(KeyEvent event) {
+        if (event.key() == BrowserScreen.RELEASE_KEY) {
             return true;
         }
-        if (surface().keyReleased(keyCode, scanCode, modifiers)) {
+        if (surface().keyReleased(event.key(), event.scancode(), event.modifiers())) {
             return true;
         }
-        return super.keyReleased(keyCode, scanCode, modifiers);
+        return super.keyReleased(event);
     }
 
+    /** A whole code point; Chromium takes it as UTF-16 units, see BrowserScreen. */
     @Override
-    public boolean charTyped(char typed, int modifiers) {
-        return typed != 0 && surface().charTyped(typed, modifiers);
+    public boolean charTyped(CharacterEvent event) {
+        if (event.codepoint() == 0) {
+            return false;
+        }
+        boolean taken = false;
+        int modifiers = heldModifiers();
+        for (char unit : Character.toChars(event.codepoint())) {
+            taken |= surface().charTyped(unit, modifiers);
+        }
+        return taken;
     }
 
     private static int heldModifiers() {
         int modifiers = 0;
-        if (hasShiftDown()) {
+        if (Minecraft.getInstance().hasShiftDown()) {
             modifiers |= GLFW.GLFW_MOD_SHIFT;
         }
-        if (hasControlDown()) {
+        if (Minecraft.getInstance().hasControlDown()) {
             modifiers |= GLFW.GLFW_MOD_CONTROL;
         }
-        if (hasAltDown()) {
+        if (Minecraft.getInstance().hasAltDown()) {
             modifiers |= GLFW.GLFW_MOD_ALT;
         }
         return modifiers;
@@ -183,7 +209,7 @@ final class OverlayScreen extends Screen {
 
     @Override
     public void removed() {
-        cursor.close(minecraft.getWindow().getWindow());
+        cursor.close(minecraft.getWindow().handle());
         target.surface().onCursor(null);
         target.mouseScreenGone();
         super.removed();

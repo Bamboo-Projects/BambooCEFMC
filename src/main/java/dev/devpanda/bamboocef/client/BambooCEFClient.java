@@ -80,15 +80,9 @@ public final class BambooCEFClient {
      * glass stay in front and the surface does not shine through them.
      */
     @SubscribeEvent
-    public static void drawWorldSurfaces(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
-            return;
-        }
+    public static void drawWorldSurfaces(RenderLevelStageEvent.AfterTranslucentBlocks event) {
         PoseStack pose = event.getPoseStack();
-        if (pose == null) {
-            return;
-        }
-        Vec3 camera = event.getCamera().getPosition();
+        Vec3 camera = event.getLevelRenderState().cameraRenderState.pos;
         var buffers = Minecraft.getInstance().renderBuffers().bufferSource();
         WorldSurfaces.draw(pose, buffers, camera.x, camera.y, camera.z);
     }
@@ -102,6 +96,9 @@ public final class BambooCEFClient {
     @SubscribeEvent
     public static void measureFrame(RenderFrameEvent.Post event) {
         WebBenchmark.frameRendered();
+        // The proofs read their pixels here: the frame is drawn, but not yet
+        // shown. See FinishedFrame.
+        dev.devpanda.bamboocef.web.capture.FinishedFrame.frameDrawn();
     }
 
     /**

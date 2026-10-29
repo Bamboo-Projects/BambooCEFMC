@@ -4,7 +4,7 @@ import dev.devpanda.bamboocef.web.capture.WorldCapture;
 import dev.devpanda.bamboocef.web.measure.DurationSamples;
 import dev.devpanda.bamboocef.web.runtime.FrameSchemes;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -167,14 +167,14 @@ public final class BackdropBenchmark extends BackdropScreen {
             """;
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         long now = System.nanoTime();
         if (lastFrameNanos != 0) {
             frameTimes.record(now - lastFrameNanos);
         }
         lastFrameNanos = now;
 
-        super.render(graphics, mouseX, mouseY, partialTick);
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         advance();
     }
 
@@ -240,7 +240,7 @@ public final class BackdropBenchmark extends BackdropScreen {
             name.append(".png");
             net.minecraft.client.Screenshot.grab(
                     minecraft.gameDirectory, name.toString(),
-                    minecraft.getMainRenderTarget(), message -> { });
+                    minecraft.getMainRenderTarget(), 1, message -> { });
         } catch (Throwable broken) {
             LOG.warn("Bild ließ sich nicht ablegen", broken);
         }

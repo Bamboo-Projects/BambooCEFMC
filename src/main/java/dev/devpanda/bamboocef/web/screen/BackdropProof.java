@@ -1,20 +1,19 @@
 package dev.devpanda.bamboocef.web.screen;
 
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.systems.RenderSystem;
 import dev.devpanda.bamboocef.web.BrowserVisibility;
 import dev.devpanda.bamboocef.web.WebRuntimeStatus;
 import dev.devpanda.bamboocef.web.WebSupport;
+import dev.devpanda.bamboocef.web.capture.FinishedFrame;
 import dev.devpanda.bamboocef.web.capture.FrameStore;
 import dev.devpanda.bamboocef.web.runtime.BrowserSession;
 import dev.devpanda.bamboocef.web.runtime.FrameSchemes;
 import dev.devpanda.bamboocef.web.view.BrowserCompositor;
 import dev.devpanda.bamboocef.web.view.BrowserView;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.opengl.GL11;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -209,10 +208,10 @@ public final class BackdropProof extends Screen {
                 for (int x = 0; x < imageWidth; x++) {
                     boolean left = x < halfWidth;
                     boolean top = y < halfHeight;
-                    image.setPixelRGBA(x, y, top ? (left ? red : green) : (left ? blue : white));
+                    image.setPixelABGR(x, y, top ? (left ? red : green) : (left ? blue : white));
                 }
             }
-            byte[] png = image.asByteArray();
+            byte[] png = dev.devpanda.bamboocef.web.capture.PngEncoder.encode(image, false);
             long generation = store.put(png, "image/png", imageWidth, imageHeight);
             LOG.info(String.format(Locale.GERMANY,
                     "Hintergrundnachweis: Prüfbild %dx%d als PNG, %.1f KB, Nummer %d",
@@ -225,12 +224,12 @@ public final class BackdropProof extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         if (session == null || view == null) {
             return;
         }
         graphics.fill(0, 0, width, height, 0xFF000000);
-        compositor.draw(graphics, view, session.textureId(), null);
+        compositor.draw(graphics, view, session.texture(), null);
 
         if (session.paints() == 0) {
             if (System.nanoTime() - openedNanos > 20_000_000_000L) {
@@ -244,14 +243,17 @@ public final class BackdropProof extends Screen {
         framesDrawn++;
         // Wait for three frames: the image is loaded lazily, and the first
         // draw may still show the page without it.
+        // Read at the end of the frame: since 26.1 this method only collects,
+        // see FinishedFrame.
         if (framesDrawn >= 3 && !checked) {
             checked = true;
-            check();
+            FinishedFrame.whenDrawn(this::check);
             return;
         }
-        if (cacheProbeAtNanos != 0 && !cacheProbeDone
+        if (cacheProbeAtNanos != 0 && !cacheProbeDone && !cacheProbeQueued
                 && System.nanoTime() >= cacheProbeAtNanos) {
-            checkCacheProbe();
+            cacheProbeQueued = true;
+            FinishedFrame.whenDrawn(this::checkCacheProbe);
         }
     }
 
@@ -330,16 +332,18 @@ public final class BackdropProof extends Screen {
         try (NativeImage image = new NativeImage(imageWidth, imageHeight, false)) {
             for (int y = 0; y < imageHeight; y++) {
                 for (int x = 0; x < imageWidth; x++) {
-                    image.setPixelRGBA(x, y, magenta);
+                    image.setPixelABGR(x, y, magenta);
                 }
             }
-            store.put(image.asByteArray(), "image/png", imageWidth, imageHeight);
+            store.put(dev.devpanda.bamboocef.web.capture.PngEncoder.encode(image, false), "image/png", imageWidth, imageHeight);
             return true;
         } catch (Exception broken) {
             LOG.warn("Hintergrundnachweis: Probebild ließ sich nicht bauen", broken);
             return false;
         }
     }
+
+    private boolean cacheProbeQueued;
 
     private void checkCacheProbe() {
         cacheProbeDone = true;
@@ -448,8 +452,7 @@ public final class BackdropProof extends Screen {
         int x = (int) (across * fbWidth);
         int y = fbHeight - 1 - (int) (down * fbHeight);
         pixels.clear();
-        RenderSystem.assertOnRenderThread();
-        GL11.glReadPixels(x, y, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+        FinishedFrame.readPixel(x, y, pixels);
         return new int[] {pixels.get(0) & 0xFF, pixels.get(1) & 0xFF, pixels.get(2) & 0xFF};
     }
 

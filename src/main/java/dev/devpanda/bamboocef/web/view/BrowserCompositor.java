@@ -1,25 +1,16 @@
 package dev.devpanda.bamboocef.web.view;
 
-import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.BufferUploader;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.GameRenderer;
-import net.neoforged.neoforge.client.GlStateBackup;
-import org.joml.Matrix4f;
+import dev.devpanda.bamboocef.web.texture.GlTextureBackend;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 
 /**
- * Draws browser textures onto the screen — and restores the draw state to how
- * it was.
+ * Draws browser textures onto the screen.
  *
  * <p><b>Premultiplied alpha is not a subtlety but the difference between
  * correct and gray.</b> Chromium delivers its pixels premultiplied:
  * semi-transparent white arrives as {@code rgb(128,128,128)} with {@code a=128},
- * not as {@code rgb(255,255,255)}. Measured, not assumed — the self-test found
+ * not as {@code rgb(255,255,255)}. Measured, not assumed: the self-test found
  * it.
  *
  * <p>The usual blend {@code SRC_ALPHA, ONE_MINUS_SRC_ALPHA} multiplies the
@@ -30,96 +21,74 @@ import org.joml.Matrix4f;
  *   result = source · 1 + target · (1 − alpha)
  * </pre>
  *
- * <p>that is, {@code ONE, ONE_MINUS_SRC_ALPHA}.
+ * <p>that is, {@code ONE, ONE_MINUS_SRC_ALPHA}. Since 26.1 Minecraft ships
+ * exactly that as {@link RenderPipelines#GUI_TEXTURED_PREMULTIPLIED_ALPHA}, so
+ * no draw state has to be saved and restored here any more: the pipeline
+ * carries it, and nothing outside it changes.
  *
- * <p><b>Nothing is flipped for the image orientation, and that is verified.</b>
- * Chromium paints from top to bottom, OpenGL counts texture rows from the
- * bottom — but Minecraft's GUI likewise counts from the top. Two inversions
- * cancel each other out: texture row 0 (Chromium's topmost) lies at
- * {@code v = 0}, and {@code v = 0} belongs at the top edge of the surface. The
- * four-corners check run proves this instead of asserting it.
+ * <p><b>Nothing is flipped for the image orientation.</b> Chromium paints from
+ * top to bottom, and texture row 0 (Chromium's topmost) lies at {@code v = 0},
+ * which Minecraft's GUI puts at the top edge. The four-corners check run proves
+ * this instead of asserting it.
  *
- * <p><b>Nothing stays altered.</b> The draw state is saved beforehand and
- * restored afterwards — with NeoForge's own means for it, not with guessed
- * defaults. Whoever instead sets "the default" afterwards sets it even when the
- * caller had configured something else.
+ * <p><b>Drawing is only an order.</b> The GUI of 26.1 collects what is to be
+ * drawn and draws it later in the frame. That is fine: the texture is uploaded
+ * in the pump at the start of the frame, before anything is collected.
  */
 public final class BrowserCompositor {
-
-    /** Created once and reused: a new one per frame would be garbage. */
-    private final GlStateBackup backup = new GlStateBackup();
 
     /**
      * Draws the main texture and, if one is open, the popup above it.
      *
-     * @param graphics   Minecraft's draw helper, for the matrix
-     * @param view       where the surface lies, in GUI units
-     * @param textureId  the browser's texture
-     * @param popup      the expanded field, or {@code null}
+     * @param graphics Minecraft's draw helper
+     * @param view     where the surface lies, in GUI units
+     * @param texture  the browser's texture
+     * @param popup    the expanded field, or {@code null}
      */
-    public void draw(GuiGraphics graphics, BrowserView view, int textureId, PopupPlacement popup) {
-        if (textureId == 0) {
+    public void draw(GuiGraphicsExtractor graphics, BrowserView view, GlTextureBackend texture,
+                     PopupPlacement popup) {
+        if (texture.textureView() == null) {
             return;
         }
-        GlStateManager._backupGlState(backup);
-        try {
-            RenderSystem.enableBlend();
-            // The one line it all comes down to.
-            RenderSystem.blendFuncSeparate(
-                    GlStateManager.SourceFactor.ONE,
-                    GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
-                    GlStateManager.SourceFactor.ONE,
-                    GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
-            // No depth test: a surface lies in front of everything drawn behind
-            // it and has no depth of its own to defend.
-            RenderSystem.disableDepthTest();
-            RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+        blit(graphics, texture, view.guiX(), view.guiY(), view.guiWidth(), view.guiHeight());
 
-            Matrix4f matrix = graphics.pose().last().pose();
-            blit(matrix, textureId,
-                    view.guiX(), view.guiY(),
-                    view.guiX() + view.guiWidth(), view.guiY() + view.guiHeight());
-
-            if (popup != null && popup.visible() && popup.textureId() != 0) {
-                blit(matrix, popup.textureId(),
-                        (float) popup.guiX(), (float) popup.guiY(),
-                        (float) (popup.guiX() + popup.guiWidth()),
-                        (float) (popup.guiY() + popup.guiHeight()));
-            }
-        } finally {
-            RenderSystem.setShaderTexture(0, 0);
-            GlStateManager._restoreGlState(backup);
+        if (popup != null && popup.visible() && popup.texture().textureView() != null) {
+            blit(graphics, popup.texture(),
+                    popup.guiX(), popup.guiY(), popup.guiWidth(), popup.guiHeight());
         }
     }
 
     /**
-     * A quad with the texture on it.
+     * The texture, stretched onto a rectangle in GUI units.
      *
-     * <p>The order of the corners is counterclockwise from the bottom left, as
-     * Minecraft does everywhere. The {@code v} coordinate runs with the screen
-     * edge: zero at the top, one at the bottom. That is exactly why no flip is
-     * needed.
+     * <p>Minecraft's {@code blit} only takes whole numbers. A popup, though,
+     * lies at fractions of a GUI unit as soon as the GUI scale is not one. The
+     * fraction therefore goes into the matrix, and the {@code blit} itself
+     * draws the image at its own size.
      */
-    private static void blit(Matrix4f matrix, int textureId,
-                             float left, float top, float right, float bottom) {
-        RenderSystem.setShaderTexture(0, textureId);
-        BufferBuilder buffer = Tesselator.getInstance()
-                .begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-        buffer.addVertex(matrix, left, bottom, 0f).setUv(0f, 1f).setColor(255, 255, 255, 255);
-        buffer.addVertex(matrix, right, bottom, 0f).setUv(1f, 1f).setColor(255, 255, 255, 255);
-        buffer.addVertex(matrix, right, top, 0f).setUv(1f, 0f).setColor(255, 255, 255, 255);
-        buffer.addVertex(matrix, left, top, 0f).setUv(0f, 0f).setColor(255, 255, 255, 255);
-        BufferUploader.drawWithShader(buffer.build());
+    private static void blit(GuiGraphicsExtractor graphics, GlTextureBackend texture,
+                             double left, double top, double width, double height) {
+        int textureWidth = texture.width();
+        int textureHeight = texture.height();
+        if (textureWidth <= 0 || textureHeight <= 0) {
+            return;
+        }
+        graphics.pose().pushMatrix();
+        graphics.pose().translate((float) left, (float) top);
+        graphics.pose().scale((float) (width / textureWidth), (float) (height / textureHeight));
+        graphics.blit(RenderPipelines.GUI_TEXTURED_PREMULTIPLIED_ALPHA, texture.location(),
+                0, 0, 0f, 0f, textureWidth, textureHeight, textureWidth, textureHeight);
+        graphics.pose().popMatrix();
     }
 
     /**
      * Where an expanded field lies and which texture it carries.
      *
      * <p>In GUI units, because it is drawn there. The conversion from Chromium's
-     * pixels is done by {@link BrowserView#toGui(int, int)} — the same
+     * pixels is done by {@link BrowserView#toGui(int, int)}, the same
      * computation as for the mouse.
      */
-    public record PopupPlacement(boolean visible, int textureId,
+    public record PopupPlacement(boolean visible, GlTextureBackend texture,
                                  double guiX, double guiY,
                                  double guiWidth, double guiHeight) {
     }

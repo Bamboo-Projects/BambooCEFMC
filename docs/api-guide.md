@@ -66,9 +66,15 @@ folder listed in a manifest file (the editor ships Monaco that way).
 
 ### A surface you draw yourself — `FnWeb.open(spec)`
 
-Returns a `WebSurface`: a texture (`textureId()`, `width()`, `height()`) that
-you draw wherever you like, plus the input methods below. You own it: draw
-it, feed it input, and `close()` it when you are done.
+Returns a `WebSurface`: a texture registered with Minecraft's texture manager
+(`textureLocation()`, `width()`, `height()`) that you draw wherever you like,
+plus the input methods below. You own it: draw it, feed it input, and
+`close()` it when you are done.
+
+Chromium delivers premultiplied alpha. On a screen, draw it with
+`RenderPipelines.GUI_TEXTURED_PREMULTIPLIED_ALPHA`; the ordinary textured
+pipeline makes everything translucent too dark. `textureId()` answers 0 until
+the first image has arrived.
 
 ### A full-screen interface — `FnWeb.openScreen(spec)`
 

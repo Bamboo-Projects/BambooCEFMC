@@ -1,10 +1,20 @@
 package dev.devpanda.bamboocef.web.texture;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.opengl.GlTexture;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.FilterMode;
+import com.mojang.blaze3d.textures.GpuSampler;
+import com.mojang.blaze3d.textures.GpuTexture;
+import com.mojang.blaze3d.textures.GpuTextureView;
+import com.mojang.blaze3d.textures.TextureFormat;
 import dev.devpanda.bamboocef.web.frame.BorrowedFrame;
 import dev.devpanda.bamboocef.web.frame.BrowserFrame;
 import dev.devpanda.bamboocef.web.frame.DirtyRegion;
 import dev.devpanda.bamboocef.web.measure.DurationSamples;
+import dev.devpanda.bamboocef.web.view.ManagedTexture;
+import net.minecraft.client.Minecraft;
+import net.minecraft.resources.Identifier;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
@@ -31,6 +41,15 @@ import java.nio.ByteBuffer;
  * image flips the texture coordinates instead. Flipping on upload would be the
  * most expensive place for the cheapest computation.
  *
+ * <p><b>The texture belongs to Minecraft's GPU layer, the upload does not.</b>
+ * Since 26.1 the game only draws what it created itself: a {@link GpuTexture}
+ * with a view and a sampler. So the texture is made there. The upload, though,
+ * still goes straight through OpenGL, because the game's own
+ * {@code writeToTexture} knows neither BGRA nor a row length; it would cost a
+ * copy and a swap of red and blue per image. 26.1 runs on OpenGL only. Should
+ * a second backend arrive, {@link #upload(BorrowedFrame)} says so loudly
+ * instead of drawing garbage.
+ *
  * <p>All calls belong on the render thread. That is a given today: Chromium's
  * message loop is pumped there, so {@code onPaint} arrives there too.
  */
@@ -39,7 +58,11 @@ public final class GlTextureBackend implements BrowserTextureBackend {
     /** Four bytes per pixel. */
     private static final int BYTES_PER_PIXEL = 4;
 
-    private int textureId;
+    private static int nextName;
+
+    private GpuTexture texture;
+    private GpuTextureView view;
+    private Identifier location;
     private int width;
     private int height;
     private boolean closed;
@@ -52,29 +75,42 @@ public final class GlTextureBackend implements BrowserTextureBackend {
     private final DurationSamples uploadTimes = new DurationSamples();
 
     /**
-     * Creates the texture.
+     * Creates the texture in the size of the image.
      *
-     * <p>Must run on the render thread. Before that there is no texture, and
-     * {@link #textureId()} answers with zero.
+     * <p>A GPU texture has a fixed size. A new size therefore means a new
+     * texture; the old one is released here. That happens in the pump at the
+     * start of a frame, so no draw call of the running frame still refers to
+     * the old one.
      */
-    public void initialize() {
-        if (closed || textureId != 0) {
-            return;
+    private void allocate(int newWidth, int newHeight) {
+        release();
+        // No mipmaps: a web interface changes every frame, and a chain of
+        // smaller copies would have to be rebuilt every time. Filtering is the
+        // sampler's business, see sampler().
+        texture = RenderSystem.getDevice().createTexture(
+                () -> "bamboocef browser",
+                GpuTexture.USAGE_TEXTURE_BINDING | GpuTexture.USAGE_COPY_DST,
+                TextureFormat.RGBA8, newWidth, newHeight, 1, 1);
+        view = RenderSystem.getDevice().createTextureView(texture);
+        width = newWidth;
+        height = newHeight;
+    }
+
+    private void release() {
+        if (view != null) {
+            view.close();
+            view = null;
         }
-        textureId = GL11.glGenTextures();
-        RenderSystem.bindTexture(textureId);
-        // Linear and not nearest neighbor: a web interface is rarely shown at
-        // its own resolution, and hard edges on text look worse than a soft
-        // transition.
-        RenderSystem.texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-        RenderSystem.texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-        // No repeat: at the edge of a surface there should be no second one.
-        RenderSystem.texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
-        RenderSystem.texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
-        RenderSystem.bindTexture(0);
+        if (texture != null) {
+            texture.close();
+            texture = null;
+        }
+        width = 0;
+        height = 0;
     }
 
     /**
+     * Uploads a borrowed image    /**
      * Uploads a borrowed image — the cheapest way there is.
      *
      * <p>The buffer belongs to Chromium and is valid only during this call.
@@ -82,17 +118,23 @@ public final class GlTextureBackend implements BrowserTextureBackend {
      * {@link BrowserFrame}: what is only borrowed should be named accordingly.
      */
     public void upload(BorrowedFrame frame) {
-        if (closed) {
-            return;
-        }
-        initialize();
-        if (textureId == 0) {
+        if (closed || frame.width() <= 0 || frame.height() <= 0) {
             return;
         }
         long started = System.nanoTime();
-        RenderSystem.bindTexture(textureId);
-
         boolean sizeChanged = frame.width() != width || frame.height() != height;
+        if (sizeChanged) {
+            allocate(frame.width(), frame.height());
+        }
+        if (!(texture instanceof GlTexture gl)) {
+            throw new IllegalStateException("BambooCEF lädt Bilder über OpenGL hoch, "
+                    + "das Spiel zeichnet aber mit " + RenderSystem.getDevice().getBackendName());
+        }
+        // Through GlStateManager and not GL11 directly: Minecraft remembers
+        // which texture is bound, and a bind past it would leave that memory
+        // wrong.
+        GlStateManager._bindTexture(gl.glId());
+
         if (sizeChanged || frame.full()) {
             uploadWhole(frame);
             fullUploads++;
@@ -100,24 +142,22 @@ public final class GlTextureBackend implements BrowserTextureBackend {
             uploadRegions(frame);
         }
 
-        RenderSystem.bindTexture(0);
+        GlStateManager._bindTexture(0);
         note(started);
     }
 
     private void uploadWhole(BorrowedFrame frame) {
         // Reset the row length: a previous region might still have set it, and
         // then OpenGL would read with the wrong stride.
-        RenderSystem.pixelStore(GL11.GL_UNPACK_ROW_LENGTH, 0);
-        RenderSystem.pixelStore(GL11.GL_UNPACK_SKIP_PIXELS, 0);
-        RenderSystem.pixelStore(GL11.GL_UNPACK_SKIP_ROWS, 0);
-        RenderSystem.pixelStore(GL11.GL_UNPACK_ALIGNMENT, 4);
+        GlStateManager._pixelStore(GL11.GL_UNPACK_ROW_LENGTH, 0);
+        GlStateManager._pixelStore(GL11.GL_UNPACK_SKIP_PIXELS, 0);
+        GlStateManager._pixelStore(GL11.GL_UNPACK_SKIP_ROWS, 0);
+        GlStateManager._pixelStore(GL11.GL_UNPACK_ALIGNMENT, 4);
 
         ByteBuffer pixels = frame.pixels();
-        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA,
-                frame.width(), frame.height(), 0,
+        GlStateManager._texSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0,
+                frame.width(), frame.height(),
                 GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixels);
-        width = frame.width();
-        height = frame.height();
         uploadedBytes += (long) width * height * BYTES_PER_PIXEL;
     }
 
@@ -127,23 +167,23 @@ public final class GlTextureBackend implements BrowserTextureBackend {
         // wide a row really is and where the region begins. Without that one
         // would have to copy the region out beforehand — and would be back at
         // one copy per image.
-        RenderSystem.pixelStore(GL11.GL_UNPACK_ROW_LENGTH, frame.width());
-        RenderSystem.pixelStore(GL11.GL_UNPACK_ALIGNMENT, 4);
+        GlStateManager._pixelStore(GL11.GL_UNPACK_ROW_LENGTH, frame.width());
+        GlStateManager._pixelStore(GL11.GL_UNPACK_ALIGNMENT, 4);
         ByteBuffer pixels = frame.pixels();
 
         for (DirtyRegion region : frame.dirty()) {
-            RenderSystem.pixelStore(GL11.GL_UNPACK_SKIP_PIXELS, region.x());
-            RenderSystem.pixelStore(GL11.GL_UNPACK_SKIP_ROWS, region.y());
-            GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0,
+            GlStateManager._pixelStore(GL11.GL_UNPACK_SKIP_PIXELS, region.x());
+            GlStateManager._pixelStore(GL11.GL_UNPACK_SKIP_ROWS, region.y());
+            GlStateManager._texSubImage2D(GL11.GL_TEXTURE_2D, 0,
                     region.x(), region.y(), region.width(), region.height(),
                     GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixels);
             uploadedBytes += region.pixels() * BYTES_PER_PIXEL;
             regions++;
         }
 
-        RenderSystem.pixelStore(GL11.GL_UNPACK_ROW_LENGTH, 0);
-        RenderSystem.pixelStore(GL11.GL_UNPACK_SKIP_PIXELS, 0);
-        RenderSystem.pixelStore(GL11.GL_UNPACK_SKIP_ROWS, 0);
+        GlStateManager._pixelStore(GL11.GL_UNPACK_ROW_LENGTH, 0);
+        GlStateManager._pixelStore(GL11.GL_UNPACK_SKIP_PIXELS, 0);
+        GlStateManager._pixelStore(GL11.GL_UNPACK_SKIP_ROWS, 0);
     }
 
     private void note(long started) {
@@ -165,9 +205,46 @@ public final class GlTextureBackend implements BrowserTextureBackend {
                         + "über upload(BorrowedFrame)");
     }
 
-    /** The texture, or zero while there is none. */
+    /**
+     * The OpenGL name of the texture, or zero while there is none.
+     *
+     * <p>Today mostly the answer to "is there an image yet?"; drawing goes
+     * through {@link #textureView()}.
+     */
     public int textureId() {
-        return textureId;
+        return texture instanceof GlTexture gl && !gl.isClosed() ? gl.glId() : 0;
+    }
+
+    /**
+     * The name under which Minecraft finds this texture.
+     *
+     * <p>Registered on the first question and not earlier: most sessions are
+     * only ever asked once they have an image. The name stays the same across
+     * resizes, see {@link ManagedTexture}.
+     */
+    public Identifier location() {
+        if (location == null && !closed) {
+            location = Identifier.fromNamespaceAndPath("bamboocef", "browser/" + nextName++);
+            Minecraft.getInstance().getTextureManager()
+                    .register(location, new ManagedTexture(this::textureView, sampler()));
+        }
+        return location;
+    }
+
+    /** What Minecraft draws with, or {@code null} while there is no image yet. */
+    public GpuTextureView textureView() {
+        return view;
+    }
+
+    /**
+     * Linear and clamped at the edge.
+     *
+     * <p>Linear, because a web interface is rarely shown at its own resolution
+     * and hard edges on text look worse than a soft transition. Clamped,
+     * because at the edge of a surface there should be no second one.
+     */
+    public static GpuSampler sampler() {
+        return RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
     }
 
     public int width() {
@@ -233,11 +310,12 @@ public final class GlTextureBackend implements BrowserTextureBackend {
     @Override
     public void close() {
         closed = true;
-        if (textureId != 0) {
-            GL11.glDeleteTextures(textureId);
-            textureId = 0;
+        // Unregister first, then release: the other way around would leave a
+        // name registered that points into the void.
+        if (location != null) {
+            Minecraft.getInstance().getTextureManager().release(location);
+            location = null;
         }
-        width = 0;
-        height = 0;
+        release();
     }
 }

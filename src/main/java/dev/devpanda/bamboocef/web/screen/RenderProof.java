@@ -1,17 +1,16 @@
 package dev.devpanda.bamboocef.web.screen;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import dev.devpanda.bamboocef.web.BrowserVisibility;
 import dev.devpanda.bamboocef.web.WebRuntimeStatus;
 import dev.devpanda.bamboocef.web.WebSupport;
+import dev.devpanda.bamboocef.web.capture.FinishedFrame;
 import dev.devpanda.bamboocef.web.runtime.BrowserSession;
 import dev.devpanda.bamboocef.web.view.BrowserCompositor;
 import dev.devpanda.bamboocef.web.view.BrowserView;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.opengl.GL11;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -151,7 +150,7 @@ public final class RenderProof extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         if (session == null || view == null) {
             return;
         }
@@ -159,7 +158,7 @@ public final class RenderProof extends Screen {
         // background is itself translucent — beneath it would lie the game
         // world, and the arithmetic would no longer add up.
         graphics.fill(0, 0, width, height, 0xFF000000);
-        compositor.draw(graphics, view, session.textureId(), null);
+        compositor.draw(graphics, view, session.texture(), null);
 
         if (session.paints() == 0) {
             // Patience, but not endless: a proof that waits for a frame that
@@ -172,12 +171,13 @@ public final class RenderProof extends Screen {
             }
             return;
         }
-        // Let one frame be drawn before reading: within the same call the
-        // result is not yet reliably in the buffer.
+        // Let one frame be drawn before reading, and read at its end: since
+        // 26.1 this method only collects, and the image stands in the buffer
+        // only once the frame is through.
         framesDrawn++;
         if (framesDrawn >= 2 && !checked) {
             checked = true;
-            check();
+            FinishedFrame.whenDrawn(this::check);
         }
     }
 
@@ -223,8 +223,7 @@ public final class RenderProof extends Screen {
         int x = (int) (acrossFraction * fbWidth);
         int y = fbHeight - 1 - (int) (downFraction * fbHeight);
         pixels.clear();
-        RenderSystem.assertOnRenderThread();
-        GL11.glReadPixels(x, y, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+        FinishedFrame.readPixel(x, y, pixels);
 
         int foundRed = pixels.get(0) & 0xFF;
         int foundGreen = pixels.get(1) & 0xFF;

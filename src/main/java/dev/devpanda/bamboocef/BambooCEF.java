@@ -25,7 +25,7 @@ public final class BambooCEF {
         //
         // Only does anything when bamboocef.devtools is set; on a server the class
         // does not even exist in the first place.
-        if (FMLEnvironment.dist.isClient()) {
+        if (FMLEnvironment.getDist().isClient()) {
             dev.devpanda.bamboocef.web.runtime.WebDebug.requestIfEnabled();
         }
     }

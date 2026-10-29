@@ -5,7 +5,8 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import dev.devpanda.bamboocef.web.BrowserVisibility;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import org.joml.Matrix4f;
 
 /**
@@ -167,7 +168,7 @@ final class WorldSurfaceImpl implements WorldSurface {
         pose.mulPose(Axis.YP.rotationDegrees(-yaw));
         pose.mulPose(Axis.XP.rotationDegrees(pitch));
         Matrix4f matrix = pose.last().pose();
-        RenderType type = RenderType.text(surface.textureLocation());
+        RenderType type = RenderTypes.text(surface.textureLocation());
         VertexConsumer quad = buffers.getBuffer(type);
         float hw = width / 2f;
         float hh = height / 2f;

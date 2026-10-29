@@ -118,8 +118,8 @@ public final class WebDevTools {
                 .withStyle(Style.EMPTY
                         .withColor(ChatFormatting.BLUE)
                         .withUnderlined(true)
-                        .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, FRONT))
-                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                        .withClickEvent(new ClickEvent.OpenUrl(java.net.URI.create(FRONT)))
+                        .withHoverEvent(new HoverEvent.ShowText(
                                 Component.literal("Im Browser öffnen und die Seite auswählen")))));
         return lines;
     }
@@ -156,7 +156,7 @@ public final class WebDevTools {
     private static void say(Component line) {
         Minecraft client = Minecraft.getInstance();
         if (client.player != null) {
-            client.player.displayClientMessage(line, false);
+            client.player.sendSystemMessage(line);
         }
     }
 }

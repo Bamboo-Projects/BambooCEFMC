@@ -17,9 +17,9 @@ public interface WebSurface extends AutoCloseable {
     /**
      * The texture the current frame lies in.
      *
-     * <p>A raw OpenGL id. For the world render path that is not enough — there
-     * a {@code ResourceLocation} is needed, and that is available via
-     * {@link #textureLocation()}.
+     * <p>A raw OpenGL id, today mostly the answer to "is there an image yet?".
+     * Since Minecraft 26.1 nothing draws with a raw id any more; drawing goes
+     * through {@link #textureLocation()}, on screens as well as in the world.
      *
      * @return the id, or {@code 0} as long as there is no frame yet
      */
@@ -28,10 +28,13 @@ public interface WebSurface extends AutoCloseable {
     /**
      * The same texture, registered with the texture manager.
      *
-     * <p>The path for everything that draws via {@code RenderType}. The address
+     * <p>The path for everything that draws: {@code blit} with a pipeline on
+     * screens, {@code RenderType} in the world. Chromium delivers premultiplied
+     * alpha, so on screens the pipeline to use is
+     * {@code RenderPipelines.GUI_TEXTURED_PREMULTIPLIED_ALPHA}. The address
      * belongs to the surface and is unregistered on close.
      */
-    net.minecraft.resources.ResourceLocation textureLocation();
+    net.minecraft.resources.Identifier textureLocation();
 
     int width();
 

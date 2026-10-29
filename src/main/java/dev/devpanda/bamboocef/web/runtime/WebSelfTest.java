@@ -1,6 +1,5 @@
 package dev.devpanda.bamboocef.web.runtime;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import dev.devpanda.bamboocef.web.BrowserVisibility;
 import dev.devpanda.bamboocef.web.WebRuntimeStatus;
 import dev.devpanda.bamboocef.web.WebSupport;
@@ -167,11 +166,11 @@ public final class WebSelfTest {
             ByteBuffer read = ByteBuffer
                     .allocateDirect(session.width() * session.height() * 4)
                     .order(ByteOrder.nativeOrder());
-            RenderSystem.bindTexture(texture);
+            com.mojang.blaze3d.opengl.GlStateManager._bindTexture(texture);
             // Read back in the same layout in which it was uploaded.
             GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0,
                     GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, read);
-            RenderSystem.bindTexture(0);
+            com.mojang.blaze3d.opengl.GlStateManager._bindTexture(0);
 
             int quarter = session.width() / 4;
             int threeQuarters = quarter * 3;

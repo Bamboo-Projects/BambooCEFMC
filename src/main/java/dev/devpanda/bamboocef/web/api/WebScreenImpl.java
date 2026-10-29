@@ -5,8 +5,12 @@ import dev.devpanda.bamboocef.web.screen.BrowserScreen;
 import dev.devpanda.bamboocef.web.view.BrowserCompositor;
 import dev.devpanda.bamboocef.web.view.BrowserCursor;
 import dev.devpanda.bamboocef.web.view.BrowserView;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
@@ -57,16 +61,16 @@ final class WebScreenImpl extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         // The background stays Minecraft's blurred world; a transparent page
-        // lets it show through.
-        renderBackground(graphics, mouseX, mouseY, partialTick);
+        // lets it show through. Since 26.1 Minecraft collects it itself before
+        // this method runs.
         int wanted = wantedCursor;
         if (wanted != appliedCursor) {
-            cursor.apply(minecraft.getWindow().getWindow(), wanted);
+            cursor.apply(minecraft.getWindow().handle(), wanted);
             appliedCursor = wanted;
         }
-        compositor.draw(graphics, view, surface.textureId(), popupPlacement());
+        compositor.draw(graphics, view, surface.session().texture(), popupPlacement());
     }
 
     private BrowserCompositor.PopupPlacement popupPlacement() {
@@ -75,7 +79,7 @@ final class WebScreenImpl extends Screen {
             return null;
         }
         double[] corner = view.toGui(session.popupX(), session.popupY());
-        return new BrowserCompositor.PopupPlacement(true, session.popupTextureId(),
+        return new BrowserCompositor.PopupPlacement(true, session.popupTexture(),
                 corner[0], corner[1],
                 view.lengthToGui(session.popupWidth()),
                 view.lengthToGui(session.popupHeight()));
@@ -99,21 +103,21 @@ final class WebScreenImpl extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         escapePending = false;
-        surface.mousePressed(view.toBrowserX(mouseX), view.toBrowserY(mouseY), button, heldModifiers());
+        surface.mousePressed(view.toBrowserX(event.x()), view.toBrowserY(event.y()), event.button(), heldModifiers());
         return true;
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        surface.mouseReleased(view.toBrowserX(mouseX), view.toBrowserY(mouseY), button, heldModifiers());
+    public boolean mouseReleased(MouseButtonEvent event) {
+        surface.mouseReleased(view.toBrowserX(event.x()), view.toBrowserY(event.y()), event.button(), heldModifiers());
         return true;
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        surface.mouseMoved(view.toBrowserX(mouseX), view.toBrowserY(mouseY), heldModifiers());
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        surface.mouseMoved(view.toBrowserX(event.x()), view.toBrowserY(event.y()), heldModifiers());
         return true;
     }
 
@@ -126,7 +130,10 @@ final class WebScreenImpl extends Screen {
     // ---- Keys -------------------------------------------------------------------
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyEvent event) {
+        int keyCode = event.key();
+        int scanCode = event.scancode();
+        int modifiers = event.modifiers();
         if (keyCode == BrowserScreen.RELEASE_KEY) {
             onClose();
             return true;
@@ -147,28 +154,37 @@ final class WebScreenImpl extends Screen {
     }
 
     @Override
-    public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == BrowserScreen.RELEASE_KEY) {
+    public boolean keyReleased(KeyEvent event) {
+        if (event.key() == BrowserScreen.RELEASE_KEY) {
             return true;
         }
-        surface.keyReleased(keyCode, scanCode, modifiers);
+        surface.keyReleased(event.key(), event.scancode(), event.modifiers());
         return true;
     }
 
+    /** A whole code point; Chromium takes it as UTF-16 units, see BrowserScreen. */
     @Override
-    public boolean charTyped(char typed, int modifiers) {
-        return typed != 0 && surface.charTyped(typed, modifiers);
+    public boolean charTyped(CharacterEvent event) {
+        if (event.codepoint() == 0) {
+            return false;
+        }
+        boolean taken = false;
+        int modifiers = heldModifiers();
+        for (char unit : Character.toChars(event.codepoint())) {
+            taken |= surface.charTyped(unit, modifiers);
+        }
+        return taken;
     }
 
     private static int heldModifiers() {
         int modifiers = 0;
-        if (hasShiftDown()) {
+        if (Minecraft.getInstance().hasShiftDown()) {
             modifiers |= GLFW.GLFW_MOD_SHIFT;
         }
-        if (hasControlDown()) {
+        if (Minecraft.getInstance().hasControlDown()) {
             modifiers |= GLFW.GLFW_MOD_CONTROL;
         }
-        if (hasAltDown()) {
+        if (Minecraft.getInstance().hasAltDown()) {
             modifiers |= GLFW.GLFW_MOD_ALT;
         }
         return modifiers;
@@ -178,7 +194,7 @@ final class WebScreenImpl extends Screen {
 
     @Override
     public void removed() {
-        cursor.close(minecraft.getWindow().getWindow());
+        cursor.close(minecraft.getWindow().handle());
         surface.close();
         super.removed();
     }

@@ -1,6 +1,6 @@
 # BambooCEF for Minecraft
 
-A Chromium web runtime for **NeoForge 21.1 / Minecraft 1.21.1** mods, with a
+A Chromium web runtime for **NeoForge 26.1 / Minecraft 26.1.2** mods, with a
 small Java API. Pages render off-screen through CEF (Chromium Embedded
 Framework) straight into Minecraft textures: as a full-screen interface, as a
 HUD overlay, or as a surface standing in the world. Pages talk back to the mod
@@ -82,7 +82,8 @@ For development, point the game at a local build instead:
 
 ## Building
 
-- The mod: `./gradlew build` (ModDevGradle, NeoForge 21.1.248, Java 21).
+- The mod: `./gradlew build` (ModDevGradle, NeoForge 26.1.2.114, Java 25).
+  The Minecraft 1.21.1 line lives on the `dev` branch.
   The build expects `tools/runtime/build/out/windows-x86_64/jcef.jar`.
 - The native runtime: `pwsh -File tools/runtime/build-jcef.ps1` builds
   upstream java-cef with the patches in `tools/runtime/patches/` (CEF pinned in

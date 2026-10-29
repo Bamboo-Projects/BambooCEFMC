@@ -1,7 +1,7 @@
 # Modrinth project text (draft)
 
 Project: **BambooCEF** · slug `bamboocef` · category Library · loader NeoForge ·
-game version 1.21.1 · client-side required, server-side unsupported ·
+game version 26.1.2 · client-side required, server-side unsupported ·
 license MIT · source https://github.com/Bamboo-Projects/BambooCEFMC
 
 ---

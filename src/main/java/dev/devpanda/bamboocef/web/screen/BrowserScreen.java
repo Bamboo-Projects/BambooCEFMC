@@ -8,8 +8,12 @@ import dev.devpanda.bamboocef.web.runtime.BrowserSession;
 import dev.devpanda.bamboocef.web.view.BrowserCompositor;
 import dev.devpanda.bamboocef.web.view.BrowserCursor;
 import dev.devpanda.bamboocef.web.view.BrowserView;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
@@ -136,29 +140,30 @@ public class BrowserScreen extends Screen {
      * Runs before anything is drawn.
      *
      * <p><b>The only point at which Minecraft's own image still stands
-     * untouched in the buffer.</b> World and UI are finished, this screen has
-     * not drawn a single stroke yet. Whoever wants to capture the image must do
-     * it here — one line later {@code renderBackground} has darkened it, and
-     * one frame later the browser would be in it.
+     * untouched in the buffer.</b> The world is finished, and since 26.1 the
+     * whole interface is only collected here and drawn afterwards, background
+     * blur included. Whoever wants to capture the image must do it here: one
+     * frame later the browser would be in it.
      */
     protected void beforeDrawing() {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         if (session != null) {
             session.noteScreenFrame();
         }
+        // The blurred background is no longer drawn here: since 26.1
+        // Minecraft collects it itself before this method runs.
         beforeDrawing();
-        renderBackground(graphics, mouseX, mouseY, partialTick);
         if (session == null || view == null) {
-            graphics.drawCenteredString(font,
+            graphics.centeredText(font,
                     Component.literal("Die Web-Runtime steht nicht bereit."),
                     width / 2, height / 2, 0xFFFFFFFF);
             return;
         }
         applyWantedCursor();
-        compositor.draw(graphics, view, session.textureId(), popupPlacement());
+        compositor.draw(graphics, view, session.texture(), popupPlacement());
         drawHint(graphics);
     }
 
@@ -174,7 +179,7 @@ public class BrowserScreen extends Screen {
             return null;
         }
         double[] corner = view.toGui(session.popupX(), session.popupY());
-        return new BrowserCompositor.PopupPlacement(true, session.popupTextureId(),
+        return new BrowserCompositor.PopupPlacement(true, session.popupTexture(),
                 corner[0], corner[1],
                 view.lengthToGui(session.popupWidth()),
                 view.lengthToGui(session.popupHeight()));
@@ -183,7 +188,7 @@ public class BrowserScreen extends Screen {
     private void applyWantedCursor() {
         int wanted = wantedCursor;
         if (wanted != appliedCursor && focus == BrowserFocus.BROWSER) {
-            cursor.apply(minecraft.getWindow().getWindow(), wanted);
+            cursor.apply(minecraft.getWindow().handle(), wanted);
             appliedCursor = wanted;
             // Each kind to the log once: whether the cursor changes arrive at
             // all can otherwise only be seen by looking — and "looking" is the
@@ -208,7 +213,7 @@ public class BrowserScreen extends Screen {
      * is a trap. After a few seconds the hint disappears, because by then it
      * would only be in the way.
      */
-    private void drawHint(GuiGraphics graphics) {
+    private void drawHint(GuiGraphicsExtractor graphics) {
         long shown = System.currentTimeMillis() - openedMillis;
         if (shown > HINT_MILLIS) {
             return;
@@ -218,7 +223,7 @@ public class BrowserScreen extends Screen {
                 : "F10 gibt die Tastatur an die Seite — Escape schließt";
         int alpha = (int) (255 * Math.min(1.0, (HINT_MILLIS - shown) / 1000.0));
         graphics.fill(0, 0, width, 14, (alpha / 2) << 24);
-        graphics.drawString(font, text, 6, 3, (alpha << 24) | 0xFFFFFF, false);
+        graphics.text(font, text, 6, 3, (alpha << 24) | 0xFFFFFF, false);
     }
 
     // ---- Focus -------------------------------------------------------------
@@ -257,7 +262,7 @@ public class BrowserScreen extends Screen {
             session.setFocused(wanted == BrowserFocus.BROWSER);
         }
         if (wanted == BrowserFocus.MINECRAFT) {
-            cursor.reset(minecraft.getWindow().getWindow());
+            cursor.reset(minecraft.getWindow().handle());
             appliedCursor = -1;
         }
     }
@@ -285,7 +290,8 @@ public class BrowserScreen extends Screen {
     private boolean escapePending;
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyEvent event) {
+        int keyCode = event.key();
         if (keyCode == RELEASE_KEY) {
             setFocus(focus == BrowserFocus.BROWSER
                     ? BrowserFocus.MINECRAFT : BrowserFocus.BROWSER);
@@ -309,7 +315,7 @@ public class BrowserScreen extends Screen {
             } else {
                 escapePending = false;
             }
-            session.keyPressed(keyCode, scanCode, modifiers);
+            session.keyPressed(keyCode, event.scancode(), event.modifiers());
             // <b>Do not pass on to super.</b> Otherwise the screen sees the
             // same key once more, and what the page has just accepted
             // additionally triggers something in Minecraft.
@@ -320,19 +326,19 @@ public class BrowserScreen extends Screen {
             onClose();
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 
     @Override
-    public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == RELEASE_KEY) {
+    public boolean keyReleased(KeyEvent event) {
+        if (event.key() == RELEASE_KEY) {
             return true;
         }
         if (session != null && focus.routesKeyboard()) {
-            session.keyReleased(keyCode, scanCode, modifiers);
+            session.keyReleased(event.key(), event.scancode(), event.modifiers());
             return true;
         }
-        return super.keyReleased(keyCode, scanCode, modifiers);
+        return super.keyReleased(event);
     }
 
     /**
@@ -341,17 +347,25 @@ public class BrowserScreen extends Screen {
      * <p>The only route by which umlauts, ß and the euro sign arrive
      * correctly: Minecraft got the character from the operating system,
      * keyboard layout included. It could not be back-computed from key codes.
+     *
+     * <p>Since 26.1 a whole code point arrives, without modifier flags.
+     * Chromium takes UTF-16 units, so a character beyond the basic plane goes
+     * out as its two halves, the way Minecraft used to hand it over; the flags
+     * are queried.
      */
     @Override
-    public boolean charTyped(char typed, int modifiers) {
-        if (typed == 0) {
+    public boolean charTyped(CharacterEvent event) {
+        if (event.codepoint() == 0) {
             return false;
         }
         if (session != null && focus.routesKeyboard()) {
-            session.charTyped(typed, modifiers);
+            int modifiers = heldModifiers();
+            for (char unit : Character.toChars(event.codepoint())) {
+                session.charTyped(unit, modifiers);
+            }
             return true;
         }
-        return super.charTyped(typed, modifiers);
+        return super.charTyped(event);
     }
 
     // ---- Mouse -------------------------------------------------------------
@@ -373,28 +387,30 @@ public class BrowserScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         // Whoever clicks keeps working and does not mean, with the next Escape,
         // to close the screen.
         escapePending = false;
-        if (session == null || view == null || !view.contains(mouseX, mouseY)) {
-            return super.mouseClicked(mouseX, mouseY, button);
+        if (session == null || view == null || !view.contains(event.x(), event.y())) {
+            return super.mouseClicked(event, doubleClick);
         }
         // A click into the surface reclaims the focus — otherwise one would
         // have to repeat it with a key after giving it back.
         setFocus(BrowserFocus.BROWSER);
-        session.mousePressed(view.toBrowserX(mouseX), view.toBrowserY(mouseY),
-                button, heldModifiers(), System.currentTimeMillis());
+        // Minecraft's own double-click flag stays unused: the session counts
+        // clicks itself, by Chromium's rules.
+        session.mousePressed(view.toBrowserX(event.x()), view.toBrowserY(event.y()),
+                event.button(), heldModifiers(), System.currentTimeMillis());
         return true;
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(MouseButtonEvent event) {
         if (session == null || view == null) {
-            return super.mouseReleased(mouseX, mouseY, button);
+            return super.mouseReleased(event);
         }
-        session.mouseReleased(view.toBrowserX(mouseX), view.toBrowserY(mouseY),
-                button, heldModifiers());
+        session.mouseReleased(view.toBrowserX(event.x()), view.toBrowserY(event.y()),
+                event.button(), heldModifiers());
         return true;
     }
 
@@ -406,12 +422,11 @@ public class BrowserScreen extends Screen {
      * them along, so an ordinary movement suffices here.
      */
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button,
-                                double dragX, double dragY) {
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
         if (session == null || view == null) {
-            return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+            return super.mouseDragged(event, dragX, dragY);
         }
-        session.mouseMoved(view.toBrowserX(mouseX), view.toBrowserY(mouseY),
+        session.mouseMoved(view.toBrowserX(event.x()), view.toBrowserY(event.y()),
                     heldModifiers());
         return true;
     }
@@ -521,18 +536,18 @@ public class BrowserScreen extends Screen {
      * text cursor. Whoever leaves the flags at zero for mouse events takes all
      * that from the page — and it looks as if it cannot do it.
      *
-     * <p>For key events Minecraft supplies the flags; for mouse events it does
-     * not, and there they have to be queried.
+     * <p>For key events Minecraft supplies the flags; for typed characters and
+     * movements it does not, and there they have to be queried.
      */
     protected static int heldModifiers() {
         int modifiers = 0;
-        if (hasShiftDown()) {
+        if (Minecraft.getInstance().hasShiftDown()) {
             modifiers |= GLFW.GLFW_MOD_SHIFT;
         }
-        if (hasControlDown()) {
+        if (Minecraft.getInstance().hasControlDown()) {
             modifiers |= GLFW.GLFW_MOD_CONTROL;
         }
-        if (hasAltDown()) {
+        if (Minecraft.getInstance().hasAltDown()) {
             modifiers |= GLFW.GLFW_MOD_ALT;
         }
         return modifiers;
@@ -549,8 +564,8 @@ public class BrowserScreen extends Screen {
      */
     protected void sendKeyCombination(int glfwKey, int modifiers) {
         int scanCode = GLFW.glfwGetKeyScancode(glfwKey);
-        keyPressed(glfwKey, scanCode, modifiers);
-        keyReleased(glfwKey, scanCode, modifiers);
+        keyPressed(new KeyEvent(glfwKey, scanCode, modifiers));
+        keyReleased(new KeyEvent(glfwKey, scanCode, modifiers));
     }
 
     /** Whether the page is still loading — before that, any call into it fizzles out. */
@@ -593,7 +608,7 @@ public class BrowserScreen extends Screen {
      */
     @Override
     public void removed() {
-        cursor.close(minecraft.getWindow().getWindow());
+        cursor.close(minecraft.getWindow().handle());
         if (session != null) {
             session.setFocused(false);
             session.close();
