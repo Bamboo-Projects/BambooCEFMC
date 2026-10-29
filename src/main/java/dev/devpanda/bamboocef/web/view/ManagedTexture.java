@@ -1,8 +1,10 @@
 package dev.devpanda.bamboocef.web.view;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.GpuSampler;
 import com.mojang.blaze3d.textures.GpuTexture;
 import com.mojang.blaze3d.textures.GpuTextureView;
+import com.mojang.blaze3d.textures.TextureFormat;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 
 import java.util.function.Supplier;
@@ -23,23 +25,45 @@ import java.util.function.Supplier;
  * <p><b>And it is never deleted here.</b> The texture belongs to the session,
  * not to the texture manager. {@link #close()} stays empty so that releasing
  * the name does not tear the image out from under the session.
+ *
+ * <p><b>Before the first image there is an empty one.</b> Until 1.21.1 a
+ * surface without an image had the id zero, and drawing it drew nothing.
+ * Minecraft's own textures throw instead; a mod that draws a surface one frame
+ * too early would crash the game. A single transparent pixel keeps the old
+ * behavior.
  */
 public final class ManagedTexture extends AbstractTexture {
+
+    private static GpuTextureView empty;
 
     private final Supplier<GpuTextureView> live;
 
     public ManagedTexture(Supplier<GpuTextureView> live, GpuSampler sampler) {
         this.live = live;
         this.sampler = sampler;
+        // Made here and not on the first draw: clearing a texture is not
+        // allowed while a render pass is open, and a draw may be inside one.
+        empty();
     }
 
     @Override
     public GpuTextureView getTextureView() {
         GpuTextureView view = live.get();
-        if (view == null) {
-            throw new IllegalStateException("Die Browserfläche hat noch kein Bild");
+        return view != null && !view.isClosed() ? view : empty();
+    }
+
+    /** One transparent pixel, made once and kept for the whole game. */
+    private static GpuTextureView empty() {
+        if (empty == null) {
+            GpuTexture texture = RenderSystem.getDevice().createTexture(
+                    () -> "bamboocef empty",
+                    GpuTexture.USAGE_TEXTURE_BINDING | GpuTexture.USAGE_COPY_DST
+                            | GpuTexture.USAGE_RENDER_ATTACHMENT,
+                    TextureFormat.RGBA8, 1, 1, 1, 1);
+            RenderSystem.getDevice().createCommandEncoder().clearColorTexture(texture, 0);
+            empty = RenderSystem.getDevice().createTextureView(texture);
         }
-        return view;
+        return empty;
     }
 
     @Override

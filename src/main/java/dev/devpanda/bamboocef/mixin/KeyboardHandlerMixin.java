@@ -2,6 +2,10 @@ package dev.devpanda.bamboocef.mixin;
 
 import dev.devpanda.bamboocef.web.api.Overlays;
 import net.minecraft.client.KeyboardHandler;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -17,25 +21,42 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * that is meant to get Escape and the arrows while the player keeps moving
  * must sit ahead of that. This is the only place it can.
  *
- * <p>Two injections, one line each, both merely forwarding: the decision is
- * made in {@link Overlays}, where it is testable without a mixin.
+ * <p>Two injections, both merely forwarding: the decision is made in
+ * {@link Overlays}, where it is testable without a mixin.
+ *
+ * <p>Since 26.1 both methods take an event record instead of loose numbers,
+ * and a typed character no longer carries modifier flags; they are queried.
  */
 @Mixin(KeyboardHandler.class)
 public abstract class KeyboardHandlerMixin {
 
     @Inject(method = "keyPress", at = @At("HEAD"), cancellable = true)
-    private void bamboocef$overlayKey(long window, int key, int scanCode, int action,
-                                      int modifiers, CallbackInfo info) {
-        if (Overlays.keyPress(key, scanCode, action, modifiers)) {
+    private void bamboocef$overlayKey(long window, int action, KeyEvent event,
+                                      CallbackInfo info) {
+        if (Overlays.keyPress(event.key(), event.scancode(), action, event.modifiers())) {
             info.cancel();
         }
     }
 
     @Inject(method = "charTyped", at = @At("HEAD"), cancellable = true)
-    private void bamboocef$overlayChar(long window, int codePoint, int modifiers,
-                                       CallbackInfo info) {
-        if (Overlays.charTyped(codePoint, modifiers)) {
+    private void bamboocef$overlayChar(long window, CharacterEvent event, CallbackInfo info) {
+        if (Overlays.charTyped(event.codepoint(), heldModifiers())) {
             info.cancel();
         }
+    }
+
+    private static int heldModifiers() {
+        Minecraft client = Minecraft.getInstance();
+        int modifiers = 0;
+        if (client.hasShiftDown()) {
+            modifiers |= GLFW.GLFW_MOD_SHIFT;
+        }
+        if (client.hasControlDown()) {
+            modifiers |= GLFW.GLFW_MOD_CONTROL;
+        }
+        if (client.hasAltDown()) {
+            modifiers |= GLFW.GLFW_MOD_ALT;
+        }
+        return modifiers;
     }
 }

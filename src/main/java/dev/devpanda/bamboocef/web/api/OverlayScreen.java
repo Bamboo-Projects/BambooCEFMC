@@ -63,6 +63,9 @@ final class OverlayScreen extends Screen {
      */
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        // The one thing the usual background also does: subtitles that the
+        // HUD held back for an open screen.
+        minecraft.gui.extractDeferredSubtitles();
     }
 
     @Override

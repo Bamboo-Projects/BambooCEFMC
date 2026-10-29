@@ -167,6 +167,7 @@ public final class WebSelfTest {
                     .allocateDirect(session.width() * session.height() * 4)
                     .order(ByteOrder.nativeOrder());
             com.mojang.blaze3d.opengl.GlStateManager._bindTexture(texture);
+            dev.devpanda.bamboocef.web.capture.PixelPack.reset();
             // Read back in the same layout in which it was uploaded.
             GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0,
                     GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, read);

@@ -78,9 +78,9 @@ public final class GlTextureBackend implements BrowserTextureBackend {
      * Creates the texture in the size of the image.
      *
      * <p>A GPU texture has a fixed size. A new size therefore means a new
-     * texture; the old one is released here. That happens in the pump at the
-     * start of a frame, so no draw call of the running frame still refers to
-     * the old one.
+     * texture. The old one is not closed here but at the end of the frame, see
+     * {@link RetiredTextures}: a draw collected earlier in this frame may still
+     * refer to it.
      */
     private void allocate(int newWidth, int newHeight) {
         release();
@@ -97,14 +97,9 @@ public final class GlTextureBackend implements BrowserTextureBackend {
     }
 
     private void release() {
-        if (view != null) {
-            view.close();
-            view = null;
-        }
-        if (texture != null) {
-            texture.close();
-            texture = null;
-        }
+        RetiredTextures.afterFrame(view, texture);
+        view = null;
+        texture = null;
         width = 0;
         height = 0;
     }

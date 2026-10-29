@@ -99,6 +99,9 @@ public final class BambooCEFClient {
         // The proofs read their pixels here: the frame is drawn, but not yet
         // shown. See FinishedFrame.
         dev.devpanda.bamboocef.web.capture.FinishedFrame.frameDrawn();
+        // Only now is no draw of this frame left that could still need a
+        // texture closed during it. See RetiredTextures.
+        dev.devpanda.bamboocef.web.texture.RetiredTextures.frameDrawn();
     }
 
     /**

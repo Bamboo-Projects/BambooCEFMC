@@ -185,6 +185,7 @@ public final class WorldCapture implements AutoCloseable {
     private byte[] readAsPng(long readStarted) throws Exception {
         try (NativeImage image = new NativeImage(targetWidth, targetHeight, false)) {
             GlStateManager._bindTexture(glName(small.getColorTexture()));
+            PixelPack.reset();
             GL11.nglGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, image.getPointer());
             GlStateManager._bindTexture(0);
             readTimes.record(System.nanoTime() - readStarted);
@@ -210,6 +211,7 @@ public final class WorldCapture implements AutoCloseable {
         java.nio.ByteBuffer pixels = org.lwjgl.system.MemoryUtil.memAlloc(pixelBytes);
         try {
             GlStateManager._bindTexture(glName(small.getColorTexture()));
+            PixelPack.reset();
             GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0,
                     org.lwjgl.opengl.GL12.GL_BGRA, GL11.GL_UNSIGNED_BYTE, pixels);
             GlStateManager._bindTexture(0);

@@ -66,6 +66,7 @@ public final class FinishedFrame {
         GlStateManager._glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFramebuffer);
         GL30.glFramebufferTexture2D(GL30.GL_READ_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0,
                 GL11.GL_TEXTURE_2D, color.glId(), 0);
+        PixelPack.reset();
         GL11.glReadPixels(x, y, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, into);
         GlStateManager._glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, 0);
     }
